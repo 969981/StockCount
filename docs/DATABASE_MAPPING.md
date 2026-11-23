@@ -58,9 +58,9 @@ ITMMASTER (产品主数据; 品名/规格)
 | `LOT_0` | nvarchar(30) | 批次 | `lotNumber` |
 | `LOC_0` | nvarchar(10) | **现场扫码实际库位**（V1目标） | `countedLocation` |
 | `PCU_0` | nvarchar(3) | 包装单位（非STU别名） | `packageUnit` |
-| `QTYPCU_0` | numeric(28,13) | 包装单位数量，非空 | `quantityPcu`（内部映射） |
+| **`QTYPCU_0`** | **numeric(28,13)** | **同一人工实盘数；必须与 `QTYSTU_0` 完全相等** | `quantityPcu = countedQtyStu`（后端派生） |
 | `PCUSTUCOE_0` | numeric(18,7) | PCU→STU 换算系数，非空 | `pcuStuFactor`（内部映射） |
-| **`QTYSTU_0`** | **numeric(28,13)** | **人工实盘存货单位数量的目标列** | **`countedQtyStu: decimal`** |
+| **`QTYSTU_0`** | **numeric(28,13)** | **人工实盘数的目标列，且等于 `QTYPCU_0`** | **`countedQtyStu: decimal`** |
 | `ECCVALMAJ_0` | nvarchar(20) | X3 业务辅助字段；语义待核 | 服务端内部 |
 | `PDAID_0` | nvarchar(50) | 设备/PDA 关联标识；待核 | 审计上下文（方案待定） |
 | `CREDATTIM_0` / `UPDDATTIM_0` | datetime | 明细创建/更新时间 | `createdAt` / `updatedAt` |
@@ -70,7 +70,7 @@ ITMMASTER (产品主数据; 品名/规格)
 
 **已验证索引现状**：COB 表头 `CUNNUM_0` 唯一、标签 `PID_0` 唯一；`XCOUTD` 仅 `ROWID` 作为唯一主键，**未发现 (`CUNNUM_0`, `BOXNUM_0`) 唯一约束**。COB 曾查到两组同单重复箱号，不能改历史数据来“修好”或直接添加复合索引。
 
-历史 COB `XCOUTD` 全表 22,936 行：`QTYPCU_0=QTYSTU_0` 且 `PCUSTUCOE_0=1`；这是**历史现象，不是所有物料的合法赋值公式**。提交必须验证完整写入规则，不能在数据库列上瞎填默认值。
+**最新 V1 业务要求（2026-11-23）**：只让操作员输入一次数量，后端将**相同 `decimal` 值**写进 `QTYSTU_0` 与 `QTYPCU_0`，两者必须相等。历史 COB `XCOUTD` 的 22,936 行也全部满足 `QTYPCU_0=QTYSTU_0`、系数=1；**历史事实支持同值模式，但不等于已经批准把 `PCUSTUCOE_0` 一律写死为1**。提交前仍须确认现有 X3 服务/单位字段支持这一写入组合。
 
 ## 4. XLABELDTL — 箱标签表（COB 关键字段）
 
@@ -136,9 +136,9 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 | 箱码 | `XLABELDTL.PID_0` | `XCOUTD.BOXNUM_0` |
 | 产品、批次 | `XLABELDTL.ITMREF_0/LOT_0` | `XCOUTD.ITMREF_0/LOT_0` |
 | 品名、规格 | `ITMMASTER.YITMDES4_0/ITMDES2_0` | 仅显示，不必重复入库 |
-| 存货单位 STU | `XLABELDTL.STU_0` | 服务端换算/填 X3 PCU 等字段（待核） |
+| 存货单位 STU | `XLABELDTL.STU_0` | UI 显示 STU；后端须核对 X3 `PCU_0` / `PCUSTUCOE_0` 一致性（待核），**不得据此改变实盘数** |
 | 标签数量 | `XLABELDTL.QTY_0`、二维码 QT | **只读参考，不写实盘** |
-| 手填实盘数量 | Pad 用户输入 `decimal` | **`XCOUTD.QTYSTU_0`** |
+| 手填实盘数量 | Pad **仅一次**输入 `decimal` | **`XCOUTD.QTYSTU_0` 与 `XCOUTD.QTYPCU_0`，同时写入相同值** |
 | 原始标签状态 | `XLABELDTL.STA_0` | 供展示/诊断，不做状态准入 |
 
 ## 7. 安全防线、证据边界与先决条件
@@ -148,7 +148,7 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 - **重复箱码**：原生产库有历史同单重复；服务端防重范围和复盘规则待最终批准。
 - **历史事实**：测试库 XTEST 11 张历史单据，23,197 条明细（10 张有数据、1 张空单），每单不同箱码数=条数；不能证明全部由人工扫码生成。
 - **动态库存**：历史标签当前值变化不能作为历史异常的直接证据；QR QT 是编码原数。
-- **写入阻断**：`ROWID/AUUID_0/UPDTICK_0`、审计字段、数量单位与 X3 核准服务实现全部确认前，禁止自动直接 INSERT 正式 COB。
+- **写入阻断**：`ROWID/AUUID_0/UPDTICK_0`、审计字段、**两数量列同值与 `PCUSTUCOE_0`/`PCU_0` 约束**及 X3 核准服务实现全部确认前，禁止自动直接 INSERT 正式 COB。
 
 ## 8. 只读核验 SQL（部署前执行，结果不提交到仓库）
 
