@@ -86,8 +86,9 @@ var app = ApiApplication.Build(args, builder =>
             ["StockCount:DeviceKey"] = Env("STOCKCOUNT_DEVICE_KEY"),
             ["StockCount:AdminToken"] = Env("STOCKCOUNT_ADMIN_TOKEN"),
             ["StockCount:EnableTestWrites"] = Enabled("STOCKCOUNT_ENABLE_TEST_WRITES").ToString(),
-            ["StockCount:EnableProductionWrites"] = "false", // Production needs a separately reviewed deployment.
-            ["StockCount:Write:SchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
+            ["StockCount:EnableProductionWrites"] = Enabled("STOCKCOUNT_ENABLE_PRODUCTION_WRITES").ToString(),
+            ["StockCount:Write:TestSchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
+            ["StockCount:Write:ProductionSchemaReviewed"] = Enabled("STOCKCOUNT_COB_SCHEMA_REVIEWED").ToString(),
             ["StockCount:Write:AuditUser"] = Env("STOCKCOUNT_X3_AUDIT_USER"),
             ["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1"
         };
