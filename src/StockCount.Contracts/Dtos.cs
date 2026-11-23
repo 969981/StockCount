@@ -57,7 +57,7 @@ public sealed record SaveCountItemRequest(
     string RawQrCode,
     string BoxNumber,
     string CountedLocation,
-    decimal CountedQtyStu
+    decimal? CountedQtyStu
 );
 
 
