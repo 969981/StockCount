@@ -85,8 +85,10 @@ var app = ApiApplication.Build(args, builder =>
             ["ConnectionStrings:SageX3"] = connection,
             ["StockCount:DeviceKey"] = Env("STOCKCOUNT_DEVICE_KEY"),
             ["StockCount:AdminToken"] = Env("STOCKCOUNT_ADMIN_TOKEN"),
-            ["StockCount:EnableTestWrites"] = "false",
-            ["StockCount:EnableProductionWrites"] = "false",
+            ["StockCount:EnableTestWrites"] = Enabled("STOCKCOUNT_ENABLE_TEST_WRITES").ToString(),
+            ["StockCount:EnableProductionWrites"] = "false", // Production needs a separately reviewed deployment.
+            ["StockCount:Write:SchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
+            ["StockCount:Write:AuditUser"] = Env("STOCKCOUNT_X3_AUDIT_USER"),
             ["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1"
         };
         builder.Configuration.AddInMemoryCollection(configuration);
