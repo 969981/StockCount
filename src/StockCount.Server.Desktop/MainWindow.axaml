@@ -1,0 +1,127 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="StockCount.Server.Desktop.MainWindow"
+        Title="StockCount · 服务管理器 (Avalonia)" Width="1120" Height="780"
+        MinWidth="850" MinHeight="600">
+  <DockPanel Margin="22">
+    <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,16">
+      <TextBlock Text="StockCount · 服务管理器" FontSize="26" FontWeight="Bold" />
+      <TextBlock Text="Avalonia UI · .NET 10 · Sage X3 / SQL Server" Opacity="0.65" />
+      <Border Background="#E9EEF9" CornerRadius="8" Padding="12">
+        <TextBlock Text="{Binding Message}" Foreground="#203558" TextWrapping="Wrap" />
+      </Border>
+    </StackPanel>
+    <TabControl>
+      <TabItem Header="服务总览">
+        <ScrollViewer>
+          <StackPanel Spacing="16" Margin="16">
+            <TextBlock Text="后台服务" FontSize="22" FontWeight="SemiBold" />
+            <Border CornerRadius="10" BorderBrush="#CED7E4" BorderThickness="1" Padding="20">
+              <StackPanel Spacing="12">
+                <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21"/>
+                <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
+                <TextBlock Text="API 健康检查使用仅本机的管理端口（业务端口 + 1）。" TextWrapping="Wrap" Opacity="0.7"/>
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Content="启动 API" Command="{Binding StartCommand}" />
+                  <Button Content="停止 API" Command="{Binding StopCommand}" />
+                  <Button Content="刷新状态" Command="{Binding RefreshStatusCommand}" />
+                </StackPanel>
+              </StackPanel>
+            </Border>
+            <Border CornerRadius="10" BorderBrush="#CED7E4" BorderThickness="1" Padding="20">
+              <StackPanel Spacing="10">
+                <TextBlock Text="数据库连接" FontSize="18" FontWeight="SemiBold" />
+                <TextBlock Text="{Binding DatabaseState}" />
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                  <Button Content="测试 SQL Server (SELECT 1)" Command="{Binding TestDatabaseCommand}" />
+                  <TextBlock VerticalAlignment="Center" Text="测试成功不代表业务表已完成核验。" Opacity="0.7"/>
+                </StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="数据库配置">
+        <ScrollViewer>
+          <StackPanel Margin="16" Spacing="12" MaxWidth="720" HorizontalAlignment="Left">
+            <TextBlock Text="SQL Server 配置" FontSize="22" FontWeight="SemiBold" />
+            <TextBlock Text="SQL Server 地址 / 实例"/>
+            <TextBox Watermark="例如 SQLHOST\\INSTANCE 或 host,1433" Text="{Binding Settings.SqlServer, Mode=TwoWay}" Width="650"/>
+            <TextBlock Text="数据库"/>
+            <TextBox Text="{Binding Settings.SqlDatabase, Mode=TwoWay}" Width="650"/>
+            <CheckBox Content="Windows 集成身份验证" IsChecked="{Binding Settings.IntegratedSecurity, Mode=TwoWay}"/>
+            <TextBlock Text="SQL Server 用户名"/>
+            <TextBox Text="{Binding Settings.SqlUser, Mode=TwoWay}" Width="650"/>
+            <TextBlock Text="SQL Server 密码（留空表示保留原凭据；不会写入 JSON）"/>
+            <TextBox PasswordChar="●" Text="{Binding SqlPasswordInput, Mode=TwoWay}" Width="650"/>
+            <TextBlock Text="{Binding CredentialState}" Opacity="0.7"/>
+            <CheckBox Content="加密 SQL Server 连接（推荐）" IsChecked="{Binding Settings.EncryptSql, Mode=TwoWay}"/>
+            <CheckBox Content="信任服务器证书（生产环境不建议）" IsChecked="{Binding Settings.TrustServerCertificate, Mode=TwoWay}"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <Button Content="保存数据库配置" Command="{Binding SaveSettingsCommand}"/>
+              <Button Content="测试已保存连接" Command="{Binding TestDatabaseCommand}"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SettingsPath}" TextWrapping="Wrap" Opacity="0.6"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="API / PDA">
+        <ScrollViewer>
+          <StackPanel Spacing="12" Margin="16" MaxWidth="760" HorizontalAlignment="Left">
+            <TextBlock Text="API 与 PDA 访问" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="监听端口（管理端口自动使用端口 + 1）"/>
+            <TextBox Text="{Binding Settings.ApiPort, Mode=TwoWay}" Width="240" HorizontalAlignment="Left"/>
+            <CheckBox Content="允许可信隔离局域网 HTTP (监听所有 IP)" IsChecked="{Binding Settings.AllowLan, Mode=TwoWay}"/>
+            <TextBlock Text="HTTP 无传输加密：设备密钥及业务数据有被同网段监听的风险。禁止公网映射，并以防火墙限制 PDA 网段。" TextWrapping="Wrap"/>
+            <Button Content="复制当前设备访问密钥" Click="CopyDeviceKey" HorizontalAlignment="Left"/>
+            <TextBlock Text="设备密钥只保存在当前 Windows 用户 Credential Manager 中，不写入 JSON。" Opacity="0.7" TextWrapping="Wrap"/>
+            <Border BorderBrush="#D9A441" BorderThickness="1" CornerRadius="8" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="环境写入安全门禁" FontSize="18" FontWeight="SemiBold"/>
+                <CheckBox Content="XTEST 结构 / 事务已独立验收" IsChecked="{Binding Settings.SchemaReviewed, Mode=TwoWay}"/>
+                <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding Settings.EnableTestWrites, Mode=TwoWay}"/>
+                <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding Settings.ProductionSchemaReviewed, Mode=TwoWay}"/>
+                <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding Settings.EnableProductionWrites, Mode=TwoWay}"/>
+                <TextBlock Text="X3 审计用户编码（需经现场批准）"/>
+                <TextBox Text="{Binding Settings.X3AuditUser, Mode=TwoWay}" MaxLength="5" Width="200" HorizontalAlignment="Left"/>
+                <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
+              </StackPanel>
+            </Border>
+            <Button Content="保存 API 与权限设置" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left"/>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+      <TabItem Header="SQLite 日志">
+        <DockPanel Margin="16">
+          <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,12">
+            <TextBlock Text="运行与访问日志" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="{Binding LogPath}" TextWrapping="Wrap" Opacity="0.65"/>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBox Width="320" Watermark="搜索级别、模块或消息" Text="{Binding LogSearch, Mode=TwoWay}" />
+              <Button Content="刷新日志" Command="{Binding RefreshLogsCommand}" />
+            </StackPanel>
+          </StackPanel>
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding LogEntries}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="#CED7E4" BorderThickness="0,0,0,1" Padding="10">
+                    <StackPanel Spacing="4">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <TextBlock Text="{Binding TimestampUtc}" FontSize="12" Opacity="0.7"/>
+                        <TextBlock Text="{Binding Level}" FontWeight="Bold" />
+                        <TextBlock Text="{Binding Category}" FontSize="12" />
+                      </StackPanel>
+                      <TextBlock Text="{Binding Message}" TextWrapping="Wrap"/>
+                      <TextBlock Text="{Binding Exception}" TextWrapping="Wrap" FontSize="12" Opacity="0.65"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>
