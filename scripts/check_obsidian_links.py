@@ -14,8 +14,8 @@ from urllib.parse import unquote
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = {".git", ".obsidian", ".venv", "bin", "obj", ".trash", "__pycache__"}
-FENCE_RE = re.compile(r"\\x60\\x60\\x60[\s\S]*?\\x60\\x60\\x60")
-INLINE_CODE_RE = re.compile(r"\\x60[^\\x60\n]*\\x60")
+FENCE_RE = re.compile(r"\x60\x60\x60[\s\S]*?\x60\x60\x60")
+INLINE_CODE_RE = re.compile(r"\x60[^\x60\n]*\x60")
 WIKI_RE = re.compile(r"\[\[([^\]]+)\]\]")
 MARKDOWN_RE = re.compile(r"\]\(([^)\n]+)\)")
 EXTERNAL = ("https:", "http:", "mailto:", "tel:", "data:", "app:", "obsidian:")
