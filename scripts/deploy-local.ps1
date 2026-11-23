@@ -147,8 +147,8 @@ switch ($Target) {
       }
       Write-Host "Portable deployment SUCCESS: $dest" -ForegroundColor Green
       if ($backup) { Write-Host "Old binaries backup (not logs): $backup" }
-      Write-Host 'server-logs.db, server-logs.db-wal and server-logs.db-shm were NOT modified.'
-      Write-Host 'Settings remain in LOCALAPPDATA; passwords remain in Windows Credential Manager.'
+      Write-Host 'server-settings.json, server-logs.db, server-logs.db-wal and server-logs.db-shm were NOT modified.'
+      Write-Host 'Settings live beside the desktop EXE; old AppData JSON migrates on first launch if absent. Passwords/device keys remain in Windows Credential Manager.'
       if ($Launch) { Start-Process -FilePath (Join-Path $dest 'stockcount-server-console.exe') }
     } finally {
       Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
