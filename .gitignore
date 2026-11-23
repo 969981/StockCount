@@ -24,3 +24,20 @@
 .trash/
 .DS_Store
 Thumbs.db
+
+# Tauri / React build artifacts (generated locally or in Windows CI)
+desktop/server-console/node_modules/
+desktop/server-console/dist/
+desktop/server-console/src-tauri/target/
+desktop/server-console/src-tauri/binaries/
+desktop/server-console/src-tauri/icons/
+desktop/server-console/src-tauri/gen/
+publish/
+
+# Never commit local runtime credentials or SQLite logs
+**/server-settings.json
+**/server-logs.db
+**/server-logs.db-wal
+**/server-logs.db-shm
+*.db-journal
+*.p12
