@@ -6,6 +6,12 @@ on:
     paths:
       - 'scripts/build-local.ps1'
       - 'scripts/build-android-release.ps1'
+      - 'scripts/new-android-release-jks.ps1'
+      - 'scripts/configure-android-release-secrets.ps1'
+      - 'scripts/publish-stockcount-release.ps1'
+      - 'scripts/new-android-release-jks.ps1'
+      - 'scripts/configure-android-release-secrets.ps1'
+      - 'scripts/publish-stockcount-release.ps1'
       - 'scripts/deploy-local.ps1'
       - 'scripts/package-source.ps1'
       - 'scripts/package-windows-portable.ps1'
@@ -43,6 +49,9 @@ jobs:
           $scripts = @(
             'scripts/build-local.ps1',
             'scripts/build-android-release.ps1',
+            'scripts/new-android-release-jks.ps1',
+            'scripts/configure-android-release-secrets.ps1',
+            'scripts/publish-stockcount-release.ps1',
             'scripts/deploy-local.ps1',
             'scripts/package-source.ps1',
             'scripts/build-tauri-sidecar.ps1',
