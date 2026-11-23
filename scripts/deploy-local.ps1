@@ -128,11 +128,11 @@ switch ($Target) {
       try {
         foreach ($name in $must) {
           $source = Join-Path $sourceDir $name
-          $target = Join-Path $dest $name
-          Copy-Item -LiteralPath $source -Destination $target -Force
+          $targetFile = Join-Path $dest $name
+          Copy-Item -LiteralPath $source -Destination $targetFile -Force
           $updated.Add($name)
           $sourceHash = (Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash
-          $targetHash = (Get-FileHash -LiteralPath $target -Algorithm SHA256).Hash
+          $targetHash = (Get-FileHash -LiteralPath $targetFile -Algorithm SHA256).Hash
           if ($sourceHash -ne $targetHash) { throw "Deployment checksum mismatch: $name" }
         }
       } catch {
