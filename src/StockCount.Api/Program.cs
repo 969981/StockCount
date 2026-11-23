@@ -78,24 +78,27 @@ if (hasHostPort && allowLan &&
 
 var app = ApiApplication.Build(args, builder =>
 {
+    // Both standalone API and the Tauri Sidecar honor the two independent
+    // server-side write approval switches. Defaults fail closed.
+    var configuration = new Dictionary<string, string?>
+    {
+        ["StockCount:EnableTestWrites"] = Enabled("STOCKCOUNT_ENABLE_TEST_WRITES").ToString(),
+        ["StockCount:EnableProductionWrites"] = Enabled("STOCKCOUNT_ENABLE_PRODUCTION_WRITES").ToString(),
+        ["StockCount:Write:TestSchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
+        ["StockCount:Write:ProductionSchemaReviewed"] = Enabled("STOCKCOUNT_COB_SCHEMA_REVIEWED").ToString(),
+        ["StockCount:Write:AuditUser"] = Env("STOCKCOUNT_X3_AUDIT_USER")
+    };
+    if (!string.IsNullOrWhiteSpace(connection))
+        configuration["ConnectionStrings:SageX3"] = connection;
+
     if (hasHostPort)
     {
-        var configuration = new Dictionary<string, string?>
-        {
-            ["ConnectionStrings:SageX3"] = connection,
-            ["StockCount:DeviceKey"] = Env("STOCKCOUNT_DEVICE_KEY"),
-            ["StockCount:AdminToken"] = Env("STOCKCOUNT_ADMIN_TOKEN"),
-            ["StockCount:EnableTestWrites"] = Enabled("STOCKCOUNT_ENABLE_TEST_WRITES").ToString(),
-            ["StockCount:EnableProductionWrites"] = Enabled("STOCKCOUNT_ENABLE_PRODUCTION_WRITES").ToString(),
-            ["StockCount:Write:TestSchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
-            ["StockCount:Write:ProductionSchemaReviewed"] = Enabled("STOCKCOUNT_COB_SCHEMA_REVIEWED").ToString(),
-            ["StockCount:Write:AuditUser"] = Env("STOCKCOUNT_X3_AUDIT_USER"),
-            ["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1"
-        };
-        builder.Configuration.AddInMemoryCollection(configuration);
+        configuration["StockCount:DeviceKey"] = Env("STOCKCOUNT_DEVICE_KEY");
+        configuration["StockCount:AdminToken"] = Env("STOCKCOUNT_ADMIN_TOKEN");
+        configuration["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1";
         builder.WebHost.ConfigureKestrel(options =>
         {
-            // Internal management binds to loopback only.
+            // Management listener is always loopback; PDA LAN requires TLS.
             options.ListenLocalhost(port + 1);
             if (allowLan)
                 options.ListenAnyIP(port, endpoint => endpoint.UseHttps(certPath, certPassword));
@@ -103,7 +106,7 @@ var app = ApiApplication.Build(args, builder =>
                 options.ListenLocalhost(port);
         });
     }
-
+    builder.Configuration.AddInMemoryCollection(configuration);
     builder.Logging.AddProvider(sqlite);
 });
 
