@@ -3,4 +3,5 @@
   <Project Path="src/StockCount.Core/StockCount.Core.csproj" />
   <Project Path="src/StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
   <Project Path="src/StockCount.Api/StockCount.Api.csproj" />
+  <Project Path="tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj" />
 </Solution>
