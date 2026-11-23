@@ -95,7 +95,7 @@ IAuditTrail
 IEnvironmentResolver
 ```
 
-库位必须来自扫码事件与服务端验证，不以当前 `XLABELDTL.LOC_0` 代替。实盘量来自人工 `countedQtyStu`，不得直接取 `QRCOD_0` 的 `QT` 或当前 `QTY_0`。
+库位必须来自扫码事件与服务端验证，不以当前 `XLABELDTL.LOC_0` 代替。**实盘量仅人工输入一次 `countedQtyStu`，后端将同值写入 `XCOUTD.QTYSTU_0` 与 `XCOUTD.QTYPCU_0`（两列相等）**，不得直接取 `QRCOD_0` 的 `QT` 或当前 `QTY_0`。
 
 ## 5. 数据隔离与危险写入护栏
 
@@ -115,13 +115,14 @@ POST CountItem
   -> validate location and scanned label (STA_0: display only)
   -> validate decimal counted quantity / safe lengths
   -> check request idempotency and duplicate policy
-  -> resolve PCU ↔ STU, populate mandatory X3 fields
+  -> set QTYSTU_0 = QTYPCU_0 = manually supplied countedQtyStu
+  -> verify PCU_0 / PCUSTUCOE_0 compatibility; populate other mandatory X3 fields
   -> persist via approved X3 service/transaction boundary
   -> commit idempotency record + audit + detail in same logical transaction
   -> return detail identifier and immutable result
 ```
 
-**关键未验证**：Sage X3 `ROWID/AUUID_0/UPDTICK_0` 自动赋值规则、是否有触发器/行号分配器、`PCU_0/QTYPCU_0/PCUSTUCOE_0` 的合法值、是否必须经 X3 官方服务写。即使表结构已确认，**不得直接假定使用原始 INSERT 就能安全写库**。先找既有写入通道，在测试库确认完整行为，再在代码中封装 `IInventoryCountWriter`。
+**关键未验证**：Sage X3 `ROWID/AUUID_0/UPDTICK_0` 自动赋值规则、是否有触发器/行号分配器、**两数量列同值时 `PCU_0` / `PCUSTUCOE_0` 的一致性规则**、是否必须经 X3 官方服务写。即使表结构已确认，**不得直接假定使用原始 INSERT 就能安全写库**。先找既有写入通道，在测试库确认完整行为，再在代码中封装 `IInventoryCountWriter`。
 
 ### 6.1 幂等与并发
 
@@ -145,6 +146,6 @@ POST CountItem
 
 **已知**：COB 正式、XTEST 测试；两套有 XCOUTH/XCOUTD；表头 `CUNNUM_0` / 明细 `BOXNUM_0` / 标签 `PID_0` 及关键物理字段已实测。历史 `XTEST.XCOUTD` 11 单共 23,197 条，与“都通过人工扫码”不等同。
 
-**待定**：盘点单其他状态可写性、真实库位码完整协议、单位换算和所有必填列、同单去重/复盘、认证替代的设备访问控制细节、后端采用 X3 业务服务还是数据库受控写入。
+**待定**：盘点单其他状态可写性、真实库位码完整协议、**两数量列同值对应的系数与单位适配**和所有必填列、同单去重/复盘、认证替代的设备访问控制细节、后端采用 X3 业务服务还是数据库受控写入。
 
 所有 AI 修改必须参照 [AGENTS.md](AGENTS.md) 和 [docs/DECISIONS.md](docs/DECISIONS.md)。
