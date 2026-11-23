@@ -65,6 +65,25 @@ try {
         }
     } finally { $archive.Dispose() }
     if ((Get-Item -LiteralPath $sourceZip).Length -lt 10240) { throw 'Source ZIP unexpectedly small' }
+    # Release packaging must fail closed when signing credentials are absent.
+    $fixtureKey = Join-Path $temp 'fake-android.jks'
+    'not-an-actual-keystore' | Set-Content -LiteralPath $fixtureKey
+    $previousStorePass = $env:STOCKCOUNT_ANDROID_STORE_PASS
+    $previousKeyPass = $env:STOCKCOUNT_ANDROID_KEY_PASS
+    Remove-Item Env:STOCKCOUNT_ANDROID_STORE_PASS, Env:STOCKCOUNT_ANDROID_KEY_PASS -ErrorAction SilentlyContinue
+    $refused = $false
+    try {
+        try {
+            & (Join-Path $repo 'scripts/build-android-release.ps1') -KeyStore $fixtureKey -KeyAlias stockcount -Version 0.2.0-local -OutputDirectory $temp
+        } catch {
+            if ($_.Exception.Message -notmatch 'STOCKCOUNT_ANDROID_STORE_PASS') { throw }
+            $refused = $true
+        }
+    } finally {
+        if ($null -ne $previousStorePass) { $env:STOCKCOUNT_ANDROID_STORE_PASS = $previousStorePass }
+        if ($null -ne $previousKeyPass) { $env:STOCKCOUNT_ANDROID_KEY_PASS = $previousKeyPass }
+    }
+    if (-not $refused) { throw 'Release signing script incorrectly allowed missing credentials' }
     Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity.' -ForegroundColor Green
 }
 finally {
