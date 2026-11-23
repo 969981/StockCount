@@ -68,6 +68,13 @@ tests/
 docs/
 ```
 
+## API 启动与开发现状
+
+- **源码**：[StockCount.Api](src/StockCount.Api/Program.cs)、[SQL 读取层](src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)、[共享 DTO](src/StockCount.Contracts/Dtos.cs)。
+- **Windows 运行文档**：[src/StockCount.Api/RUN.md](src/StockCount.Api/RUN.md)：.NET 10 SDK、SQL Server 连接配置、启动、health/ready、示例接口与部署警告。
+- **API CI**：[.github/workflows/api-build.yml](.github/workflows/api-build.yml)：无任何数据库密钥的 restore/build；未取得 CI 完成结果前不能称构建成功。
+- 只读接口先实施，`POST .../items` 当前固定拒绝保存；**正式写入仍未获准**。
+
 ## 数据库七表文档和只读 SQL
 
 - [七表字段结构和中文标题总索引](docs/database/SCHEMA_INDEX.md)：已确认四张业务表 16 + 19 + 45 + 41 列物理元数据，另有 ITMMASTER 197 条 X3 字典标题；`ATABZON` / `ATEXTE` 的完整物理列需用新脚本查询。
