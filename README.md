@@ -17,7 +17,14 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：已提交 MAUI PDA 端、Tauri Windows 后端管理器、C# 只读与 XTEST / COB 双帐套独立授权的 XCOUTD 事务写入及幂等查询源码；尚未完成 Windows/Android 编译、真机和 SQL Server XTEST 集成验收，正式写入默认关闭、由现场人员单独授权启用。**
+**当前阶段：Android MAUI Debug APK 已在 GitHub Actions #46 编译成功，29 项 Core 测试通过；Tauri Windows Setup/Portable 正在 CI 验证。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
+
+## 跨平台安装包与 Releases
+
+- [GitHub Releases](https://github.com/969981/StockCount/releases)：同一预发布将包含已签名测试 APK、Windows Setup、Windows Portable ZIP 和 SHA256SUMS，只有 Android+Windows 构建同时通过才自动创建。
+- [统一发布构建流水线](.github/workflows/publish-stockcount.yml) · [发布/免安装使用说明](docs/RELEASE_PACKAGING.md)。
+- Windows Portable 解压到当前用户可写的目录后运行 `Start-StockCount.cmd`；`StockCount.Api.exe` 必须与主 EXE 同目录，`server-logs.db` 也在该目录。系统需要 WebView2 Runtime。
+- Android 在 [CI #46](https://github.com/969981/StockCount/actions/runs/45110321348) 已生成可安装 **Debug 签名** APK；公开 Releases 的整套资产以统一发布流程通过为准。发布包不是正式企业代码签名或已完成真实 ERP 验收的生产版本。
 
 ## 一期产品范围
 
