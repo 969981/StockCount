@@ -118,7 +118,7 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 
 - 默认 NSIS `currentUser` 模式，减少管理员权限要求，选择当前用户可写的安装路径。
 - 与 Portable 版使用相同源代码、API、SQLite 日志规则、设置位置与 Windows Credential Manager。
-- 现场 API 需要 HTTPS PFX 才可对 PDA 开放局域网监听；不能通过关闭 TLS 验证替代可信证书。
+- 当前可信局域网 PDA 接入使用 **HTTP**，不需要 PFX；服务器上的 `allowLan` 必须明确开启，Windows 防火墙仅放通 PDA 网段，且不能将端口映射至公网。设备密钥通过 HTTP 明文传输，正式生产部署应另行评估安全网络。
 
 ## 发布流水线和门禁
 
