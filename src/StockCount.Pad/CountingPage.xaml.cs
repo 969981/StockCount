@@ -70,7 +70,12 @@ public partial class CountingPage : ContentPage
             return;
         }
 
-        _workflow.EnterManualQuantity(number);
+        try { _workflow.EnterManualQuantity(number); }
+        catch (InvalidOperationException error)
+        {
+            await DisplayAlertAsync("无法更改数量",error.Message,"OK");
+            return;
+        }
         _busy=true;
         SubmitButton.IsEnabled=false;
         try
