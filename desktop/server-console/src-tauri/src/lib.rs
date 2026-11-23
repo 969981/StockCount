@@ -51,6 +51,11 @@ pub fn run() {
             logs::read_logs,
             logs::log_path,
         ])
-        .run(tauri::generate_context!())
-        .expect("StockCount Server Console failed to start");
+        .build(tauri::generate_context!())
+        .expect("StockCount Server Console failed to build")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                server::kill_on_exit(app_handle);
+            }
+        });
 }
