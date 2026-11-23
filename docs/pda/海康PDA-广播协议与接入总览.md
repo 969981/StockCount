@@ -1,3 +1,18 @@
+---
+title: "海康 PDA 扫码广播协议与接入总览"
+aliases:
+  - "StockCount · docs / pda / 海康PDA-广播协议与接入总览"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: pda
+tags:
+  - StockCount
+  - pda
+  - docs
+up: "[[docs/pda/00-PDA扫码知识地图]]"
+---
+
 # 海康 PDA 扫码广播协议与接入总览
 
 > [!IMPORTANT] 证据分级
@@ -67,3 +82,12 @@ MV-IDP5204 实体扫描键
 | 软件按钮模拟实体扫码键、Android 13/14 广播权限兼容 | **待实测/待厂商确认** |
 
 技术示例参见 [[海康PDA-MAUI实现与示例]]，现场验证参见 [[海康PDA-调试排障与验收]]。原厂手册存于私有资料库（不复制进公开 GitHub），文档已注明版本和章节，尊重原始资料分发权限。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/pda/00-PDA扫码知识地图|PDA 扫码知识地图]] · [Markdown](00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 全链路：[[docs/SCANNER_INTEGRATION|扫码总规范]] · [Markdown](../SCANNER_INTEGRATION.md) · [[docs/pda/海康PDA-调试排障与验收|真机验证]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)

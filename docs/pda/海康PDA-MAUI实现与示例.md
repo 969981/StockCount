@@ -1,3 +1,18 @@
+---
+title: "海康 PDA · .NET MAUI Android 扫码适配技术说明与 C# 示例"
+aliases:
+  - "StockCount · docs / pda / 海康PDA-MAUI实现与示例"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: pda
+tags:
+  - StockCount
+  - pda
+  - docs
+up: "[[docs/pda/00-PDA扫码知识地图]]"
+---
+
 # 海康 PDA · .NET MAUI Android 扫码适配技术说明与 C# 示例
 
 > [!NOTE] 适用范围
@@ -160,3 +175,12 @@ public interface IScannerService
 [ ] .NET 10 目标 Android 编译通过；[ ] 目标海康设备物理扫描成功；[ ] Action/Extras 与固件一致；[ ] Android 11 / 升级后注册策略验证；[ ] 数量框不会被扫码覆盖；[ ] 后端超时不丢草稿；[ ] 两数量列同值写入；[ ] STA 任意状态仍可进入标签解析。
 
 下一步见 [[海康PDA-调试排障与验收]] 和 [[SCANNER_INTEGRATION]]。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/pda/00-PDA扫码知识地图|PDA 扫码知识地图]] · [Markdown](00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 全链路：[[docs/SCANNER_INTEGRATION|扫码总规范]] · [Markdown](../SCANNER_INTEGRATION.md) · [[docs/pda/海康PDA-调试排障与验收|真机验证]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)

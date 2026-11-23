@@ -1,3 +1,18 @@
+---
+title: "海康 PDA 扫码资料来源与证据状态"
+aliases:
+  - "StockCount · docs / pda / 海康PDA-资料与核验清单"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: pda
+tags:
+  - StockCount
+  - pda
+  - docs
+up: "[[docs/pda/00-PDA扫码知识地图]]"
+---
+
 # 海康 PDA 扫码资料来源与证据状态
 
 ## 历史依据
@@ -28,3 +43,12 @@
 - [ ] StockCount `XTEST` 业务闭环（不等于旧 OutsourceFlow 流程）。
 
 完整指引见 [[海康PDA-广播协议与接入总览]]、[[海康PDA-调试排障与验收]]；研发边界见 [[requirements]]、[[AGENTS]]。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/pda/00-PDA扫码知识地图|PDA 扫码知识地图]] · [Markdown](00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 全链路：[[docs/SCANNER_INTEGRATION|扫码总规范]] · [Markdown](../SCANNER_INTEGRATION.md) · [[docs/pda/海康PDA-调试排障与验收|真机验证]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)

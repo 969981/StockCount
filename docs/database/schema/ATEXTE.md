@@ -1,3 +1,18 @@
+---
+title: "ATEXTE — Sage X3 多语言标题文本表"
+aliases:
+  - "StockCount · docs / database / schema / ATEXTE"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # ATEXTE — Sage X3 多语言标题文本表
 
 > **证据状态：既有 SQL 已确认以下字段能参与字典连接，当前尚未取得 `ATEXTE` 自身全部 SQL Server 物理列元数据。** 不把已知的 3 个关键列误称为“全表只有3列”。2026-11-23。
@@ -39,3 +54,12 @@ ATABZON.NOLONG_0    ┘
 - [物理字段结构、长度与索引（COB、XTEST）](../../../sql/read_only/inspect_dictionary_tables.sql)
 - [ATABZON → ATEXTE 中文/英文短普通长标题关联、少量样本查询](../../../sql/read_only/query_dictionary_tables.sql)
 - [七表字段总索引](../SCHEMA_INDEX.md)
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](../00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 元数据与 SQL：[[docs/database/SCHEMA_INDEX|七表字典索引]] · [Markdown](../SCHEMA_INDEX.md) · [[docs/DATABASE_MAPPING|业务字段映射]] · [Markdown](../../DATABASE_MAPPING.md)

@@ -1,3 +1,18 @@
+---
+title: "ITMMASTER — 产品主数据 X3 中文字段字典（197 条；物理列待核）"
+aliases:
+  - "StockCount · docs / database / schema / ITMMASTER"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # ITMMASTER — 产品主数据 X3 中文字段字典（197 条；物理列待核）
 
 > **证据边界**：2026-11-19 用户已回传 `sagex3.COB.ATABZON` / `ATEXTE` 对 `ITMMASTER` 的 **197 条 X3 字段代码 + 中英文标题**。它们是 **Sage X3 字典定义，不等于 `COB.ITMMASTER` 的 197 个真实 SQL Server 物理列**。目前没有得到 `ITMMASTER` 的完整 `sys.columns` 结果，因此**本文件不是完整物理结构清单**；每个字典代码是否对应 `_0/_1` 等实例列、各列 `nvarchar` 长度/数字精度/是否可空，均须运行配套 SQL 后补齐。不得凭字典数量编造真实物理列数。
@@ -221,3 +236,12 @@
 执行 [`sql/read_only/select_five_tables_chinese_aliases.sql`](../../../sql/read_only/select_five_tables_chinese_aliases.sql) 可在指定 Schema 以真实物理列生成中文别名 `TOP (20)` 查询，不会将 197 个字典代码误当成 197 个可 SELECT 列。
 
 **本仓库不提交生产产品数据行。**
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](../00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 元数据与 SQL：[[docs/database/SCHEMA_INDEX|七表字典索引]] · [Markdown](../SCHEMA_INDEX.md) · [[docs/DATABASE_MAPPING|业务字段映射]] · [Markdown](../../DATABASE_MAPPING.md)

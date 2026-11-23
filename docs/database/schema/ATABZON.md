@@ -1,3 +1,18 @@
+---
+title: "ATABZON — Sage X3 字段定义字典"
+aliases:
+  - "StockCount · docs / database / schema / ATABZON"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # ATABZON — Sage X3 字段定义字典
 
 > **证据状态：已核实用途和下列查询涉及的列名；未取得 `ATABZON` 自身全部 SQL Server 物理列的现场输出**。此文档不是“已完成物理表结构实测”的声明。根据已保存的 COB/XTEST `ATABZON + ATEXTE` 中文标题查询、Sage X3 字典导出脚本整理。2026-11-23。
@@ -54,3 +69,12 @@ ATEXTE.LAN_0='CHI' → 中文翻译；'ENG' → 英文翻译
 - [原五张业务表的完整结构](../SCHEMA_INDEX.md)
 
 所有 SQL 仅限只读；不要将企业字典的原始大量文本/全部语种内容提交公开仓库。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](../00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 元数据与 SQL：[[docs/database/SCHEMA_INDEX|七表字典索引]] · [Markdown](../SCHEMA_INDEX.md) · [[docs/DATABASE_MAPPING|业务字段映射]] · [Markdown](../../DATABASE_MAPPING.md)
