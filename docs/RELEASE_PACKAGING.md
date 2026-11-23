@@ -111,7 +111,7 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 3. 保持 `StockCount.Api.exe` 与 Tauri exe **处于同一目录**。这是运行时 Sidecar 依赖，不是可丢弃的临时安装程序。
 4. 本机日志文件为 `<exe目录>\server-logs.db`，可能生成 WAL/SHM 文件。不要放进受写保护的 `Program Files`，也不应直接从压缩包内部启动。
 5. **免安装仅指免 Setup，不代表彻底免依赖**：Windows WebView2 Runtime 必须存在。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
-6. 设置文件继续在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，密码/设备密钥在 **Windows Credential Manager**。因此免安装 ZIP **不是**可随 U 盘跨机器迁移全部密钥的绿色版。
+6. 非敏感设置文件 `server-settings.json` 与 `server-logs.db` 一样，保存在 **Tauri 主程序 EXE 同目录**；便携版 ZIP 不预置现场配置。仅当同目录配置不存在时，首次运行会校验并复制旧 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，保留旧文件且不覆盖已有同目录配置。SQL 密码/设备密钥仍在 **Windows Credential Manager**，因此便携版跨机器或 Windows 账户移动后需要重新设置密钥。程序请解压到当前用户可写目录，不要放在受保护的 `Program Files`。
 7. 关闭 Tauri 管理器会停止该用户会话的 API Sidecar。日志/密钥备份以及更新时需先停止服务。
 
 ## Setup 安装版
