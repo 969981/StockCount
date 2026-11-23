@@ -32,11 +32,8 @@ public partial class CountListPage : ContentPage
         try
         {
             if (reset) { _cursor=null; _counts.Clear(); }
-            var page=await _api.GetCountsAsync(_cursor);
-            foreach(var item in page.Items.Where(x =>
-                string.IsNullOrWhiteSpace(SearchInput.Text) ||
-                x.CountNumber.Contains(SearchInput.Text,StringComparison.OrdinalIgnoreCase) ||
-                x.Description.Contains(SearchInput.Text,StringComparison.OrdinalIgnoreCase)))
+            var page=await _api.GetCountsAsync(_cursor,SearchInput.Text);
+            foreach(var item in page.Items)
                 _counts.Add(item);
             _cursor=page.NextCursor;
             MoreButton.IsEnabled=_cursor is not null;
