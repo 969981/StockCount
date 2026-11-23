@@ -87,7 +87,7 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows
 2. **Node.js 22+**、npm、Rust `x86_64-pc-windows-msvc`，以及 Visual Studio C++ Build Tools（MSVC 编译器、Windows SDK）。这些属于 Windows Tauri 2 编译依赖。
 3. 运行 Windows Tauri 桌面程序时需 **Microsoft Edge WebView2 Runtime**。Windows 11 常见预装，但不可依赖其必然存在。
 4. Android 真机部署需 `adb`，PDA 开启开发者选项 / USB 调试，并在屏幕上授权电脑。
-5. 对局域网 PDA 提供 HTTPS API 服务，还需要 Windows 服务器有可信 PFX 证书、必要的防火墙规则以及独立配置的 Sage X3 SQL Server 权限。
+5. PDA 与 Windows 通过可信局域网 HTTP（例如 `http://192.168.1.100:5080`）联调，不需要 PFX；必须限制 Windows 防火墙的 PDA 来源网段，禁止公网映射，并独立配置 Sage X3 SQL Server 权限。
 
 检查已安装工具：
 
@@ -214,7 +214,7 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\
 
 脚本执行 `adb install -r -t`，保留同签名版本的应用数据；如果提示 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，说明 APK 签名不同，**脚本不会自动卸载**。Android 卸载会清除应用 SecureStorage 等数据，必须先解决未确认盘点单、UUID、草稿的数据迁移或备份，再决定后续操作。
 
-安装后在 PDA 设置页配置 HTTPS API 地址、设备密钥、Test/Production 环境，以及海康扫码广播 Action/Extra；使用系统信任的 TLS 证书，不要关闭证书校验。
+安装后在 PDA 设置页配置 `http://<Windows局域网IP>:5080`、设备密钥、Test/XTEST 环境及海康扫码广播 Action/Extra；局域网 HTTP 不需要 PFX。不得在公共网络/互联网上暴露此明文 API。
 
 ## 六、打包完整源码（独立于编译产物）
 
