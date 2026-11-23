@@ -2,4 +2,6 @@ using System.Windows;
 
 namespace StockCount.ServerHost;
 
-public partial class App : Application;
+public partial class App : Application
+{
+}
