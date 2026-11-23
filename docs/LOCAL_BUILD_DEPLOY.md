@@ -1,4 +1,5 @@
 ---
+aliases: ["StockCount 本地构建与部署", "Build and Deploy"]
 title: StockCount · Windows 本地编译、部署和源码归档
 created: 2026-11-23
 updated: 2026-11-23
