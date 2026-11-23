@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：已提交 MAUI PDA 端、Tauri Windows 后端管理器、C# 只读与受控 XTEST XCOUTD 事务写入及幂等查询源码；尚未完成 Windows/Android 编译、真机和 SQL Server XTEST 集成验收，正式写入禁用。**
+**当前阶段：已提交 MAUI PDA 端、Tauri Windows 后端管理器、C# 只读与 XTEST / COB 双帐套独立授权的 XCOUTD 事务写入及幂等查询源码；尚未完成 Windows/Android 编译、真机和 SQL Server XTEST 集成验收，正式写入默认关闭、由现场人员单独授权启用。**
 
 ## 一期产品范围
 
@@ -26,7 +26,7 @@ up: "[[docs/development/00-研发规范地图]]"
 - 先扫描实际库位，再扫描箱标签二维码；查询物料、批次、单位并**人工输入一次 STU 实盘数量**，由服务端校验并**同值保存到 `XCOUTD.QTYSTU_0` 与 `XCOUTD.QTYPCU_0`**。
 - **不按 `XLABELDTL.STA_0` 拦截盘点**；状态仍在接口中返回、可显示和审计。
 - 一期**不创建/关闭盘点单**，不修改 `XLABELDTL.QTY_0`，不执行库存调整/ERP 过账。
-- 端到端写入须先在 XTEST 受控验证；正式写入默认保持关闭，完成验收后单独启用。
+- 端到端写入须先在 XTEST 受控验证；正式与测试写入默认关闭，分别完成对应帐套验收后独立启用。
 
 ## 规范入口（AI / 人类开发者共同遵守）
 
@@ -74,12 +74,12 @@ docs/
 - [Tauri Server Console 源码与 Windows 使用手册](desktop/server-console/README.md) · [UI/架构设计](docs/SERVER_HOST_UI.md)
 - [Windows 构建工作流](.github/workflows/tauri-server-console.yml) · [Sidecar 自包含打包脚本](scripts/build-tauri-sidecar.ps1)
 - 配置：`%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`（不含密码）；密码和设备 Key 由 Windows Credential Manager 保存。日志：**Tauri 程序 EXE 同目录**的 `server-logs.db`，SQLite WAL 辅助文件也在旁边。
-- API 正式/测试写入**仍然禁用**。界面/原生代码已提交，**本轮尚未确认 Windows 编译和安装包通过测试**。
+- API 正式/测试写入**均可独立开启，默认均关闭**。界面/原生代码已提交，**本轮尚未确认 Windows 编译和安装包通过测试**。
 ## 受控盘点写入与 PDA 客户端
 
-- [写入接口、DDL 幂等表和启用验收指南](docs/WRITE_FLOW_IMPLEMENTATION.md)；[只读 XTEST 写入前检](sql/read_only/verify_xcountd_write_prerequisites.sql)；[DBA 单次幂等迁移](sql/migrations/001_stockcount_submission.sql)。
+- [写入接口、DDL 幂等表和双帐套启用验收指南](docs/WRITE_FLOW_IMPLEMENTATION.md)；[只读 XTEST 写入前检](sql/read_only/verify_xcountd_write_prerequisites.sql)；[只读 COB 写入前检](sql/read_only/verify_cob_write_prerequisites.sql)；[DBA 单次幂等迁移](sql/migrations/001_stockcount_submission.sql)。
 - [MAUI Android 扫码页面](src/StockCount.Pad/CountingPage.xaml)、[扫码状态机](src/StockCount.Core/CountScanWorkflow.cs)、[重复箱/数量/幂等测试](tests/StockCount.Core.Tests/CountScanWorkflowTests.cs)。
-- 正式环境写入仍禁用。测试环境必须经管理员审批结构、安装 SQL Server 幂等表并在 Tauri 设置中显式启用，绝不因代码提交而自动写入企业数据库。
+- 测试 XTEST 与正式 COB 均已支持受控事务写入；Tauri 管理器具有各自的核验确认与写入开关。需要管理员独立核验对应 Schema、安装 SQL Server 幂等表、配置 SQL 权限后显式启用；代码提交不会自动修改企业数据。
 
 ## API 启动与开发现状
 
