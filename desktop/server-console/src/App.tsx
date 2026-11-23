@@ -412,7 +412,7 @@ export default function App() {
                 <td>{row.category}</td><td className="ellipsize">{row.message}</td></tr>)}</tbody>
           </table></div>
           <div className="log-detail"><span>详情</span><p>{selectedLog ? selectedLog.message + (selectedLog.exception ? "\n" + selectedLog.exception : "") : "点击一条日志查看详细内容。"}</p></div>
-          <div className="log-footer"><HardDrive size={15}/><span title={logFile}>{logFile || "%LOCALAPPDATA%\\StockCount\\ServerHost\\logs\\server-logs.db"}</span>
+          <div className="log-footer"><HardDrive size={15}/><span title={logFile}>{logFile || "应用目录\\server-logs.db（由本机程序返回实际路径）"}</span>
             <span className="spacer"/><ShieldCheck size={15}/> SQLite WAL</div>
         </section>}
       </main>
