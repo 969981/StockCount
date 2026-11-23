@@ -41,6 +41,23 @@ pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
 - [Android Release 构建脚本](scripts/build-android-release.ps1)：使用 `dotnet publish -c Release`、持久签名、`apksigner` 和 SHA256 验证。
 - 本地 `build-local.ps1 -Target Android -AndroidVariant Both` 可生成两个版本；CI 无正式签名密钥时只做 Release 编译核验，**不能冒充已发布正式签名 APK**。
 
+## Windows 免安装版构建与软件版本
+
+如果运行 `package-windows-portable.ps1` 提示 **Tauri exe was not built**，说明本机尚未构建 `target/release/stockcount-server-console.exe`，应先运行一键编译。
+
+```powershell
+# 自动读取项目版本，编译 Windows Setup + Portable
+pwsh -File .\scripts\package-windows-portable.ps1 -Build
+# 仅打包已有编译产物，无需输入 Version
+pwsh -File .\scripts\package-windows-portable.ps1
+# 查看软件版本（当前配置为 0.2.0）
+pwsh -File .\scripts\get-app-version.ps1
+# 真正统一升级软件版本，而不只是修改压缩包名字
+pwsh -File .\scripts\set-app-version.ps1 -Version 1.0.1 -AndroidVersionCode 4
+```
+
+权威版本来自 Tauri `tauri.conf.json`，同步至 Rust `Cargo.toml`、npm `package.json`、MAUI `ApplicationDisplayVersion`；Android `ApplicationVersion`（versionCode）为独立递增数值。参见 [本地构建与版本管理手册](docs/LOCAL_BUILD_DEPLOY.md)。
+
 ## Windows 本地编译、部署与源码打包
 
 - [完整 PowerShell 7 使用手册](docs/LOCAL_BUILD_DEPLOY.md)：环境准备、编译 Android APK/Windows Setup/Portable、ADB 安装、Windows 免安装升级和源码归档。
