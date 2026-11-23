@@ -111,7 +111,7 @@
 }
 ```
 
-注意：`boxNumber` 只能作为交叉校验字段，服务器以标签解析真值为准。**人工输入 99 必须最终写入 `QTYSTU_0=99`，不能被二维码 QT=100 或标签数量覆盖。**
+注意：`boxNumber` 只能作为交叉校验字段，服务器以标签解析真值为准。**请求仅有一个人工数量 `countedQtyStu=99`；服务端必须同值保存 `QTYSTU_0=99`、`QTYPCU_0=99`，禁止根据二维码 QT=100、当前标签数量或系数重算任一实盘数。** `PCU_0` / `PCUSTUCOE_0` 与该规则的兼容性需在 XTEST 验证。
 
 成功响应（201 或幂等重试200，具体规范可在实现 PR 固化）：
 
@@ -121,6 +121,7 @@
   "countNumber": "COUNT-DEMO-001",
   "boxNumber": "BOX-DEMO-01",
   "savedQtyStu": 99,
+  "savedQtyPcu": 99,
   "stockUnit": "PCS",
   "detailId": "123456",
   "requestId": "<UUID>",
@@ -161,10 +162,10 @@
 
 - 统一 DTO snapshot / OpenAPI/schema 测试，C# 序列化一致；
 - 客户端校验每次响应 `environment` 匹配当前设置；
-- 数量 decimal 精度及历史 ID 不丢失；
+- 数量 decimal 精度及历史 ID 不丢失；**保存响应的 `savedQtyStu` 与 `savedQtyPcu` 必须都等于唯一人工输入数**；
 - 所有状态 0/1 的列表均可见；
 - 标签 `STA_0=4/9` 不触发状态拒绝；
-- 99 实盘不被 100 参考数量覆盖；
+- 99 实盘不被 100 参考数量覆盖，且实际两列都为99；
 - 网络断开重放同键得到同一结果。
 
 关联：[需求](../requirements.md) · [架构](../architecture.md) · [字段映射](DATABASE_MAPPING.md) · [安全](SECURITY_AND_ENVIRONMENTS.md)。
