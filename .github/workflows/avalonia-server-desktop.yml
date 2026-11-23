@@ -7,6 +7,9 @@ on:
       - 'src/StockCount.Server.Hosting/**'
       - 'tests/StockCount.Server.Hosting.Tests/**'
       - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/prepare-windows-brand-icons.ps1'
+      - 'assets/branding/**'
+      - 'desktop/server-console/assets/app-icon.svg'
       - '.github/workflows/avalonia-server-desktop.yml'
   pull_request:
     paths:
@@ -14,6 +17,9 @@ on:
       - 'src/StockCount.Server.Hosting/**'
       - 'tests/StockCount.Server.Hosting.Tests/**'
       - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/prepare-windows-brand-icons.ps1'
+      - 'assets/branding/**'
+      - 'desktop/server-console/assets/app-icon.svg'
       - '.github/workflows/avalonia-server-desktop.yml'
 jobs:
   windows:
@@ -24,9 +30,20 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Compile, test and stage standalone Avalonia desktop plus API
         shell: pwsh
         run: ./scripts/build-avalonia-desktop.ps1 -Configuration Release
+      - name: Assert branded Windows executable icon was staged
+        shell: pwsh
+        run: |
+          $icon = "src/StockCount.Server.Desktop/Assets/server.ico"
+          if (!(Test-Path $icon)) { throw "Avalonia Windows .ico missing" }
+          if ((Get-Item $icon).Length -lt 1000) { throw "Avalonia .ico too small" }
+          $exe = "publish/avalonia-desktop/StockCount.Server.Desktop.exe"
+          if (!(Test-Path $exe)) { throw "Avalonia branded EXE missing" }
       - name: Upload internal QA build
         uses: actions/upload-artifact@v4
         with:

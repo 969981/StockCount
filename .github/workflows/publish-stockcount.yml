@@ -14,11 +14,19 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'assets/branding/**'
+      - 'desktop/server-console/assets/app-icon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'scripts/prepare-windows-brand-icons.ps1'
       - 'scripts/build-android-release.ps1'
   pull_request:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'assets/branding/**'
+      - 'desktop/server-console/assets/app-icon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'scripts/prepare-windows-brand-icons.ps1'
       - 'scripts/build-android-release.ps1'
 
 permissions:
