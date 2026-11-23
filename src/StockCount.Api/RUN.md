@@ -1,12 +1,12 @@
 # StockCount.Api — 启动、联调与部署（.NET 10）
 
-> 更新：2026-11-23。**已创建 .NET 10 只读 API 源码骨架，未在当前环境实际编译、运行或连接 SQL Server。** 这里的命令供 Windows 开发机验证；只有执行成功后才能说已经运行。正式数据库仍保持只读，任何生产写入都未实现。
+> 更新：2026-11-23。**已创建 .NET 10 只读 API + 受控 XTEST 事务写入与幂等查询源码。尚未在当前环境编译、运行或连接 SQL Server。** 这里的命令供 Windows 开发机验证；只有执行成功后才能说已经运行。正式数据库仍保持只读，Tauri Sidecar 管理端的正式 COB 写入默认关闭；测试 XTEST 写入需单独配置和审批。
 
 ## 1. 已有代码与范围
 
 - 项目：`StockCount.Api`（Minimal API）、`StockCount.Contracts`（DTO）、`StockCount.Core`（环境白名单）、`StockCount.Infrastructure`（Dapper/SqlClient）。
 - 已写接口：`GET /health`、`GET /ready`、`GET /api/v1/inventory-counts`、`GET /api/v1/inventory-counts/{countNumber}`、`POST /api/v1/locations/resolve`、`POST /api/v1/labels/resolve`、`GET /api/v1/inventory-counts/{countNumber}/items`。
-- 写入防护：`POST /api/v1/inventory-counts/{countNumber}/items` 对 Production 返回 403，对 Test 返回 503，**无真实写入**；`GET /api/v1/submissions/{requestId}` 也返回 503（幂等查询尚未实现）。
+- 写入与幂等：`POST /api/v1/inventory-counts/{countNumber}/items` 已有真正 SQL Server 事务及同单同箱防重，Test 需要 DB 迁移和管理员显式启用；Production 仍默认403。`GET /api/v1/submissions/{requestId}?countNumber=...` 查询同库持久化幂等记录。
 - 只允许请求头 `X-StockCount-Environment: Test|Production`，服务端固定映射 `XTEST`/`COB`，所有值参数化；生产写入开关默认 `false`。
 
 ## 2. Windows 开发机准备
@@ -21,7 +21,7 @@ dotnet restore StockCount.slnx
 dotnet build StockCount.slnx -c Debug
 ```
 
-这个 `.slnx` 当前只有非 Android 的四个后端项目，单独构建不需要安装 MAUI Android workload。
+这个 `.slnx` 当前是非 Android 的后端和纯 C# 单测项目（MAUI Android 单独编译），单独构建不需要安装 MAUI Android workload。
 
 ## 3. 本地配置 SQL Server（不要提交真值）
 
@@ -75,12 +75,28 @@ dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Release -r win-x64 --
 
 **注意**：`src/StockCount.Api/appsettings.json` 的 AllowedHosts 仅为 localhost/127.0.0.1。实际域名/反向代理部署前要按运维批准修改 Host allowlist，并在可信代理正确转发 Host/HTTPS 信息。API 内不包含 SQL 凭据或设备口令。
 
-## 7. 下一阶段未完成
+## 7. 受控 XTEST 写入启用步骤
 
-- `StockCount.Pad` Android 工程和真实海康扫码广播联调。
+运行前先由 DBA 执行只读前检 [verify_xcountd_write_prerequisites.sql](../../sql/read_only/verify_xcountd_write_prerequisites.sql)，并检查 XTEST.XCOUTD.ROWID 是 IDENTITY，旧 ERP 触发器/字段/审计语义兼容。然后在批准窗口执行 [001_stockcount_submission.sql](../../sql/migrations/001_stockcount_submission.sql) 一次性建立同事务幂等表。
+
+推荐由 Tauri 管理器填写审计用户编码并启用 XTEST 写入（不能从 PDA 开启）。独立 CLI 模式可使用以下配置选项，但只能在已验证的测试库使用：
+
+```powershell
+$env:STOCKCOUNT_ENABLE_TEST_WRITES = "true"
+$env:STOCKCOUNT_XTEST_SCHEMA_REVIEWED = "true"
+$env:STOCKCOUNT_X3_AUDIT_USER = "PDA" # 仅示例：由现场 X3 负责人批准
+```
+
+仅实际完成 SQL Server COMMIT 后返回 HTTP 201，复用同 UUID 且相同载荷返回200，未知结果必须以原 UUID 调用 GET /api/v1/submissions/{requestId}?countNumber=... 查询。完整文档见 [WRITE_FLOW_IMPLEMENTATION.md](../../docs/WRITE_FLOW_IMPLEMENTATION.md)。
+
+**正式环境绝不可直接使用测试帐套的启用流程。** 生产需要独立的变更审批/账户权限审计；Tauri 管理界面没有生产启用按钮。
+
+## 8. 下一阶段未完成
+
+- `StockCount.Pad` Android MAUI 页面/扫码广播源码已添加，尚需实际 Android SDK 编译与海康 PDA 真机联调。
 - `XTEST`/`COB` 的真实库结构核验、只读 SQL 联调与两环境差异测试。
-- 数据库真实写入通道（优先经验证的 Sage X3 服务）、ROWID/AUUID/审计字段处理及事务。
-- 同单同箱防重是否允许复盘、持久化幂等/双设备并发、STU/PCU 两列同值与单位系数的受控验证。
+- 真实 XTEST 插入适配器已编码，**现场仍需确认** X3 原生服务与直接 INSERT 的适配差异、ROWID IDENTITY、审计字段/触发器和 SQL Server 事务；不符合条件必须拒绝。
+- 同单同箱锁与 SQL Server 同事务幂等表已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及单位 1:1 验证；STU/PCU 两列强制同值。
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
