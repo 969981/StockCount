@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：V1 统一需求与架构规范已经建立；业务代码、APK、生产写入接口尚未实现/验收。**
+**当前阶段：V1 统一开发规范已建立；仓库已有部分 .NET 解决方案及后端代码骨架。Android APK、完整 API 联调及 ERP 生产写入均尚未确认验收。**
 
 ## 一期产品范围
 
@@ -51,7 +51,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 用户最近明确确认的要求 > `requirements.md` / `docs/DECISIONS.md` > `architecture.md` / `docs/DATABASE_MAPPING.md` > 其他专题文档。**已确认事实、设计目标、待验证假设须分开**；不得将旧 APK 的行为当成新 StockCount 的强制实现。
 
-## 建议解决方案结构（待创建源码）
+## 解决方案规划（部分源码骨架已建立）
 
 ```text
 StockCount.slnx
