@@ -172,6 +172,18 @@ public sealed class StockCountApiClient : ICountScanGateway
         catch (ScanApiException e) when (e.Code=="SUBMISSION_LOOKUP_UNAVAILABLE") { return null; }
     }
 
+    public async Task<bool> HasDeviceKeyAsync() =>
+        !string.IsNullOrWhiteSpace(
+            await SecureStorage.Default.GetAsync("StockCountDeviceKey"));
+
+    /// <summary>Only checks that ASP.NET Core is alive; distinct from SQL /ready.</summary>
+    public async Task<bool> PingServerAsync(CancellationToken ct=default)
+    {
+        using var request=await Message(HttpMethod.Get,"/health");
+        using var response=await _http.SendAsync(request,ct);
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<bool> PingDatabaseAsync(CancellationToken ct=default)
     {
         using var request=await Message(HttpMethod.Get,"/ready");
