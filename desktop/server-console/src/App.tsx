@@ -172,13 +172,8 @@ export default function App() {
   });
 
   const copyDeviceKey = () => perform(async () => {
-    const token = await invoke<string>("reveal_device_key");
-    try {
-      await navigator.clipboard.writeText(token);
-      toast("success", "设备接入密钥已复制，配置到可信 PDA 的安全存储中。");
-    } finally {
-      // We do not persist the raw key in a JavaScript field or an app log.
-    }
+    await invoke("copy_device_key");
+    toast("success", "已由本机系统剪贴板复制密钥；请只配置到可信 PDA 的安全存储。");
   });
 
   const pageTitle = navItems.find(n => n.id === view)?.label ?? "服务管理";
