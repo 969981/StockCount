@@ -242,7 +242,7 @@ jobs:
           - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
           - SHA256SUMS.txt: independent checksums of all four release binaries (two APK variants, Setup and Portable).
 
-          Windows logs (server-logs.db and SQLite WAL companions) are beside the desktop EXE. The portable ZIP keeps application settings in LOCALAPPDATA and passwords in Windows Credential Manager, not within the ZIP. WebView2 runtime is required.
+          Windows non-secret settings (server-settings.json), logs (server-logs.db and SQLite WAL companions) live beside the desktop EXE, not in LOCALAPPDATA. The portable ZIP does not include user settings; if no colocated JSON exists, the first launch copies valid legacy AppData settings while leaving the old file untouched. SQL passwords and PDA device keys remain in Windows Credential Manager and do not migrate between user accounts or machines. Install/extract into a user-writable folder. WebView2 runtime is required.
 
           The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This preview includes both Android Debug and signed Release APKs and upgrades the SQLite native bundle to a patched line (Microsoft.Data.Sqlite 10.0.14 and SQLitePCLRaw.bundle_e_sqlite3 2.1.14) following a NU1903 advisory detected in the preceding preview. This is a technical prerelease, not production certification; Windows executables are unsigned; the Android Debug APK uses a debug identity, while the Android Release APK requires a separate persistent production signing key. They cannot replace each other in-place.
           NOTES
