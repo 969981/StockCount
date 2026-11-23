@@ -44,6 +44,29 @@ pub struct SettingsView {
     pub device_key_ready: bool,
 }
 
+/// SQLite file beside the Tauri desktop executable, not in AppData.
+pub fn log_db_path() -> Result<PathBuf, String> {
+    let exe = env::current_exe().map_err(|e| format!("无法找到桌面程序路径：{e}"))?;
+    let directory = exe.parent().ok_or("无法找到桌面程序所在目录")?;
+    Ok(directory.join("server-logs.db"))
+}
+
+/// Fail early if installer/portable directory has no write access.
+/// Never silently relocate logs, because that would contradict the operator's choice.
+pub fn verify_log_directory_writable() -> Result<(), String> {
+    let path = log_db_path()?;
+    let directory = path.parent().ok_or("日志文件路径无效")?;
+    let probe = directory.join(format!(".stockcount-write-test-{}.tmp", uuid::Uuid::new_v4()));
+    let file = std::fs::OpenOptions::new()
+        .create_new(true)
+        .write(true)
+        .open(&probe)
+        .map_err(|e| format!("程序目录不可写：{} ({e})。请安装到当前用户可写目录，不要使用受保护的 Program Files 目录。", directory.display()))?;
+    drop(file);
+    let _ = std::fs::remove_file(probe);
+    Ok(())
+}
+
 pub fn base_dir() -> Result<PathBuf, String> {
     let base = env::var_os("LOCALAPPDATA")
         .ok_or("无法获取 LOCALAPPDATA：此管理器仅支持 Windows 用户会话。")?;
