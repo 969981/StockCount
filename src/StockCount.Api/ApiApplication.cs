@@ -26,6 +26,28 @@ public static class ApiApplication
         
         var app = builder.Build();
         app.UseExceptionHandler();
+
+        // Persist structured HTTP access records through the configured ILogger provider.
+        // Request bodies (including scanned QR data) and Authorization/DeviceKey headers are never logged.
+        app.Use(async (context, next) =>
+        {
+            var started = System.Diagnostics.Stopwatch.StartNew();
+            try { await next(); }
+            finally
+            {
+                started.Stop();
+                if (!context.Request.Path.StartsWithSegments("/health"))
+                {
+                    var logger = context.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("StockCount.Api.Http");
+                    logger.LogInformation("HTTP {Method} {Path} -> {StatusCode} ({DurationMs} ms)",
+                        context.Request.Method, context.Request.Path.Value,
+                        context.Response.StatusCode, started.ElapsedMilliseconds);
+                }
+            }
+        });
+
         // No user login screen: remote requests still require server-side device authorization.
         // If no key has been configured, only loopback requests are permitted.
         var deviceKey = app.Configuration["StockCount:DeviceKey"];
