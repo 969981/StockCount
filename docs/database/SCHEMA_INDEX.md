@@ -1,3 +1,18 @@
+---
+title: "StockCount — 七表结构与中文字段字典索引（5 张业务表 + 2 张字典表）"
+aliases:
+  - "StockCount · docs / database / SCHEMA_INDEX"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # StockCount — 七表结构与中文字段字典索引（5 张业务表 + 2 张字典表）
 
 > **2026-11-23 归档。** 只包含 Sage X3 字段字典、SQL 查询与字段解释，不提交真实生产/测试业务数据。**正式帐套：`[sagex3].[COB]`；测试帐套：`[sagex3].[XTEST]`**。本文是字段证据与开发索引，不能替代真实数据库权限与运行时核验。
@@ -73,3 +88,12 @@ STOLOC.STOFCY_0 + STOLOC.WRH_0 + STOLOC.LOC_0
 - [AI 规范](../../AGENTS.md)
 - [API 契约](../API_CONTRACT.md)
 - [安全与帐套](../SECURITY_AND_ENVIRONMENTS.md)
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](../DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](../API_CONTRACT.md)

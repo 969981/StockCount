@@ -1,3 +1,18 @@
+---
+title: "Sage X3 / SQL Server 数据库字段映射规范"
+aliases:
+  - "StockCount · docs / DATABASE_MAPPING"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # Sage X3 / SQL Server 数据库字段映射规范
 
 - 版本：V1（2026-11-23）
@@ -180,3 +195,12 @@ SELECT N'Test', COUNT_BIG(*) FROM [sagex3].[XTEST].[XCOUTH];
 **实际可执行的五张业务表 SQL**：[完整物理结构 + 中文普通/长标题（COB/XTEST）](../sql/read_only/inspect_five_tables.sql) · [五表真实全字段中文别名抽样](../sql/read_only/select_five_tables_chinese_aliases.sql) · [六组常用业务查询](../sql/read_only/business_queries.sql)。
 
 **两张 X3 字典表**： [ATABZON 字段映射](database/schema/ATABZON.md) · [ATEXTE 多语言标题](database/schema/ATEXTE.md) · [真实物理结构/索引查询](../sql/read_only/inspect_dictionary_tables.sql) · [中英文标题关联查询](../sql/read_only/query_dictionary_tables.sql)。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](database/00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](API_CONTRACT.md)

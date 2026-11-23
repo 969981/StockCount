@@ -1,3 +1,18 @@
+---
+title: "XCOUTH — 库存盘点单表头完整字段字典"
+aliases:
+  - "StockCount · docs / database / schema / XCOUTH"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - docs
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # XCOUTH — 库存盘点单表头完整字段字典
 
 > **来源**：用户于 2026-11-19 在 Sage X3 SQL Server 的 **`sagex3.COB`（正式 Schema）** 实际执行并回传的字段元数据与 `ATABZON + ATEXTE (LAN_0='CHI')` 对照结果；本表物理列为**已实测**，不是猜测。字段中文普通/短/长标题忠实保留企业字典原文。**不要将本页 COB 结构不经核实直接推定为 XTEST 结构。**
@@ -35,3 +50,12 @@
 
 
 - **最新 V1 规则**：盘点单列表展示所有 `CUNSTA_0` 状态；是否允许提交需另行定义；V1 不创建、不关闭盘点单。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/database/00-数据库知识地图|数据库知识地图]] · [Markdown](../00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](../../DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](../../API_CONTRACT.md)

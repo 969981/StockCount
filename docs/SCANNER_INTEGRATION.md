@@ -1,3 +1,18 @@
+---
+title: "Android 工业 PDA 扫码接入规范"
+aliases:
+  - "StockCount · docs / SCANNER_INTEGRATION"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: pda
+tags:
+  - StockCount
+  - pda
+  - docs
+up: "[[docs/pda/00-PDA扫码知识地图]]"
+---
+
 # Android 工业 PDA 扫码接入规范
 
 状态：设备适配方案，真实型号与固件扫描广播 Action/Extra **必须在现场再验证**。2026-11-23。
@@ -87,3 +102,12 @@ public interface IScannerService
 - [[docs/pda/海康PDA-资料与核验清单|协议来源与证据等级]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-%E8%B5%84%E6%96%99%E4%B8%8E%E6%A0%B8%E9%AA%8C%E6%B8%85%E5%8D%95.md)
 
 这些示例不能替代真机验证；`start` 是启动扫描服务，**不是**模拟一次扫码。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/pda/00-PDA扫码知识地图|PDA 扫码知识地图]] · [Markdown](pda/00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 扫码专题：[[docs/pda/海康PDA-广播协议与接入总览|广播协议]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-%E5%B9%BF%E6%92%AD%E5%8D%8F%E8%AE%AE%E4%B8%8E%E6%8E%A5%E5%85%A5%E6%80%BB%E8%A7%88.md) · [[docs/pda/海康PDA-MAUI实现与示例|MAUI 接入]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-MAUI%E5%AE%9E%E7%8E%B0%E4%B8%8E%E7%A4%BA%E4%BE%8B.md)
