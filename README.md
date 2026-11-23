@@ -68,6 +68,13 @@ tests/
 docs/
 ```
 
+## Windows 后端服务管理器（Tauri 2）
+
+- **已改为 Tauri 2 + React + TypeScript**：一键启动/停止 C# ASP.NET Core API Sidecar，数据库参数在本机可读/可改，日志写入 SQLite；不使用 WPF。
+- [Tauri Server Console 源码与 Windows 使用手册](desktop/server-console/README.md) · [UI/架构设计](docs/SERVER_HOST_UI.md)
+- [Windows 构建工作流](.github/workflows/tauri-server-console.yml) · [Sidecar 自包含打包脚本](scripts/build-tauri-sidecar.ps1)
+- 配置：`%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`（不含密码）；密码和设备 Key 由 Windows Credential Manager 保存。日志：同目录下 `logs\server-logs.db`。
+- API 正式/测试写入**仍然禁用**。界面/原生代码已提交，**本轮尚未确认 Windows 编译和安装包通过测试**。
 ## API 启动与开发现状
 
 - **源码**：[StockCount.Api](src/StockCount.Api/Program.cs)、[SQL 读取层](src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)、[共享 DTO](src/StockCount.Contracts/Dtos.cs)。
