@@ -1,4 +1,5 @@
 ---
+aliases: ["PDA UI 开发任务与验收", "StockCount PDA UI QA"]
 title: "StockCount PDA APK UI 交互实施任务与验收清单"
 created: 2026-11-23
 updated: 2026-11-23
