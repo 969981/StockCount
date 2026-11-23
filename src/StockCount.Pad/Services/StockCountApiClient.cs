@@ -31,7 +31,8 @@ public sealed class StockCountApiClient : ICountScanGateway
             throw new InvalidOperationException("环境必须为 Test 或 Production。");
         Preferences.Default.Set("StockCountApiUrl",baseUrl.TrimEnd('/'));
         Preferences.Default.Set("StockCountEnvironment",environment);
-        await SecureStorage.Default.SetAsync("StockCountDeviceKey",deviceKey);
+        if (!string.IsNullOrWhiteSpace(deviceKey))
+            await SecureStorage.Default.SetAsync("StockCountDeviceKey",deviceKey);
     }
 
     private async Task<HttpRequestMessage> Message(HttpMethod method,string path,
