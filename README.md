@@ -58,6 +58,12 @@ pwsh -File .\scripts\set-app-version.ps1 -Version 1.0.1 -AndroidVersionCode 4
 
 权威版本来自 Tauri `tauri.conf.json`，同步至 Rust `Cargo.toml`、npm `package.json`、MAUI `ApplicationDisplayVersion`；Android `ApplicationVersion`（versionCode）为独立递增数值。参见 [本地构建与版本管理手册](docs/LOCAL_BUILD_DEPLOY.md)。
 
+## PDA → Windows 局域网 HTTP 联调（不需要 PFX）
+
+当前 PDA 与 Windows 后端统一采用受控局域网 **HTTP**：在 Tauri「API 与设备」启用局域网监听，PDA 设置填写 `http://电脑局域网IP:5080` 和设备访问密钥；本机管理端口 `5081` 仍只监听 localhost。Android 允许 HTTP 明文流量，但客户端地址策略拒绝连接公网 HTTP 地址。
+
+HTTP 不加密设备密钥或盘点数据，因此必须使用隔离可信 PDA Wi-Fi，Windows 防火墙仅放通 PDA 网段，禁止公网端口映射。XTEST / COB 写入开关仍默认关闭，SQL Server 连接加密是另外一项独立设置。完整步骤：[HTTP 局域网编译与联调](docs/HTTP_LAN_DEBUG.md)。
+
 ## Windows 本地编译、部署与源码打包
 
 - [完整 PowerShell 7 使用手册](docs/LOCAL_BUILD_DEPLOY.md)：环境准备、编译 Android APK/Windows Setup/Portable、ADB 安装、Windows 免安装升级和源码归档。
