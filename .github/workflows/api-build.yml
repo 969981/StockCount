@@ -8,6 +8,7 @@ on:
       - 'src/StockCount.Contracts/**'
       - 'src/StockCount.Infrastructure/**'
       - 'StockCount.slnx'
+      - 'tests/StockCount.Core.Tests/**'
       - '.github/workflows/api-build.yml'
   pull_request:
     paths:
@@ -31,3 +32,5 @@ jobs:
         run: dotnet restore StockCount.slnx
       - name: Build
         run: dotnet build StockCount.slnx --no-restore -c Release
+      - name: Test (pure business logic)
+        run: dotnet test tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj -c Release --no-build
