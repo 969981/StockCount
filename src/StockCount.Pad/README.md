@@ -48,6 +48,8 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 
 设备从 Windows Tauri 管理器获取局域网 HTTP 地址（例如 `http://192.168.1.100:5080`）和设备 Key：
 
+完整步骤：[Windows + PDA 局域网 HTTP 联调指南](../../docs/HTTP_LAN_DEBUG.md)。Android 允许内网 HTTP 明文传输，但客户端拒绝向公网地址发起 HTTP 请求；请不要暴露 5080 到公网。
+
 - 请求头 `X-StockCount-Environment` 只能使用 `Test` 或 `Production`。
 - 请求头 `X-StockCount-Device-Key` 存储于 MAUI SecureStorage；切换测试/正式环境需重新选择盘点单。
 - 提交时 `Idempotency-Key` 采用一个草稿一个 UUID，网络失败原 UUID 保留；状态查询 `GET /api/v1/submissions/{UUID}?countNumber=...`。
