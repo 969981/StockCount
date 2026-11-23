@@ -11,7 +11,7 @@ namespace StockCount.Infrastructure;
 /// </summary>
 public sealed class SqlInventoryReadRepository(string connectionString,
     bool enableTestWrites = false, bool enableProductionWrites = false,
-    bool schemaReviewed = false) : IInventoryReadRepository
+    bool testSchemaReviewed = false, bool productionSchemaReviewed = false) : IInventoryReadRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
@@ -150,13 +150,14 @@ public sealed class SqlInventoryReadRepository(string connectionString,
 
     private InventoryCountDto ToDto(CountRow row, SelectedEnvironment environment)
     {
-        var enabled = schemaReviewed && row.StatusCode == 0 &&
-            (environment.Name == "Test" ? enableTestWrites :
-                environment.Name == "Production" && enableProductionWrites);
+        var isTest = environment.Name == "Test";
+        var reviewed = isTest ? testSchemaReviewed : productionSchemaReviewed;
+        var switchedOn = isTest ? enableTestWrites : enableProductionWrites;
+        var enabled = reviewed && switchedOn && row.StatusCode == 0;
         var reason = enabled ? null
             : row.StatusCode != 0 ? "COUNT_NOT_WRITABLE"
-            : environment.Name == "Production" ? "PRODUCTION_WRITE_DISABLED"
-            : !schemaReviewed ? "SCHEMA_NOT_APPROVED" : "ERP_WRITE_UNAVAILABLE";
+            : !switchedOn ? (isTest ? "ERP_WRITE_UNAVAILABLE" : "PRODUCTION_WRITE_DISABLED")
+            : !reviewed ? "SCHEMA_NOT_APPROVED" : "ERP_WRITE_UNAVAILABLE";
         return new InventoryCountDto(row.CountNumber,row.Description,row.SiteCode,row.WarehouseCode,
             row.CountDate,row.StatusCode,row.CountType,enabled,reason);
     }
