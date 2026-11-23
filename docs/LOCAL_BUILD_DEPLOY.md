@@ -1,0 +1,210 @@
+---
+title: StockCount · Windows 本地编译、部署和源码归档
+created: 2026-11-23
+updated: 2026-11-23
+status: implementation-guide
+tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Obsidian]
+---
+
+# StockCount · 本地编译、部署与源码打包手册
+
+> 对应当前仓库的真实工程：MAUI Android PDA、ASP.NET Core 10 API 与 Tauri 2 + React Windows 服务管理器。本手册的脚本已提交，但**在本对话环境中没有 Windows/.NET/Android 工具链，最终执行以本机结果或 Windows GitHub Actions 为准**。
+
+## 一、三个脚本
+
+| 文件 | 用途 | 默认结果 |
+| --- | --- | --- |
+| [build-local.ps1](../scripts/build-local.ps1) | 编译 + 自动打包 | APK + Setup.exe + Portable.zip + SHA256SUMS.txt |
+| [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB 安装、Windows NSIS 安装向导、免安装目录更新 |
+| [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | Source.zip、SourceInfo.txt、单独 SHA256 文件 |
+
+原有 [build-tauri-sidecar.ps1](../scripts/build-tauri-sidecar.ps1) 和 [package-windows-portable.ps1](../scripts/package-windows-portable.ps1) 仍复用，不复制或重写已有后端打包逻辑。
+
+## 二、本地环境准备（Windows 10/11 x64）
+
+建议使用 **PowerShell 7**（不是必须以管理员启动）。需安装以下工具：
+
+1. Git for Windows、**.NET SDK 10.x**；Android 构建需 Android SDK/Platform-Tools，以及 `dotnet workload install maui-android`。
+2. **Node.js 22+**、npm、Rust `x86_64-pc-windows-msvc`，以及 Visual Studio C++ Build Tools（MSVC 编译器、Windows SDK）。这些属于 Windows Tauri 2 编译依赖。
+3. 运行 Windows Tauri 桌面程序时需 **Microsoft Edge WebView2 Runtime**。Windows 11 常见预装，但不可依赖其必然存在。
+4. Android 真机部署需 `adb`，PDA 开启开发者选项 / USB 调试，并在屏幕上授权电脑。
+5. 对局域网 PDA 提供 HTTPS API 服务，还需要 Windows 服务器有可信 PFX 证书、必要的防火墙规则以及独立配置的 Sage X3 SQL Server 权限。
+
+检查已安装工具：
+
+```powershell
+pwsh --version
+git --version
+dotnet --version
+dotnet workload list
+node --version
+npm --version
+rustc -vV
+cargo --version
+adb devices
+```
+
+克隆仓库并进入根目录：
+
+```powershell
+git clone https://github.com/969981/StockCount.git
+cd StockCount
+```
+
+### 只第一次需要准备的 Android SDK
+
+```powershell
+dotnet workload install maui-android
+```
+
+`maui-android` 安装不等于 Android SDK、SDK License 或 Java 环境一定齐全。若 Android 构建提示缺少 SDK/JDK，按 .NET MAUI Android 工具链的错误安装缺失组件；也可以通过 Visual Studio 的 .NET MAUI / Android 开发工作负载统一安装。
+
+## 三、一键本地编译
+
+### 全部编译：APK + Setup + Portable
+
+```powershell
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target All -Version 0.2.0-local
+```
+
+### 只编译 Windows（同时生成 Setup 与免安装 ZIP）
+
+```powershell
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-local
+```
+
+### 只编译 Android PDA APK
+
+```powershell
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Android -Version 0.2.0-local
+```
+
+如果首次安装 MAUI Android 工作负载，可带 `-InstallAndroidWorkload`；如果在受控本地开发环境临时跳过业务测试可带 `-SkipTests`，**不建议将跳过测试的构建用于正式现场部署**。
+
+```powershell
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Android -Version 0.2.0-local -InstallAndroidWorkload
+```
+
+输出默认在仓库根目录 `dist\local\`；可用 `-OutputDirectory D:\Builds\StockCount` 自定义路径（不会修改软件运行时配置）。
+
+```text
+dist/
+  local/
+    StockCount-PDA-v0.2.0-local-Android-Debug-Signed.apk
+    StockCount-Server-v0.2.0-local-Windows-x64-Setup.exe
+    StockCount-Server-v0.2.0-local-Windows-x64-Portable.zip
+    SHA256SUMS.txt
+    build-manifest.json
+```
+
+**说明**：如果仅选择 Windows 或 Android，清单仅包含本次目标成功构建的文件；旧版本或其它目标可能仍留在输出目录。请依据清单和本次版本号选取文件，不要将旧文件混合发布。构建任何一步失败都会抛出异常且不生成“成功清单”；请勿发布失败输出。
+
+Windows Setup 使用 Tauri 2 NSIS 的当前用户安装模式；便携 ZIP 包含 `stockcount-server-console.exe`、`StockCount.Api.exe`、`Start-StockCount.cmd` 和说明；API Sidecar 采用 .NET 10 自包含发布。APK 当前为 **Debug 签名测试版本**，并非企业生产签名。
+
+## 四、部署 Windows 免安装版（推荐本地调试）
+
+### 首次部署
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target WindowsPortable -PackagePath .\dist\local\StockCount-Server-v0.2.0-local-Windows-x64-Portable.zip -Destination D:\Apps\StockCount-Server -Launch
+```
+
+部署脚本验证 ZIP 条目没有路径穿越，解压到独立临时目录，确认四个必需文件存在，核对复制后的 SHA256，并在成功后可选启动软件。
+
+### 旧版升级（保留数据库日志）
+
+先在软件内点击“停止服务”，然后**完全退出 Tauri 管理器和 StockCount.Api 子进程**，再执行同一条命令。脚本会检查进程仍在运行则拒绝更新，以免损坏 SQLite WAL。
+
+脚本仅覆盖四个程序文件，保留部署目录中的 `server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 及其它文件。若有旧版程序文件，将在目标目录保存 `backup-binaries-时间戳`；升级复制失败会尽可能从此备份恢复原二进制。
+
+**注意**：日志始终放在主程序 EXE 同目录，便携目录必须由当前用户拥有写入权限；不要把免安装版部署到受保护的 Program Files 文件夹。非敏感设置在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，数据库密码、HTTPS PFX 密码、设备密钥在 Windows Credential Manager，不随 ZIP 跨电脑迁移。
+
+### Windows Setup 正常安装
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target WindowsSetup -PackagePath .\dist\local\StockCount-Server-v0.2.0-local-Windows-x64-Setup.exe
+```
+
+这会打开 NSIS 安装向导，按正常交互安装；不会擅自使用静默安装参数、提升权限或修改数据库。可以直接双击 Setup.exe 获得相同效果。
+
+## 五、Android APK 安装 / 升级
+
+连接已授权 PDA，先检查设备：
+
+```powershell
+adb devices
+pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\dist\local\StockCount-PDA-v0.2.0-local-Android-Debug-Signed.apk
+```
+
+多设备时显式指定设备序列号，避免安装到错误 PDA：
+
+```powershell
+pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\dist\local\StockCount-PDA-v0.2.0-local-Android-Debug-Signed.apk -DeviceSerial PDA_SERIAL -Launch
+```
+
+脚本执行 `adb install -r -t`，保留同签名版本的应用数据；如果提示 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，说明 APK 签名不同，**脚本不会自动卸载**。Android 卸载会清除应用 SecureStorage 等数据，必须先解决未确认盘点单、UUID、草稿的数据迁移或备份，再决定后续操作。
+
+安装后在 PDA 设置页配置 HTTPS API 地址、设备密钥、Test/Production 环境，以及海康扫码广播 Action/Extra；使用系统信任的 TLS 证书，不要关闭证书校验。
+
+## 六、打包完整源码（独立于编译产物）
+
+### 当前提交的所有 Git 源码
+
+```powershell
+git status
+pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref HEAD -Version 0.2.0-local
+```
+
+### 对指定 Tag 制作可复现源码 ZIP
+
+```powershell
+git fetch --tags
+pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2 -Version 0.2.0-preview.2
+```
+
+源码默认打包到 `dist\source\`：
+
+```text
+dist/
+  source/
+    StockCount-Source-v0.2.0-local.zip
+    StockCount-Source-v0.2.0-local.SourceInfo.txt
+    StockCount-Source-v0.2.0-local.SHA256SUMS.txt
+```
+
+**打包语义**：严格使用 `git archive` 导出指定 Git 提交（`.cs/.csproj/.xaml/.rs/.ts/.tsx/.sql/.ps1`、文档、GitHub Actions 等），不含 `.git` 历史、node_modules、编译输出、SQLite 日志、证书和未跟踪的本地文件。归档文件名包含版本号，SourceInfo 记录精确的 40 位 Commit SHA。
+
+如果 `git status` 有未提交修改或未跟踪文件，脚本默认拒绝执行，避免误以为这些修改已包含在源码 ZIP。建议先 `git add` / `git commit`。如果有意只需要已提交的快照，可以加 `-AllowDirtySnapshot`，但它**不会把任何本地未提交修改放进 ZIP**。
+
+**源码隐私边界**：脚本在归档前拒绝已跟踪的 `.env`、数据库日志、证书私钥或构建目录；这是文件名筛查，不能保证源文件内容中完全没有明文密码。因此提交源码前仍需检查 SQL 连接串、PFX 口令、真实二维码、内网地址和个人信息。
+
+## 七、校验和常见故障
+
+校验生成包 SHA256（与同目录 SHA256SUMS 对照）：
+
+```powershell
+Get-FileHash .\dist\local\StockCount-Server-v0.2.0-local-Windows-x64-Portable.zip -Algorithm SHA256
+Get-FileHash .\dist\source\StockCount-Source-v0.2.0-local.zip -Algorithm SHA256
+```
+
+| 现象 | 排查 / 处理 |
+| --- | --- |
+| 缺少 dotnet / SDK 不是 10.x | 安装 .NET 10 SDK；执行 dotnet --list-sdks |
+| 缺少 maui-android | dotnet workload install maui-android；检查 Android SDK/JDK |
+| Rust/MSVC 链接失败 | 检查 `rustc -vV` 的 host 是否为 x86_64-pc-windows-msvc，安装 Visual Studio C++ Build Tools 与 Windows SDK |
+| npm 或 Tauri 找不到命令 | 安装 Node.js 22+、Rust，先 npm install，再运行构建 |
+| Portable 无法启动 API | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录、目录可写、WebView2 已安装 |
+| SQLite 文件锁或 Windows 文件被占用 | 停止 API 并退出管理器，再运行 deploy-local；不要手工删 WAL/SHM |
+| ADB 无设备或 unauthorized | 检查数据线、USB 调试、手机授权弹框；多设备用 -DeviceSerial |
+| APK 签名不兼容 | 不自动卸载；先处理应用中可能存在的未知提交原 UUID 与数据备份 |
+| Source ZIP 缺本地修改 | git archive 只包含 Git Commit；先提交或使用明确的已提交快照模式 |
+| XTEST/COB 不可写 | 属于独立的数据库 Schema、事务和服务端写入授权；不能通过本地部署脚本绕过 |
+
+## 八、相关文档
+
+- [[docs/RELEASE_PACKAGING|GitHub Releases、Setup 与 Portable]] · [Markdown](RELEASE_PACKAGING.md)
+- [[docs/WRITE_FLOW_IMPLEMENTATION|事务写入与 DBA 验收]] · [Markdown](WRITE_FLOW_IMPLEMENTATION.md)
+- [[docs/SCANNER_INTEGRATION|海康 PDA 扫码与广播参数]] · [Markdown](SCANNER_INTEGRATION.md)
+- [[docs/00-文档导航|Obsidian 文档总导航]] · [Markdown](00-文档导航.md)
+
+本地打包不会触发 GitHub Release，也不会连接生产 SQL Server、自动安装服务或修改 Sage X3 的任何盘点记录。
