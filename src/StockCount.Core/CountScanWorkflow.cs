@@ -1,16 +1,30 @@
 namespace StockCount.Core;
 
+/// <summary>Data returned from the server after resolving a full label QR.</summary>
 public sealed record BoxScanData(
     string BoxNumber, string ItemCode, string? ItemName,
     string? Specification, string LotNumber, string StockUnit,
     bool AlreadyRecordedInCount);
 
-public sealed class ScanCommitRejectedException(string code,string message) : Exception(message)
+public sealed class ScanCommitRejectedException(string code, string message) : Exception(message)
 {
     public string Code { get; } = code;
 }
 
 public sealed record CountScanFeedback(string Kind, string? Message = null, int AutoDismissMs = 0);
+
+/// <summary>Serialized before POST, restored after Android process termination.</summary>
+public sealed record PendingSubmissionDraft(
+    string Environment, string CountNumber, string CountName,
+    string Location, string OriginalQr, BoxScanData Box,
+    decimal Quantity, Guid RequestId);
+
+public interface IPendingSubmissionStore
+{
+    Task SaveAsync(PendingSubmissionDraft draft, CancellationToken cancellationToken);
+    Task<PendingSubmissionDraft?> LoadAsync(CancellationToken cancellationToken);
+    Task ClearAsync(CancellationToken cancellationToken);
+}
 
 public interface ICountScanGateway
 {
@@ -22,147 +36,249 @@ public interface ICountScanGateway
 }
 
 /// <summary>
-/// One active count order. The client cannot type a location: only HandleScanAsync
-/// may set it after successful backend validation. The input quantity starts blank.
+/// UI-independent counting flow. A scan never edits a previously entered count
+/// without explicit discard approval. A Committed result is acknowledged ONLY
+/// after the UI has shown its 1000ms success popup.
 /// </summary>
-public sealed class CountScanWorkflow(ICountScanGateway gateway, string countNumber, string countName)
+public sealed class CountScanWorkflow(
+    ICountScanGateway gateway,
+    string countNumber,
+    string countName,
+    string environment = "Test",
+    IPendingSubmissionStore? pendingStore = null)
 {
-    private readonly SemaphoreSlim _scanGate = new(1,1);
+    private readonly SemaphoreSlim _gate = new(1, 1);
+    private bool _committedAwaitingUi;
+
     public string CountNumber { get; } = countNumber;
     public string CountName { get; } = countName;
+    public string EnvironmentName { get; } = environment;
     public string? Location { get; private set; }
     public BoxScanData? Box { get; private set; }
     public string? OriginalQr { get; private set; }
     public decimal? ManualQuantity { get; private set; }
     public Guid? PendingRequestId { get; private set; }
+    public bool IsSuccessAwaitingDismiss => _committedAwaitingUi;
+    public bool HasUnsavedDraft => Box is not null || ManualQuantity.HasValue;
+    public bool HasUnresolvedSubmission => PendingRequestId.HasValue && !_committedAwaitingUi;
 
     public static bool LooksLikeBoxQr(string raw) =>
-        raw.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) && raw.Contains("@@",StringComparison.Ordinal);
+        raw.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) &&
+        raw.Contains("@@", StringComparison.Ordinal);
 
-    public async Task<CountScanFeedback> HandleScanAsync(string raw, CancellationToken ct=default)
+    public async Task<bool> RestorePendingAsync(CancellationToken ct = default)
     {
-        if (!await _scanGate.WaitAsync(0,ct))
-            return new CountScanFeedback("Busy", "正在处理上次扫码，请稍后。");
+        if (pendingStore is null) return false;
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var stored = await pendingStore.LoadAsync(ct);
+            if (stored is null ||
+                stored.Environment != EnvironmentName ||
+                stored.CountNumber != CountNumber ||
+                stored.RequestId == Guid.Empty)
+                return false;
+
+            Location = stored.Location;
+            OriginalQr = stored.OriginalQr;
+            Box = stored.Box;
+            ManualQuantity = stored.Quantity;
+            PendingRequestId = stored.RequestId;
+            _committedAwaitingUi = false;
+            return true;
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task<CountScanFeedback> HandleScanAsync(string raw, CancellationToken ct = default)
+    {
+        if (!await _gate.WaitAsync(0, ct))
+            return new CountScanFeedback("Busy", "正在处理上次扫描，请稍后重扫。");
         try
         {
             if (string.IsNullOrWhiteSpace(raw))
-                return new CountScanFeedback("Error","未识别到条码。");
+                return new CountScanFeedback("Error", "未识别到条码。");
+            if (_committedAwaitingUi)
+                return new CountScanFeedback("Busy", "提交成功提示尚未结束，请稍后重扫。");
             if (PendingRequestId.HasValue)
-                return new CountScanFeedback("Error","上次提交结果尚未确认，请先查询结果，避免重复盘点。");
+                return new CountScanFeedback("Unknown", "提交结果待确认，请先查询原请求结果。");
 
-            raw = raw.TrimEnd('\r','\n');
+            raw = raw.TrimEnd('\r', '\n');
+            if (HasUnsavedDraft && ManualQuantity.HasValue)
+                return new CountScanFeedback("DraftNeedsConfirmation",
+                    "当前箱尚未提交，继续扫描会丢弃已输入数量。");
+
             if (!LooksLikeBoxQr(raw))
             {
-                var location = await gateway.ResolveLocationAsync(CountNumber,raw,ct);
+                var location = await gateway.ResolveLocationAsync(CountNumber, raw, ct);
                 if (!string.IsNullOrWhiteSpace(location))
                 {
-                    if (!string.Equals(Location,location,StringComparison.Ordinal))
+                    if (!string.Equals(Location, location, StringComparison.Ordinal))
                     {
-                        Location=location;
+                        Location = location;
                         ClearBox();
                     }
                     return new CountScanFeedback("LocationUpdated");
                 }
-                if (string.IsNullOrEmpty(Location))
-                    return new CountScanFeedback("Error","请先扫描盘点库位！");
-                return new CountScanFeedback("Error","无法识别有效库位或箱标签。");
+                return string.IsNullOrWhiteSpace(Location)
+                    ? new CountScanFeedback("Error", "请先扫描盘点库位！")
+                    : new CountScanFeedback("Error", "无法识别有效库位或箱标签。");
             }
 
             if (string.IsNullOrWhiteSpace(Location))
-                return new CountScanFeedback("Error","请先扫描盘点库位！");
+                return new CountScanFeedback("Error", "请先扫描盘点库位！");
 
-            // Clearing the prior box on attempted new barcode avoids stale values.
             ClearBox();
-            var resolved = await gateway.ResolveLabelAsync(CountNumber,raw,ct);
+            var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, ct);
             if (resolved is null)
-                return new CountScanFeedback("Error","未找到该箱标签！");
+                return new CountScanFeedback("Error", "未找到该箱标签！");
             if (resolved.AlreadyRecordedInCount)
-                return new CountScanFeedback("Error","该箱号已扫描！");
-            Box=resolved;
-            OriginalQr=raw;
-            ManualQuantity=null;
+                return new CountScanFeedback("Duplicate", "该箱号已扫描！");
+
+            Box = resolved;
+            OriginalQr = raw;
+            ManualQuantity = null; // Never use QR QT as the actual quantity.
             return new CountScanFeedback("BoxResolved");
         }
-        finally { _scanGate.Release(); }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>Only call after a confirmation dialog; never discard an unresolved write.</summary>
+    public bool DiscardUnsubmittedDraft()
+    {
+        if (PendingRequestId.HasValue || _committedAwaitingUi)
+            return false;
+        ClearBox();
+        return true;
     }
 
     public void EnterManualQuantity(decimal? quantity)
     {
         if (PendingRequestId.HasValue && ManualQuantity != quantity)
-            throw new InvalidOperationException("上次提交结果尚未确定，不可修改数量后复用原请求ID。");
-        ManualQuantity=quantity;
+            throw new InvalidOperationException("提交结果未确认，不能改变原请求的数量。");
+        if (_committedAwaitingUi)
+            throw new InvalidOperationException("请先完成提交成功提示。");
+        ManualQuantity = quantity;
     }
 
-    public async Task<CountScanFeedback> SubmitAsync(CancellationToken ct=default)
+    public async Task<CountScanFeedback> SubmitAsync(CancellationToken ct = default)
     {
-        if (!await _scanGate.WaitAsync(0,ct))
-            return new CountScanFeedback("Busy","正在处理扫码或提交请求。");
+        if (!await _gate.WaitAsync(0, ct))
+            return new CountScanFeedback("Busy", "正在扫码或提交，请稍后。");
         try
         {
+            if (_committedAwaitingUi)
+                return new CountScanFeedback("Busy", "当前提交已成功，请等待确认提示结束。");
             if (Box is null || OriginalQr is null || Location is null)
-                return new CountScanFeedback("Error","请先扫描盘点库位和箱码。");
+                return new CountScanFeedback("Error", "请先扫描盘点库位和箱码。");
             if (!ManualQuantity.HasValue)
-                return new CountScanFeedback("Error","箱内数量为必填项！");
-            if (CountWritePolicy.Validate(CountNumber,OriginalQr,Box.BoxNumber,Location,ManualQuantity.Value) is { } validation)
-                return new CountScanFeedback("Error",$"输入无法提交：{validation}");
+                return new CountScanFeedback("Error", "箱内数量为必填项！");
+            var validation = CountWritePolicy.Validate(
+                CountNumber, OriginalQr, Box.BoxNumber, Location, ManualQuantity.Value);
+            if (validation is not null)
+                return new CountScanFeedback("Error", "实盘数据无效：" + validation);
 
-            // Request ID survives network errors and must be reused for the same draft.
             PendingRequestId ??= Guid.NewGuid();
+            if (pendingStore is not null)
+            {
+                try
+                {
+                    // Persist the same UUID and draft BEFORE sending the HTTP request.
+                    await pendingStore.SaveAsync(new PendingSubmissionDraft(
+                        EnvironmentName, CountNumber, CountName, Location, OriginalQr,
+                        Box, ManualQuantity.Value, PendingRequestId.Value), ct);
+                }
+                catch (Exception)
+                {
+                    return new CountScanFeedback("Error", "无法安全保存待提交记录，请检查设备存储后重试。");
+                }
+            }
+
             try
             {
                 var committed = await gateway.SubmitAsync(
-                    CountNumber,PendingRequestId.Value,OriginalQr,Box.BoxNumber,
-                    Location,ManualQuantity.Value,ct);
-                if (!committed) return new CountScanFeedback("Error","提交结果不确定，请查询原请求ID。");
+                    CountNumber, PendingRequestId.Value, OriginalQr, Box.BoxNumber,
+                    Location, ManualQuantity.Value, ct);
+                if (!committed)
+                    return new CountScanFeedback("Unknown", "提交结果待确认，请查询原请求ID。");
             }
-            catch (ScanCommitRejectedException rejection)
+            catch (ScanCommitRejectedException rejected)
             {
-                // An explicit business rejection is NOT an ambiguous write result.
-                if (rejection.Code=="BOX_ALREADY_RECORDED")
+                // A definitive rejection is different from an unknown network outcome.
+                if (rejected.Code == "BOX_ALREADY_RECORDED")
                     ClearBox();
-                PendingRequestId=null;
-                return new CountScanFeedback("Error",rejection.Message);
+                PendingRequestId = null;
+                if (pendingStore is not null)
+                {
+                    try { await pendingStore.ClearAsync(CancellationToken.None); }
+                    catch { /* Do not report the rejected transaction as successful. */ }
+                }
+                return new CountScanFeedback("Error", rejected.Message);
             }
             catch (Exception)
             {
-                // Keep ALL draft fields AND request ID after unknown outcome.
-                return new CountScanFeedback("Unknown","网络异常，提交结果未知，请先查询原请求ID。");
+                // Never clear or generate a new UUID after a possibly committed request.
+                return new CountScanFeedback("Unknown", "网络异常，提交结果待确认，请查询原请求ID。");
             }
-            ClearBox();
-            PendingRequestId=null;
-            return new CountScanFeedback("Submitted","提交成功！",1000);
+
+            _committedAwaitingUi = true;
+            return new CountScanFeedback("Submitted", "提交成功！", 1000);
         }
-        finally { _scanGate.Release(); }
+        finally { _gate.Release(); }
     }
 
-    public async Task<CountScanFeedback> CheckPendingAsync(CancellationToken ct=default)
+    public async Task<CountScanFeedback> CheckPendingAsync(CancellationToken ct = default)
     {
-        if (!PendingRequestId.HasValue)
-            return new CountScanFeedback("Ready");
+        if (!await _gate.WaitAsync(0, ct))
+            return new CountScanFeedback("Busy", "正在处理，请稍后。");
         try
         {
-            var confirmed = await gateway.GetSubmissionAsync(CountNumber,PendingRequestId.Value,ct);
-            if (confirmed is true)
+            if (_committedAwaitingUi)
+                return new CountScanFeedback("Submitted", "提交成功！", 1000);
+            if (!PendingRequestId.HasValue)
+                return new CountScanFeedback("Ready");
+            try
             {
-                ClearBox();
-                PendingRequestId=null;
-                return new CountScanFeedback("Submitted","提交成功！",1000);
+                var confirmed = await gateway.GetSubmissionAsync(
+                    CountNumber, PendingRequestId.Value, ct);
+                if (confirmed is true)
+                {
+                    _committedAwaitingUi = true;
+                    return new CountScanFeedback("Submitted", "提交成功！", 1000);
+                }
+                if (confirmed is false)
+                    return new CountScanFeedback("Unknown",
+                        "未找到已提交记录。请保留原 UUID，使用“重试原提交”继续。");
+                return new CountScanFeedback("Unknown", "服务器暂时无法确认提交结果。");
             }
-            if (confirmed is false)
-                return new CountScanFeedback("Ready","服务器未找到成功记录，重新提交时继续使用原请求ID。");
-            return new CountScanFeedback("Unknown","服务器暂时无法确认提交结果。");
+            catch
+            {
+                return new CountScanFeedback("Unknown", "查询提交结果失败，请保持当前输入。");
+            }
         }
-        catch (Exception)
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>Call only after rendering the full success popup duration.</summary>
+    public async Task AcknowledgeSuccessAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
         {
-            return new CountScanFeedback("Unknown","查询提交结果失败，请保持当前输入信息。");
+            if (!_committedAwaitingUi) return;
+            if (pendingStore is not null)
+                await pendingStore.ClearAsync(ct);
+            ClearBox();
+            PendingRequestId = null;
+            _committedAwaitingUi = false;
         }
+        finally { _gate.Release(); }
     }
 
     private void ClearBox()
     {
-        Box=null;
-        OriginalQr=null;
-        ManualQuantity=null;
-        // PendingRequestId intentionally not reset here.
+        Box = null;
+        OriginalQr = null;
+        ManualQuantity = null;
     }
 }
