@@ -13,6 +13,13 @@ on:
       - 'scripts/publish-stockcount-release.ps1'
       - 'scripts/deploy-local.ps1'
       - 'scripts/package-source.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'StockCount.slnx'
+      - 'StockCount.Backend.slnx'
+      - 'src/StockCount.Server.Desktop/**'
+      - 'src/StockCount.Server.Hosting/**'
+      - 'src/StockCount.Pad/**'
+      - 'src/StockCount.Api/Properties/launchSettings.json'
       - 'scripts/package-windows-portable.ps1'
       - 'tests/LocalTooling.Smoke.ps1'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
@@ -28,6 +35,13 @@ on:
       - 'scripts/publish-stockcount-release.ps1'
       - 'scripts/deploy-local.ps1'
       - 'scripts/package-source.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'StockCount.slnx'
+      - 'StockCount.Backend.slnx'
+      - 'src/StockCount.Server.Desktop/**'
+      - 'src/StockCount.Server.Hosting/**'
+      - 'src/StockCount.Pad/**'
+      - 'src/StockCount.Api/Properties/launchSettings.json'
       - 'scripts/package-windows-portable.ps1'
       - 'tests/LocalTooling.Smoke.ps1'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
@@ -60,6 +74,7 @@ jobs:
             'scripts/publish-stockcount-release.ps1',
             'scripts/deploy-local.ps1',
             'scripts/package-source.ps1',
+            'scripts/build-avalonia-desktop.ps1',
             'scripts/build-tauri-sidecar.ps1',
             'scripts/package-windows-portable.ps1',
             'tests/LocalTooling.Smoke.ps1'
