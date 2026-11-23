@@ -36,6 +36,7 @@ fn sidecar_command(app: &AppHandle, settings: &Settings, admin: &str) -> Result<
     let sql_password = config::secret("sql-password")?.unwrap_or_default();
     let cert_password = config::secret("cert-password")?.unwrap_or_default();
     let device_key = config::device_key()?;
+    let log_path = config::log_db_path()?;
 
     let command = app.shell().sidecar("StockCount.Api")
         .map_err(|e| format!("找不到 .NET API Sidecar，先执行 publish/copy 脚本：{e}"))?;
@@ -53,12 +54,14 @@ fn sidecar_command(app: &AppHandle, settings: &Settings, admin: &str) -> Result<
         .env("STOCKCOUNT_CERT_PATH", &settings.cert_path)
         .env("STOCKCOUNT_CERT_PASSWORD", cert_password)
         .env("STOCKCOUNT_DEVICE_KEY", device_key)
-        .env("STOCKCOUNT_ADMIN_TOKEN", admin))
+        .env("STOCKCOUNT_ADMIN_TOKEN", admin)
+        .env("STOCKCOUNT_LOG_DB_PATH", log_path.to_string_lossy().as_ref()))
 }
 
 #[tauri::command]
 pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Result<(), String> {
     let settings = config::load_settings()?;
+    config::verify_log_directory_writable()?;
     if !(1024..=65534).contains(&settings.api_port) {
         return Err("无效监听端口，必须在 1024..65534。".into());
     }
