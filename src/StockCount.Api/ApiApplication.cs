@@ -87,6 +87,32 @@ public static class ApiApplication
         });
         
         
+        // Desktop-only graceful shutdown. Requires a per-process random secret
+        // AND an actual loopback peer; no public API route can trigger this.
+        app.MapPost("/internal/shutdown", (HttpContext context,
+            IHostApplicationLifetime lifetime) =>
+        {
+            var token = app.Configuration["StockCount:AdminToken"];
+            var supplied = context.Request.Headers["X-StockCount-Admin"].ToString();
+            var address = context.Connection.RemoteIpAddress;
+            var loopback = address is not null &&
+                (IPAddress.IsLoopback(address) ||
+                 (address.IsIPv4MappedToIPv6 && IPAddress.IsLoopback(address.MapToIPv4())));
+            if (!loopback || string.IsNullOrWhiteSpace(token) ||
+                supplied.Length > 256 ||
+                !CryptographicOperations.FixedTimeEquals(
+                    Encoding.UTF8.GetBytes(supplied),
+                    Encoding.UTF8.GetBytes(token)))
+                return Results.NotFound();
+
+            context.Response.OnCompleted(() =>
+            {
+                lifetime.StopApplication();
+                return Task.CompletedTask;
+            });
+            return Results.Accepted();
+        });
+
         // Liveness only: does not imply that SQL Server is reachable.
         app.MapGet("/health", () => Results.Ok(new
         {
