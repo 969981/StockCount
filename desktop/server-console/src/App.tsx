@@ -121,8 +121,17 @@ export default function App() {
   }, [view, search, refreshLogs]);
 
   const save = async (showToast = true) => {
-    const { sqlPasswordSaved: _sqlSaved, certPasswordSaved: _certSaved,
-      deviceKeyReady: _deviceReady, ...config } = settings;
+    const config: Settings = {
+      apiPort: settings.apiPort,
+      allowLan: settings.allowLan,
+      certPath: settings.certPath,
+      sqlServer: settings.sqlServer,
+      sqlDatabase: settings.sqlDatabase,
+      integratedSecurity: settings.integratedSecurity,
+      sqlUser: settings.sqlUser,
+      encryptSql: settings.encryptSql,
+      trustServerCertificate: settings.trustServerCertificate,
+    };
     // Credentials are sent to trusted native Rust IPC, never written into JSON.
     const saved = await invoke<SettingsView>("save_settings", {
       settings: config,
