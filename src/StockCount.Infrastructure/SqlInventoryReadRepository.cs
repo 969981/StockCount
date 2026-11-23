@@ -9,7 +9,9 @@ namespace StockCount.Infrastructure;
 /// Read-only Sage X3 queries. All SQL identifiers come from the two-value server whitelist.
 /// Absolutely no ERP INSERT/UPDATE/DELETE is implemented here.
 /// </summary>
-public sealed class SqlInventoryReadRepository(string connectionString) : IInventoryReadRepository
+public sealed class SqlInventoryReadRepository(string connectionString,
+    bool enableTestWrites = false, bool enableProductionWrites = false,
+    bool schemaReviewed = false) : IInventoryReadRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
@@ -56,7 +58,7 @@ public sealed class SqlInventoryReadRepository(string connectionString) : IInven
         await using var connection = await OpenAsync(cancellationToken);
         var records = await connection.QueryAsync<CountRow>(
             new CommandDefinition(sql, new { Skip=skip, Take=take, Search=search }, cancellationToken:cancellationToken));
-        return records.Select(ToDto).ToArray();
+        return records.Select(row => ToDto(row, environment)).ToArray();
     }
 
     public async Task<InventoryCountDto?> GetCountAsync(
@@ -75,7 +77,7 @@ public sealed class SqlInventoryReadRepository(string connectionString) : IInven
         await using var connection = await OpenAsync(cancellationToken);
         var record = await connection.QuerySingleOrDefaultAsync<CountRow>(
             new CommandDefinition(sql, new { CountNumber=countNumber }, cancellationToken:cancellationToken));
-        return record is null ? null : ToDto(record);
+        return record is null ? null : ToDto(record, environment);
     }
 
     public async Task<LocationRecord?> FindLocationAsync(
@@ -146,9 +148,18 @@ public sealed class SqlInventoryReadRepository(string connectionString) : IInven
             x.PackageUnit,x.QuantityPcu,x.QuantityStu,x.CreatedAt)).ToArray();
     }
 
-    private static InventoryCountDto ToDto(CountRow row) =>
-        new(row.CountNumber,row.Description,row.SiteCode,row.WarehouseCode,
-            row.CountDate,row.StatusCode,row.CountType,false,"ERP_WRITE_UNAVAILABLE");
+    private InventoryCountDto ToDto(CountRow row, SelectedEnvironment environment)
+    {
+        var enabled = schemaReviewed && row.StatusCode == 0 &&
+            (environment.Name == "Test" ? enableTestWrites :
+                environment.Name == "Production" && enableProductionWrites);
+        var reason = enabled ? null
+            : row.StatusCode != 0 ? "COUNT_NOT_WRITABLE"
+            : environment.Name == "Production" ? "PRODUCTION_WRITE_DISABLED"
+            : !schemaReviewed ? "SCHEMA_NOT_APPROVED" : "ERP_WRITE_UNAVAILABLE";
+        return new InventoryCountDto(row.CountNumber,row.Description,row.SiteCode,row.WarehouseCode,
+            row.CountDate,row.StatusCode,row.CountType,enabled,reason);
+    }
 
     private sealed class CountRow
     {
