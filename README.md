@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：V1 统一开发规范已建立；仓库已有部分 .NET 解决方案及后端代码骨架。Android APK、完整 API 联调及 ERP 生产写入均尚未确认验收。**
+**当前阶段：已提交 MAUI PDA 端、Tauri Windows 后端管理器、C# 只读与受控 XTEST XCOUTD 事务写入及幂等查询源码；尚未完成 Windows/Android 编译、真机和 SQL Server XTEST 集成验收，正式写入禁用。**
 
 ## 一期产品范围
 
@@ -75,6 +75,12 @@ docs/
 - [Windows 构建工作流](.github/workflows/tauri-server-console.yml) · [Sidecar 自包含打包脚本](scripts/build-tauri-sidecar.ps1)
 - 配置：`%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`（不含密码）；密码和设备 Key 由 Windows Credential Manager 保存。日志：**Tauri 程序 EXE 同目录**的 `server-logs.db`，SQLite WAL 辅助文件也在旁边。
 - API 正式/测试写入**仍然禁用**。界面/原生代码已提交，**本轮尚未确认 Windows 编译和安装包通过测试**。
+## 受控盘点写入与 PDA 客户端
+
+- [写入接口、DDL 幂等表和启用验收指南](docs/WRITE_FLOW_IMPLEMENTATION.md)；[只读 XTEST 写入前检](sql/read_only/verify_xcountd_write_prerequisites.sql)；[DBA 单次幂等迁移](sql/migrations/001_stockcount_submission.sql)。
+- [MAUI Android 扫码页面](src/StockCount.Pad/CountingPage.xaml)、[扫码状态机](src/StockCount.Core/CountScanWorkflow.cs)、[重复箱/数量/幂等测试](tests/StockCount.Core.Tests/CountScanWorkflowTests.cs)。
+- 正式环境写入仍禁用。测试环境必须经管理员审批结构、安装 SQL Server 幂等表并在 Tauri 设置中显式启用，绝不因代码提交而自动写入企业数据库。
+
 ## API 启动与开发现状
 
 - **源码**：[StockCount.Api](src/StockCount.Api/Program.cs)、[SQL 读取层](src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)、[共享 DTO](src/StockCount.Contracts/Dtos.cs)。
