@@ -1,4 +1,5 @@
 name: StockCount Release - APK, Setup, Portable
+# PR validation exercises both independent build jobs; publication remains gated.
 
 on:
   workflow_dispatch:
