@@ -25,7 +25,7 @@ tags: [StockCount, Android, Release, MAUI, Signing, GitHubActions]
 ```powershell
 # 选定仓库之外的安全目录，不要把 JKS 放进 Git 工作区
 New-Item -ItemType Directory D:\StockCountSecrets -Force
-keytool -genkeypair -v -keystore D:\StockCountSecrets\stockcount-release.jks -alias stockcount -keyalg RSA -keysize 3072 -validity 10000
+keytool -genkeypair -v -keystore D:\StockCountSecrets\stockcount-release.jks -alias stockcount -storetype JKS -keyalg RSA -keysize 3072 -validity 10000
 ```
 
 `keytool` 会交互询问 keystore 密码、证书信息和 Key 密码。自行设置强密码，**不要把密码写入文档、脚本、仓库、Issues 或终端聊天记录**。将 `.jks` 和密码保存在独立加密备份中，最好有第二份离线备份。不要每次重新生成 keystore，否则 APK 以后可能无法原地升级。
@@ -55,7 +55,7 @@ $file = 'D:\StockCountSecrets\stockcount-release.jks'
 - [PDA Android Build](../.github/workflows/pda-android-build.yml)：始终编译 Debug，并检查 Release 配置；只有四个 Secrets 均齐全时才额外生成 `StockCount-PDA-Android-Release-Signed-APK` 工件。
 - [StockCount GitHub Release](../.github/workflows/publish-stockcount.yml)：新版本 `v0.2.0-preview.3` 需要同时具有 **Debug APK + Release APK + Windows Setup.exe + Windows Portable.zip** 和 `SHA256SUMS.txt`，否则**不创建不完整版本**。
 - 由于未获得本仓库正式 keystore，也没有权限自行设置仓库 Secrets，**此轮仅完成代码与流程接入，不声称 GitHub Releases 已含可安装 Release APK**。配置 Secrets 后，可在 Actions 页面手动运行 `StockCount Release - Android Debug and Release APK, Setup, Portable`，并检查日志与 Release 资产。
-- GitHub Secrets 不会提供给来自 fork 的 Pull Request，外部 PR 只验证 Release 编译路径，不得要求读取正式私钥。
+- GitHub 工作流已进一步限制：**所有 Pull Request（含同仓库 PR）均不会执行读取 Release Secrets 的步骤**，只编译 Release 配置。签名步骤只允许在主分支构建中使用密钥；不要修改条件让 PR 接触正式私钥。
 
 ## 五、PowerShell 本地构建
 
