@@ -110,7 +110,60 @@ try {
         $invalidVersionRejected = $true
     }
     if (-not $invalidVersionRejected) { throw 'Publisher allowed unsafe release version.' }
-    Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity, JKS dry runs and safe GitHub release dispatch.' -ForegroundColor Green
+    # All app metadata must resolve to a single Tauri-defined version.
+    $actualVersion = & (Join-Path $repo 'scripts/get-app-version.ps1')
+    if ($actualVersion -notmatch '^\d+\.\d+\.\d+') { throw "Invalid project version $actualVersion" }
+
+    # Test the mutating synchronizer inside a private fixture, never in Git.
+    $fixture = Join-Path $temp 'version-project'
+    $filesToCopy = @(
+      'scripts/get-app-version.ps1',
+      'scripts/set-app-version.ps1',
+      'desktop/server-console/src-tauri/tauri.conf.json',
+      'desktop/server-console/src-tauri/Cargo.toml',
+      'desktop/server-console/package.json',
+      'src/StockCount.Pad/StockCount.Pad.csproj'
+    )
+    foreach ($relative in $filesToCopy) {
+      $target = Join-Path $fixture $relative
+      New-Item -ItemType Directory -Path (Split-Path $target -Parent) -Force | Out-Null
+      Copy-Item -LiteralPath (Join-Path $repo $relative) -Destination $target
+    }
+    $fixtureMaui = Get-Content (Join-Path $fixture 'src/StockCount.Pad/StockCount.Pad.csproj') -Raw
+    $currentCode = [int]([regex]::Match($fixtureMaui, '<ApplicationVersion>(\d+)</ApplicationVersion>').Groups[1].Value)
+    $fixtureSet = Join-Path $fixture 'scripts/set-app-version.ps1'
+    $fixtureGet = Join-Path $fixture 'scripts/get-app-version.ps1'
+    & $fixtureSet -Version '1.0.1' -AndroidVersionCode ($currentCode + 1) -WhatIf
+    if ((& $fixtureGet) -ne $actualVersion) { throw 'Version -WhatIf unexpectedly modified project files' }
+    & $fixtureSet -Version '1.0.1' -AndroidVersionCode ($currentCode + 1)
+    if ((& $fixtureGet) -ne '1.0.1') { throw 'Version synchronization failed in fixture' }
+    if ((Get-Content (Join-Path $fixture 'src/StockCount.Pad/StockCount.Pad.csproj') -Raw) -notmatch "<ApplicationVersion>$($currentCode + 1)</ApplicationVersion>") {
+      throw 'Android versionCode was not updated by version setter'
+    }
+    if ((& (Join-Path $repo 'scripts/get-app-version.ps1')) -ne $actualVersion) {
+      throw 'Version setter wrote outside its isolated fixture'
+    }
+
+    # Portable wrapper rejects an archive name from a DIFFERENT app version.
+    $mismatchRejected = $false
+    try {
+      & (Join-Path $repo 'scripts/package-windows-portable.ps1') -Version '9.9.9' -OutputDirectory $temp
+    } catch {
+      $mismatchRejected = $_.Exception.Message -match 'does not match software version'
+    }
+    if (-not $mismatchRejected) { throw 'Portable packager accepted a misleading version label' }
+
+    $desktopExe = Join-Path $repo 'desktop/server-console/src-tauri/target/release/stockcount-server-console.exe'
+    if (-not (Test-Path -LiteralPath $desktopExe)) {
+      $helpfulMissingExe = $false
+      try {
+        & (Join-Path $repo 'scripts/package-windows-portable.ps1') -OutputDirectory $temp
+      } catch {
+        $helpfulMissingExe = $_.Exception.Message -match 'build-local.ps1'
+      }
+      if (-not $helpfulMissingExe) { throw 'Missing-Tauri-exe error must show correct build command' }
+    }
+    Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity, JKS dry runs and safe GitHub release dispatch, and app-version synchronization.' -ForegroundColor Green
 }
 finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
