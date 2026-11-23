@@ -17,14 +17,14 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > **状态：只读 API、XCOUTD 受控事务写入与 SQL Server 持久幂等查询的源码均已提交，写入默认关闭；尚未执行 Windows 编译、XTEST 真库写入及并发回滚联调。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
 
-> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。只有服务端明确启用写入且目标单据状态为已批准的 0 时 `canSubmit=true`；XTEST 仍需经过库结构/单位适配验收，Production 默认 false。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
+> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。只有目标帐套单独启用写入、通过其 Schema 核验且目标单据状态为已批准的 0 时 `canSubmit=true`。XTEST 与 COB 使用相同的 API 与事务流程，但具有独立启用开关，二者默认均 false。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
 
 
 ## 1. 基本约定
 
 - API 根路径 `/api/v1`；JSON camelCase；UTF-8；时间使用 ISO 8601 并在服务端约定时区；数值以 JSON number 与后端 `decimal` 互通，禁止经过 JS double 做精确比较。
 - 环境固定为 `Production` 或 `Test`。请求头示例：`X-StockCount-Environment: Test`。后端将它映射到可信 `COB` 或 `XTEST`；拒绝其他取值（400）。
-- 每次响应应带 `environment`，保证客户端能核对环境；生产写入即使客户端切换成功也默认被服务端拒绝。
+- 每次响应应带 `environment`，保证客户端能核对环境；客户端切换到 Production 不会自行打开写入：服务端必须已独立授权 COB 写入并通过结构与权限核验；未启用时拒绝。
 - `X-Request-Id`（或 `Idempotency-Key`）为 POST 保存明细的 UUID，不同业务提交使用新 ID，同一提交重试复用同一 ID。
 - 列表使用 `pageSize` + `cursor`（或 `page`，实现时统一确定），展示全部数据可以连续翻页，不能隐式过滤状态。
 - 错误采用 `application/problem+json`（Problem Details），扩展 `code`、`traceId`、`environment`；禁止泄漏数据库错误/凭据。
@@ -39,7 +39,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | POST | `/api/v1/locations/resolve` | 解析/校验扫码库位 | P0 |
 | POST | `/api/v1/labels/resolve` | 解析完整箱标签 QR，查物料等 | P0 |
 | GET | `/api/v1/inventory-counts/{countNumber}/items` | 本单明细分页查询与重复提示 | P1 / 防重可内部实现 |
-| POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | 已有真实 SQL 事务代码，需 XTEST DBA 迁移、核验及管理员显式启用 |
+| POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | XTEST/COB 均已编码真实 SQL 事务，按帐套独立核验与显式启用 |
 | GET | `/api/v1/submissions/{requestId}?countNumber=...` | 查询数据库持久提交记录，避免超时双写 | 已编码，依赖 dbo.StockCountSubmission |
 
 **没有** Create / Delete / Close / AdjustStock 端点；未来若追加须单独需求版本。
@@ -172,7 +172,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | 409 | `COUNT_NOT_WRITABLE` | 单据可浏览但不允许该状态提交 |
 | 409 | `BOX_ALREADY_RECORDED` | 同单箱号重复，按批准规则 |
 | 409 | `IDEMPOTENCY_PAYLOAD_MISMATCH` | 同 RequestId 重试不同载荷 |
-| 403 | `PRODUCTION_WRITE_DISABLED` | 生产写入服务端开关未授权 |
+| 403 | `PRODUCTION_WRITE_DISABLED` | COB 写入尚未由管理员在本机启用 |
 | 503 | `ERP_WRITE_UNAVAILABLE` | 受控写入渠道不可用；不可假报成功 |
 
 **不要定义 `LABEL_STATUS_FORBIDDEN` 作为因 STA_0 拒绝的规则。**
@@ -181,7 +181,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 - 事务与幂等：[WRITE_FLOW_IMPLEMENTATION.md](WRITE_FLOW_IMPLEMENTATION.md)；需要 DBA 单次部署 `sql/migrations/001_stockcount_submission.sql`，而非写入 SQLite 日志。
 - POST 新提交成功 201，重复同 UUID/载荷为 200，`replayed=true`。GET 提交结果必须加 `?countNumber=...` 且携带同环境请求头。
-- 只有 XTEST 且 Tauri 管理器勾选“结构已核查/允许测试写入”、配置合规 X3 审计用户，才有条件进行真实 INSERT。生产侧桌面开关始终关闭。
+- Tauri 管理器现有 **XTEST** 和 **COB** 两组独立“结构已核查/允许写入”开关；两者需独立核验 ROWID、单位规则、审计字段和 SQL 权限。后端按请求头 Test/Production 路由；服务未授权则禁止该帐套写入。
 - 守住 `ROWID IDENTITY`、1:1 单位与合法单据状态等适配器先决条件，验证失败明确报错且不能假称提交成功。
 
 ## 7. 契约稳定性测试
