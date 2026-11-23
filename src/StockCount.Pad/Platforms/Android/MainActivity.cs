@@ -7,7 +7,7 @@ using StockCount.Pad.Services;
 namespace StockCount.Pad;
 
 [Activity(
-    Theme = "@android:style/Theme.Material.Light.NoActionBar",
+    Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
     ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
         ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize |
