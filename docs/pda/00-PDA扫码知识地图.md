@@ -26,6 +26,11 @@ aliases:
 - [[docs/SCANNER_INTEGRATION|StockCount 扫描业务总规范]] · [Markdown](../SCANNER_INTEGRATION.md)
 - [[docs/pda/海康PDA-调试排障与验收|ADB 调试 / 真机验收]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)
 
+## APK UI / 交互设计
+
+- [[docs/pda/PDA-UI-UX-设计规范与交互状态|PDA UI 视觉与扫码交互规范]] · [Markdown](PDA-UI-UX-设计规范与交互状态.md)
+- [[docs/pda/PDA-UI-开发任务与验收|MAUI UI 开发任务和 UX 验收]] · [Markdown](PDA-UI-开发任务与验收.md)
+
 ## 跨模块连接
 
 - [[requirements|盘点业务要求]] · [Markdown](../../requirements.md)
