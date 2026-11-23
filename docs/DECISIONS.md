@@ -33,6 +33,8 @@ up: "[[docs/development/00-研发规范地图]]"
 | D-010 | **`XCOUTH.CUNSTA_0=0` 允许提交** | 其他码值的写入准入需要进一步确认；列表展示不受影响 |
 | D-011 | **.NET 10/C# 的 MAUI Android + ASP.NET Core API** | 后端统一访问 ERP/SQL，PDA 不直接连数据库 |
 
+**D-012（2026-11-23）**：Windows 后端管理界面选用 **Tauri 2 + React/TypeScript + Rust + .NET 10 API Sidecar**，不使用 WPF。现场人员可从桌面 UI 读取/编辑 SQL Server 配置，DB/证书密码及设备密钥保存到 Windows Credential Manager；日志用 SQLite。PDA 自身可配置 API 地址/环境/设备密钥，但不可读取数据库账号/密码。此决策不代表 API 业务写入已经验收。
+
 ## 2. 工程已采用的安全决策（非自动通过的业务规则）
 
 | ID | 工程决策 | 原因 |
