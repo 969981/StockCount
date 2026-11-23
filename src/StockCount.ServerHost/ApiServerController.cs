@@ -36,6 +36,7 @@ public sealed class ApiServerController
             {
                 ["ConnectionStrings:SageX3"] = connectionString,
                 ["StockCount:DeviceKey"] = deviceKey,
+                ["AllowedHosts"] = settings.AllowLan ? "*" : "localhost;127.0.0.1",
                 ["StockCount:EnableProductionWrites"] = "false",
                 ["StockCount:EnableTestWrites"] = "false"
             });
