@@ -22,7 +22,8 @@ public sealed class LogReader(SettingsStore store)
         {
             DataSource = store.LogPath,
             Mode = SqliteOpenMode.ReadWrite,
-            Cache = SqliteCacheMode.Default
+            Cache = SqliteCacheMode.Default,
+            Pooling = false
         }.ConnectionString;
 
         using var connection = new SqliteConnection(connectionString);
@@ -51,7 +52,8 @@ public sealed class LogReader(SettingsStore store)
         var builder = new SqliteConnectionStringBuilder
         {
             DataSource = store.LogPath, Mode = SqliteOpenMode.ReadOnly,
-            Cache = SqliteCacheMode.Default
+            Cache = SqliteCacheMode.Default,
+            Pooling = false
         };
         using var connection = new SqliteConnection(builder.ConnectionString);
         connection.Open();
