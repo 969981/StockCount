@@ -1,4 +1,5 @@
 ---
+aliases: ["StockCount Android 签名", "APK Release"]
 title: StockCount · Android Debug / Release APK 与持久签名
 created: 2026-11-23
 status: code-complete-requires-signing-secrets
