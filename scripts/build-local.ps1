@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
   [ValidateSet('All','Windows','Android')][string]$Target = 'All',
-  [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version = '0.2.0-local',
+  [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version,
   [string]$OutputDirectory = 'dist\local',
   [switch]$SkipTests,
   [switch]$InstallAndroidWorkload,
@@ -34,6 +34,13 @@ if (-not $IsWindows -or $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
   throw 'This build script requires Windows x64.'
 }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$configuredVersion = & (Join-Path $PSScriptRoot 'get-app-version.ps1')
+if (-not $Version) { $Version = $configuredVersion }
+if ($Version -ne $configuredVersion -and
+    -not $Version.StartsWith("$configuredVersion-", [StringComparison]::Ordinal)) {
+  throw "Packaging version $Version does not match the application version $configuredVersion. Use scripts/set-app-version.ps1 first to change the actual software version."
+}
+Write-Host "StockCount application version: $configuredVersion. Build artifact version: $Version"
 $out = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
   [IO.Path]::GetFullPath($OutputDirectory)
 } else { [IO.Path]::GetFullPath((Join-Path $root $OutputDirectory)) }
