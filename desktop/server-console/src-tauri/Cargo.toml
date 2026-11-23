@@ -1,0 +1,23 @@
+[package]
+name = "stockcount-server-console"
+version = "0.1.0"
+description = "StockCount Windows backend service controller"
+authors = ["StockCount Contributors"]
+edition = "2021"
+
+[lib]
+name = "stockcount_server_console_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+keyring = { version = "3", features = ["windows-native"] }
+uuid = { version = "1", features = ["v4"] }
+rusqlite = { version = "0.36", features = ["bundled"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
