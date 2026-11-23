@@ -16,7 +16,7 @@ up: "[[docs/database/00-数据库知识地图]]"
 # Sage X3 / SQL Server 数据库字段映射规范
 
 - 版本：V1（2026-11-23）
-- **七表结构 / 中文标题 / 可执行只读 SQL**：参见 [数据库七表字段索引](database/SCHEMA_INDEX.md)（业务五表 + `ATABZON` / `ATEXTE`）。目前 XCOUTH16 / XCOUTD19 / XLABELDTL45 / STOLOC41 列实际物理证据齐全；ITMMASTER 已有197条中文**字典代码**，真实 SQL 物理全列尚待从数据库查询。
+- **七表结构 / 中文标题 / 可执行只读 SQL**：参见 [数据库七表字段索引](database/SCHEMA_INDEX.md)（业务五表 + `ATABZON` / `ATEXTE`）。目前 XCOUTH16 / XCOUTD19 / XLABELDTL45 / STOLOC41 列实际物理证据齐全；ITMMASTER 已有 197 条中文**字典代码**；另据 2026-06-30 历史 `COB.ITMMASTER` DDL 为 **258 个物理字段**，但今日现网结构仍待重新查询。
 - 本文来源：此前经只读 SQL 核实的 `sagex3.COB` 物理列/字典与 `XTEST` 的单据/明细统计；**不是 DDL**，不自动授权任何写库操作。
 - **重要**：生产 `sagex3.COB`、测试 `sagex3.XTEST` 均为 `sagex3` 数据库下的 Schema；`COBTEST2` 曾发现，但不纳入 V1 环境切换。对 XTEST 的具体字段类型需独立核实，不能照抄 COB。
 
@@ -146,7 +146,7 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 - **完整 41 列与 X3 中文标题**：[STOLOC 字段字典](database/schema/STOLOC.md)；库位主键/唯一性不能仅凭列名推断。
 - 2026-11-23 的 XTEST 主数据分析显示，`STOFCY_0 + WRH_0 + LOC_0` 组合不重复，但 `LOC_0` 单独跨仓库复用；因此新 PDA 后端校验须至少使用盘点单站点、仓库与扫码库位联合定位，不得只按 `LOC_0` 查询。
 - `STOLOC.LOKSTA_0`、`CUNLOKFLG_0` 等为原始代码，不能因中文标签直接将数值 1 当作“冻结/正在盘点”为真。
-- [ITMMASTER 197 条 X3 中文字典](database/schema/ITMMASTER.md) 不是物理表全字段；[查询两帐套真实物理列 SQL](../sql/read_only/inspect_five_tables.sql)。
+- [ITMMASTER 197 条 X3 中文字典](database/schema/ITMMASTER.md) 不是物理表全字段；历史 DDL 为 258 个物理字段（不等于现网）；[查询两帐套真实物理列 SQL](../sql/read_only/inspect_five_tables.sql)。
 
 ## 7. 从页面到实际表的端到端映射
 
