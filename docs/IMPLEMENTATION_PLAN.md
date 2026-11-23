@@ -91,7 +91,9 @@ up: "[[docs/development/00-研发规范地图]]"
 - 手工输入 decimal，保存中锁定表单；失败保留所有信息，成功清箱保留库位单号。
 - 不出现创建单、关闭单或账号登录入口。
 
-## 5. 阶段 3 — 后端写入（只在批准后进入）
+## 5. 阶段 3 — 后端写入（已提交代码，受控验收未完成）
+
+**2026-11-23 实现进度**：`SqlInventoryWriteRepository` 现已包含 XCOUTD 事务、同单箱码锁、防重、dbo SQL Server 幂等记录与状态查询；Tauri XTEST 写入开关和 MAUI 扫码状态机/页面已提交。**DBA 幂等迁移、ROWID/触发器/单位核验、CI 通过、XTEST 实际插入、端到端两设备测试仍未执行**；生产写入不应开启。实施指南：[WRITE_FLOW_IMPLEMENTATION.md](WRITE_FLOW_IMPLEMENTATION.md)。
 
 ### T3-01 研究并验证真实 X3 写入规则
 - 明确 `AddXCOUTD` 既有服务或批准的 ERP 通道，与裸 SQL 的差别。
