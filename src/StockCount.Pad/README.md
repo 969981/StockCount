@@ -1,3 +1,10 @@
+---
+title: "StockCount PDA · MAUI Android 开发"
+aliases: ["StockCount Pad", "StockCount MAUI Android"]
+tags: [StockCount, Android, PDA, MAUI, Build]
+status: active
+---
+
 # StockCount.Pad · Android (.NET MAUI 10)
 
 > 2026-11-23：根据已确认的 HTML 原型，已提交四页 MAUI XAML UI、真实 API 接入、受保护草稿恢复、扫码队列和 1 秒成功提示。**尚未取得真实 MAUI Android 构建成功、实机扫码或 ERP XTEST/COB 联调结果，不能宣称 APK 已成功发布。**
@@ -20,6 +27,8 @@
 - [工业 PDA UI 与扫码交互设计规范](../../docs/pda/PDA-UI-UX-设计规范与交互状态.md)：页面层级、竖屏线框、视觉 Token、Scan UI 状态、数量/提交反馈以及弱网恢复。
 - [可执行的 MAUI UI 改造任务与验收矩阵](../../docs/pda/PDA-UI-开发任务与验收.md)：P0/P1 开发拆分、API依赖、交互测试用例。
 - **本轮已按确认的 HTML 原型重构**：盘点单卡片、扫码状态、顶部环境标识、固定数量/提交、只读历史和设置；成功先提示1000ms后清箱；扫码中使用有界队列和忙碌反馈；原 UUID/草稿在 POST 前加密保存。源码已提交，效果仍需编译与真机视觉验收。
+
+Visual Studio 2026 请打开根目录 `StockCount.slnx`（不是后端专用的 `StockCount.Backend.slnx`），右键 `StockCount.Pad` 设置为启动项目并选择 Android 真机/模拟器。安装 MAUI Android workload 后才可编译；详见 [VS HTTP + 双 UI 调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。
 
 ## Windows 构建
 
