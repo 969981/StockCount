@@ -15,5 +15,24 @@
     <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <ProjectReference Include="../StockCount.Server.Hosting/StockCount.Server.Hosting.csproj" />
+    <!-- Build the API before the desktop app; do not import the API into UI code. -->
+    <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <!-- Visual Studio F5: place the framework-dependent API and its runtime assets beside
+       the Debug Avalonia EXE. Release/Portable uses build-avalonia-desktop.ps1 instead. -->
+  <Target Name="StageApiForVisualStudioDebug"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' and '$(DesignTimeBuild)' != 'true' and '$(OS)' == 'Windows_NT'">
+    <ItemGroup>
+      <_StockCountApiDebugRuntime Include="$(MSBuildThisFileDirectory)..\StockCount.Api\bin\Debug\net10.0\**\*.*"
+        Exclude="$(MSBuildThisFileDirectory)..\StockCount.Api\bin\Debug\net10.0\win-*\**\*.*" />
+    </ItemGroup>
+    <Error Condition="'@(_StockCountApiDebugRuntime)' == ''"
+           Text="ASP.NET Core API Debug 输出不存在。请先编译 StockCount.Api 项目。" />
+    <Copy SourceFiles="@(_StockCountApiDebugRuntime)"
+          DestinationFiles="@(_StockCountApiDebugRuntime->'$(TargetDir)%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Error Condition="!Exists('$(TargetDir)StockCount.Api.exe')"
+           Text="未找到复制后的 StockCount.Api.exe，无法从 Avalonia 管理器启动服务。" />
+  </Target>
 </Project>
