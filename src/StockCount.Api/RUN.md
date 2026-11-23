@@ -1,6 +1,6 @@
 # StockCount.Api — 启动、联调与部署（.NET 10）
 
-> 更新：2026-11-23。**已创建 .NET 10 只读 API + 受控 XTEST 事务写入与幂等查询源码。尚未在当前环境编译、运行或连接 SQL Server。** 这里的命令供 Windows 开发机验证；只有执行成功后才能说已经运行。正式数据库仍保持只读，Tauri Sidecar 管理端的正式 COB 写入默认关闭；测试 XTEST 写入需单独配置和审批。
+> 更新：2026-11-23。**已创建 .NET 10 只读 API + 受控 XTEST 事务写入与幂等查询源码。尚未在当前环境编译、运行或连接 SQL Server。** 这里的命令供 Windows 开发机验证；只有执行成功后才能说已经运行。正式 COB / 测试 XTEST 均可独立启用受控事务写入，两套帐套首次均默认关闭；需要单独配置、数据库核验与现场批准。
 
 ## 1. 已有代码与范围
 
@@ -79,7 +79,7 @@ dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Release -r win-x64 --
 
 运行前先由 DBA 执行只读前检 [verify_xcountd_write_prerequisites.sql](../../sql/read_only/verify_xcountd_write_prerequisites.sql)，并检查 XTEST.XCOUTD.ROWID 是 IDENTITY，旧 ERP 触发器/字段/审计语义兼容。然后在批准窗口执行 [001_stockcount_submission.sql](../../sql/migrations/001_stockcount_submission.sql) 一次性建立同事务幂等表。
 
-推荐由 Tauri 管理器填写审计用户编码并启用 XTEST 写入（不能从 PDA 开启）。独立 CLI 模式可使用以下配置选项，但只能在已验证的测试库使用：
+推荐由 Tauri 管理器填写审计用户编码，并根据现场批准分别启用 XTEST/COB 写入（不能从 PDA 开启）。独立 CLI 模式可使用以下配置选项，但只能在已验证的测试库使用：
 
 ```powershell
 $env:STOCKCOUNT_ENABLE_TEST_WRITES = "true"
@@ -89,13 +89,13 @@ $env:STOCKCOUNT_X3_AUDIT_USER = "PDA" # 仅示例：由现场 X3 负责人批准
 
 仅实际完成 SQL Server COMMIT 后返回 HTTP 201，复用同 UUID 且相同载荷返回200，未知结果必须以原 UUID 调用 GET /api/v1/submissions/{requestId}?countNumber=... 查询。完整文档见 [WRITE_FLOW_IMPLEMENTATION.md](../../docs/WRITE_FLOW_IMPLEMENTATION.md)。
 
-**正式环境绝不可直接使用测试帐套的启用流程。** 生产需要独立的变更审批/账户权限审计；Tauri 管理界面没有生产启用按钮。
+**正式环境可以单独启用写入，但不能继承测试帐套的结构核验结果。** DBA 必须运行 [COB 只读前检](../../sql/read_only/verify_cob_write_prerequisites.sql)，确认生产表结构、X3 事务行为及账号权限，然后在 Tauri 管理界面勾选 COB 独立核验/启用开关。
 
 ## 8. 下一阶段未完成
 
 - `StockCount.Pad` Android MAUI 页面/扫码广播源码已添加，尚需实际 Android SDK 编译与海康 PDA 真机联调。
 - `XTEST`/`COB` 的真实库结构核验、只读 SQL 联调与两环境差异测试。
-- 真实 XTEST 插入适配器已编码，**现场仍需确认** X3 原生服务与直接 INSERT 的适配差异、ROWID IDENTITY、审计字段/触发器和 SQL Server 事务；不符合条件必须拒绝。
+- 真实 XTEST / COB 插入适配器均已编码，**现场仍需分别确认** X3 原生服务与直接 INSERT 的适配差异、ROWID IDENTITY、审计字段/触发器和 SQL Server 事务；不符合条件必须拒绝。
 - 同单同箱锁与 SQL Server 同事务幂等表已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及单位 1:1 验证；STU/PCU 两列强制同值。
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
