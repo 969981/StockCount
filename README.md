@@ -81,12 +81,14 @@ docs/
 - [MAUI Android 扫码页面](src/StockCount.Pad/CountingPage.xaml)、[扫码状态机](src/StockCount.Core/CountScanWorkflow.cs)、[重复箱/数量/幂等测试](tests/StockCount.Core.Tests/CountScanWorkflowTests.cs)。
 - 测试 XTEST 与正式 COB 均已支持受控事务写入；Tauri 管理器具有各自的核验确认与写入开关。需要管理员独立核验对应 Schema、安装 SQL Server 幂等表、配置 SQL 权限后显式启用；代码提交不会自动修改企业数据。
 
+- [APK UI 与交互规范](docs/pda/PDA-UI-UX-设计规范与交互状态.md) · [MAUI UI 重构任务及验收](docs/pda/PDA-UI-开发任务与验收.md)：面向海康 PDA 的单手扫码、草稿防覆盖、1秒成功反馈和断网幂等恢复。文档已提交，界面改造仍待实施。
+
 ## API 启动与开发现状
 
 - **源码**：[StockCount.Api](src/StockCount.Api/Program.cs)、[SQL 读取层](src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)、[共享 DTO](src/StockCount.Contracts/Dtos.cs)。
 - **Windows 运行文档**：[src/StockCount.Api/RUN.md](src/StockCount.Api/RUN.md)：.NET 10 SDK、SQL Server 连接配置、启动、health/ready、示例接口与部署警告。
 - **API CI**：[.github/workflows/api-build.yml](.github/workflows/api-build.yml)：无任何数据库密钥的 restore/build；未取得 CI 完成结果前不能称构建成功。
-- 只读接口先实施，`POST .../items` 当前固定拒绝保存；**正式写入仍未获准**。
+- `POST .../items` 已有受控事务写入代码；XTEST/COB 均有独立开关，默认关闭，需现场验收后启用，当前尚未取得实际 ERP 写入成功的证据。
 
 ## 数据库七表文档和只读 SQL
 
