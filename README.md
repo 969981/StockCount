@@ -81,7 +81,9 @@ docs/
 - [MAUI Android 扫码页面](src/StockCount.Pad/CountingPage.xaml)、[扫码状态机](src/StockCount.Core/CountScanWorkflow.cs)、[重复箱/数量/幂等测试](tests/StockCount.Core.Tests/CountScanWorkflowTests.cs)。
 - 测试 XTEST 与正式 COB 均已支持受控事务写入；Tauri 管理器具有各自的核验确认与写入开关。需要管理员独立核验对应 Schema、安装 SQL Server 幂等表、配置 SQL 权限后显式启用；代码提交不会自动修改企业数据。
 
-- [APK UI 与交互规范](docs/pda/PDA-UI-UX-设计规范与交互状态.md) · [MAUI UI 重构任务及验收](docs/pda/PDA-UI-开发任务与验收.md)：面向海康 PDA 的单手扫码、草稿防覆盖、1秒成功反馈和断网幂等恢复。文档已提交，界面改造仍待实施。
+- [APK UI 与交互规范](docs/pda/PDA-UI-UX-设计规范与交互状态.md) · [MAUI UI 重构任务及验收](docs/pda/PDA-UI-开发任务与验收.md)：面向海康 PDA 的单手扫码、草稿防覆盖、1秒成功反馈和断网幂等恢复。文档和对应 MAUI XAML/扫码状态机重构已提交；真实编译与海康真机验收仍待完成。
+
+- [MAUI Android APK 工作流](.github/workflows/pda-android-build.yml)：尝试在 Windows runner 构建可安装调试 APK 并上传 `StockCount-PDA-Android-Debug-APK`。只有 GitHub Actions 显示成功且工件出现后才可认为已产出 APK。
 
 ## API 启动与开发现状
 
