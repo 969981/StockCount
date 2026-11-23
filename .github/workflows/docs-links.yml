@@ -1,0 +1,29 @@
+name: StockCount docs links (Obsidian + Markdown)
+
+on:
+  push:
+    paths:
+      - '**/*.md'
+      - 'scripts/check_obsidian_links.py'
+      - '.github/workflows/docs-links.yml'
+  pull_request:
+    paths:
+      - '**/*.md'
+      - 'scripts/check_obsidian_links.py'
+      - '.github/workflows/docs-links.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-links:
+    name: Validate Obsidian and GitHub links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate Markdown frontmatter and links
+        run: python scripts/check_obsidian_links.py

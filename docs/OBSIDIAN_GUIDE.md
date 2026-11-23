@@ -76,6 +76,16 @@ tags: [StockCount, development]
 - 不提交个人 `.obsidian/workspace*.json`、缓存、设备本地偏好；它们与项目内容无关。
 - 文档在 GitHub 与 Obsidian 均可浏览，实际“Backlinks”以 Obsidian 中计算的结果为准。
 
+## 6. 自动化链接质量检查
+
+仓库提供标准库 Python 脚本：`scripts/check_obsidian_links.py`，可在本地运行：
+
+```bash
+python scripts/check_obsidian_links.py
+```
+
+它检查 Vault 中 Markdown 文件的 YAML 属性、Obsidian `[[WikiLink]]` 是否有目标、GitHub Markdown 相对链接是否能解析。公开 GitHub Actions 工作流 `.github/workflows/docs-links.yml` 也会在文档变动的 push / PR 中执行此检查。**该脚本不连接 ERP、不读取生产数据库、不依赖 Obsidian 插件**。代码块内的演示链接不作为真实断链报告。
+
 ## 6. 官方帮助
 
 - [Obsidian Internal links](https://obsidian.md/help/links)
