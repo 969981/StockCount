@@ -69,12 +69,10 @@ if (hasHostPort && (port is < 1024 or >= 65535))
     throw new InvalidOperationException("API 端口必须在 1024..65534，额外占用本机端口+1 做服务管理。");
 
 var allowLan = Enabled("STOCKCOUNT_ALLOW_LAN");
-var certPath = Env("STOCKCOUNT_CERT_PATH");
-var certPassword = Environment.GetEnvironmentVariable("STOCKCOUNT_CERT_PASSWORD") ?? "";
-if (hasHostPort && allowLan &&
-    (string.IsNullOrWhiteSpace(certPath) || !File.Exists(certPath) ||
-     string.IsNullOrEmpty(Env("STOCKCOUNT_DEVICE_KEY"))))
-    throw new InvalidOperationException("局域网监听需要可信 PFX 证书和设备访问密钥。");
+// LAN HTTP is deliberate for trusted isolated PDA Wi-Fi. The device key is
+// still mandatory for LAN access; never expose this listener to the Internet.
+if (hasHostPort && allowLan && string.IsNullOrEmpty(Env("STOCKCOUNT_DEVICE_KEY")))
+    throw new InvalidOperationException("开启局域网 HTTP 之前必须配置设备访问密钥。");
 
 var app = ApiApplication.Build(args, builder =>
 {
@@ -98,10 +96,11 @@ var app = ApiApplication.Build(args, builder =>
         configuration["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1";
         builder.WebHost.ConfigureKestrel(options =>
         {
-            // Management listener is always loopback; PDA LAN requires TLS.
+            // The management port stays loopback only. LAN access is an explicit
+            // opt-in and listens over HTTP; restrict port access via LAN firewall.
             options.ListenLocalhost(port + 1);
             if (allowLan)
-                options.ListenAnyIP(port, endpoint => endpoint.UseHttps(certPath, certPassword));
+                options.ListenAnyIP(port);
             else
                 options.ListenLocalhost(port);
         });
