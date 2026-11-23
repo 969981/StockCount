@@ -68,16 +68,17 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
 
     let admin_token = uuid::Uuid::new_v4().to_string();
     let command = sidecar_command(&app, &settings, &admin_token)?;
-    let mut rx = {
+    let (mut rx, spawned_pid) = {
         let mut inner = state.inner.lock().map_err(|_| "管理器状态锁不可用")?;
         if inner.child.is_some() { return Err("服务已在运行。".into()); }
         let (rx, child) = command.spawn().map_err(|e| format!("无法启动 API 子进程：{e}"))?;
         inner.port = settings.api_port;
-        inner.pid = Some(child.pid());
+        let spawned_pid = child.pid();
+        inner.pid = Some(spawned_pid);
         inner.admin_token = admin_token;
         inner.last_error = None;
         inner.child = Some(child);
-        rx
+        (rx, spawned_pid)
     };
 
     // Drain stdout/stderr to avoid blocking the child; never stream raw output
@@ -89,14 +90,12 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
                 let state = app_for_task.state::<ServerState>();
                 if let Ok(mut inner) = state.inner.lock() {
                     // A stale event must never clear a newly started process.
-                    if let Some(pid) = inner.pid {
-                        // We only ever start one child; check its last known PID.
-                        if inner.child.as_ref().map(|child| child.pid()) == Some(pid) {
-                            inner.child = None;
-                            inner.pid = None;
-                            inner.admin_token.clear();
-                            inner.last_error = Some("API 子进程已经退出。请查看 SQLite 日志或检查端口及证书。".into());
-                        }
+                    if inner.pid == Some(spawned_pid) {
+                        // Old sidecar events must not clear a newly started process.
+                        inner.child = None;
+                        inner.pid = None;
+                        inner.admin_token.clear();
+                        inner.last_error = Some("API 子进程已退出。请查看 SQLite 日志或检查端口及证书。".into());
                     }
                 }
                 break;
