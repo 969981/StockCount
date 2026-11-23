@@ -4,6 +4,7 @@ using System.Net.Sockets;
 namespace StockCount.Core;
 
 /// <summary>
+/// QA: verify trusted LAN HTTP and reject public HTTP endpoints.
 /// Allows HTTPS endpoints and HTTP only for local development or private
 /// IPv4 LAN addresses. Cleartext device credentials are NEVER allowed to
 /// arbitrary public hosts by the PDA client. The server still needs a
