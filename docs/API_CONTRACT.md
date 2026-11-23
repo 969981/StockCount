@@ -15,7 +15,10 @@ up: "[[docs/development/00-研发规范地图]]"
 
 # StockCount V1 REST API 契约草案
 
-> **状态：待实现的契约，不是已经部署的接口。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
+> **状态：首批只读 API 源码已提交（尚未执行编译和真实 SQL 联调），保存/幂等查询仅为明确拒绝的占位端点，不是已部署或已完成的接口。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
+
+> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。当前所有 `canSubmit=false`，直到受控写入真正实现并验收。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
+
 
 ## 1. 基本约定
 
