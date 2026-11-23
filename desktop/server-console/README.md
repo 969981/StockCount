@@ -1,3 +1,10 @@
+---
+title: "StockCount Tauri 2 服务管理器"
+aliases: ["StockCount Tauri Console", "Tauri Server Console"]
+tags: [StockCount, Tauri, Windows, Server]
+status: existing-manager
+---
+
 # StockCount Server Console · Tauri 2 + C# Sidecar
 
 > 2026-11-23：现有 API 的 Windows 管理器改为 **Tauri 2 / React / TypeScript + Rust 受控命令**。WPF 草稿已撤出主分支。本仓库已经有桌面源码、C# SQLite 日志提供器、打包脚本和 CI，**但此轮未取得 Windows 构建及真实 SQL Server 联调的通过结果**。
@@ -21,7 +28,7 @@
 ```powershell
 git clone https://github.com/969981/StockCount.git
 cd StockCount
-dotnet build StockCount.slnx -c Release
+dotnet build StockCount.Backend.slnx -c Release
 ./scripts/build-tauri-sidecar.ps1
 cd desktop/server-console
 npm install
