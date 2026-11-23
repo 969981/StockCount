@@ -19,7 +19,9 @@ type Settings = {
   encryptSql: boolean;
   trustServerCertificate: boolean;
   enableTestWrites: boolean;
+  enableProductionWrites: boolean;
   schemaReviewed: boolean;
+  productionSchemaReviewed: boolean;
   x3AuditUser: string;
 };
 type SettingsView = Settings & {
@@ -56,7 +58,9 @@ const defaults: SettingsView = {
   encryptSql: true,
   trustServerCertificate: false,
   enableTestWrites: false,
+  enableProductionWrites: false,
   schemaReviewed: false,
+  productionSchemaReviewed: false,
   x3AuditUser: "",
   sqlPasswordSaved: false,
   certPasswordSaved: false,
@@ -138,7 +142,9 @@ export default function App() {
       encryptSql: settings.encryptSql,
       trustServerCertificate: settings.trustServerCertificate,
       enableTestWrites: settings.enableTestWrites,
+      enableProductionWrites: settings.enableProductionWrites,
       schemaReviewed: settings.schemaReviewed,
+      productionSchemaReviewed: settings.productionSchemaReviewed,
       x3AuditUser: settings.x3AuditUser,
     };
     // Credentials are sent to trusted native Rust IPC, never written into JSON.
@@ -263,7 +269,7 @@ export default function App() {
             </section>
             <section className="stat-card"><div className="stat-name"><HardDrive size={18} /> 数据源</div>
               <strong>{settings.sqlServer ? "已填写配置" : "待配置"}</strong>
-              <span>sagex3 · COB 正式 / XTEST 测试</span>
+              <span>sagex3 · COB / XTEST 可独立授权写入</span>
             </section>
           </div>
 
@@ -310,7 +316,7 @@ export default function App() {
                 <div><strong>验证只读 API</strong><small>先在 XTEST 查看盘点单、库位与箱码</small></div></div>
               <div className="checkline"><span className={settings.allowLan && settings.certPath ? "check yes" : "check"}>{settings.allowLan && settings.certPath ? <Check size={13}/> : "3"}</span>
                 <div><strong>PDA 内网接入</strong><small>配置可信 HTTPS 证书和设备密钥</small></div></div>
-              <div className="security-note"><ShieldCheck size={18}/><span>正式盘点明细写入仍然关闭，启动服务不会自动开启 ERP 写入。</span></div>
+              <div className="security-note"><ShieldCheck size={18}/><span>测试与正式帐套可分别授权写入。仅服务端开关、结构核验和数据库权限均满足时才允许实际提交。</span></div>
             </section>
           </div>
 
@@ -361,7 +367,7 @@ export default function App() {
                 <p style={{ marginBottom: 11, lineHeight: 1.6 }}>
                   启用前请由数据库管理员执行 sql/migrations/001_stockcount_submission.sql，
                   核对 XTEST 的 XCOUTD.ROWID 为 IDENTITY、全部非空字段、Sage X3 触发器及 1:1 单位规则。
-                  只允许 CUNSTA_0=0 的已存在盘点单写入。正式 COB 写入始终关闭。
+                  当前仅允许 CUNSTA_0=0 的已有盘点单提交。XTEST/COB 的启用开关彼此独立。
                 </p>
                 <label className="field" style={{ marginBottom: 13 }}>X3 审计用户编码（最大5字符）
                   <input disabled={status.running || busy} maxLength={5}
@@ -380,6 +386,29 @@ export default function App() {
                     checked={settings.enableTestWrites}
                     onChange={e=>set("enableTestWrites",e.target.checked)}/>
                   <span>允许向 XTEST.XCOUTD 写入真实测试盘点数据</span>
+                </label>
+              </div>
+            </div>
+            <div className="hint-block" style={{ marginTop: 17, background: "#FFF9ED", borderColor: "#F5DBAA", color: "#725329" }}>
+              <ShieldCheck size={18}/>
+              <div style={{ flex: 1 }}>
+                <strong style={{ display: "block", marginBottom: 8 }}>COB 正式帐套写入（独立授权）</strong>
+                <p style={{ marginBottom: 11, lineHeight: 1.6 }}>
+                  正式帐套同样可通过 POST 提交 XCOUTD 和 GET 查询原提交结果。
+                  启用前必须单独核验 COB.XCOUTD 的字段/ROWID/单位/触发器、执行获批准的 SQL Server 幂等表迁移，
+                  并确保连接账号对 COB 具备授权写入权限。勾选后仅在重启服务时生效，不改变 XTEST 开关。
+                </p>
+                <label className="toggle" style={{ marginBottom: 12 }}>
+                  <input type="checkbox" disabled={status.running || busy}
+                    checked={settings.productionSchemaReviewed}
+                    onChange={e=>set("productionSchemaReviewed",e.target.checked)}/>
+                  <span>COB 正式帐套的结构、事务与 ERP 写入规则已单独核查</span>
+                </label>
+                <label className="toggle">
+                  <input type="checkbox" disabled={status.running || busy || !settings.productionSchemaReviewed}
+                    checked={settings.enableProductionWrites}
+                    onChange={e=>set("enableProductionWrites",e.target.checked)}/>
+                  <span>允许向 COB.XCOUTD 提交正式盘点数据</span>
                 </label>
               </div>
             </div>
