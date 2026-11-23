@@ -84,6 +84,21 @@ public sealed class StockCountApiClient : ICountScanGateway
             (string.IsNullOrWhiteSpace(search) ? "" : "&search="+Uri.EscapeDataString(search.Trim())),
             null,ct);
 
+    /// <summary>Read a selected order directly; used to restore a crashed submission.</summary>
+    public Task<CountDetails> GetCountDetailsAsync(string countNumber,
+        CancellationToken ct=default) =>
+        ReadJsonAsync<CountDetails>(HttpMethod.Get,
+            "/api/v1/inventory-counts/"+Uri.EscapeDataString(countNumber),null,ct);
+
+    /// <summary>Read-only ERP count lines for the prototype's history screen.</summary>
+    public Task<CountItemPage> GetItemsAsync(string countNumber,string? cursor=null,
+        CancellationToken ct=default) =>
+        ReadJsonAsync<CountItemPage>(HttpMethod.Get,
+            "/api/v1/inventory-counts/"+Uri.EscapeDataString(countNumber)+
+            "/items?pageSize=50"+
+            (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)),
+            null,ct);
+
     public async Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
     {
         try
