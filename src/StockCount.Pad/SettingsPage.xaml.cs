@@ -1,3 +1,4 @@
+using StockCount.Core;
 using StockCount.Pad.Services;
 
 namespace StockCount.Pad;
@@ -5,34 +6,143 @@ namespace StockCount.Pad;
 public partial class SettingsPage : ContentPage
 {
     private readonly StockCountApiClient _api;
+    private readonly IPendingSubmissionStore _pendingStore;
+    private string _environment;
 
-    public SettingsPage(StockCountApiClient api)
+    public SettingsPage(StockCountApiClient api, IPendingSubmissionStore pendingStore)
     {
         InitializeComponent();
-        _api=api;
-        ApiAddress.Text=api.BaseUrl;
-        EnvironmentPicker.SelectedIndex=api.EnvironmentName=="Production" ? 1 : 0;
+        _api = api;
+        _pendingStore = pendingStore;
+        _environment = api.EnvironmentName;
+        ApiAddress.Text = api.BaseUrl;
+        UpdateEnvironmentButtons();
     }
 
-    private async void Save_Clicked(object sender,EventArgs e)
+    protected override async void OnAppearing()
     {
+        base.OnAppearing();
         try
         {
-            var mode=EnvironmentPicker.SelectedItem?.ToString()??"Test";
-            await _api.ConfigureAsync(ApiAddress.Text??"",mode,DeviceKey.Text??"");
-            DeviceKey.Text="";
-            await DisplayAlertAsync("设置已保存","连接信息已保存在 PDA 本地。","OK");
+            DeviceKeyStatus.Text = await _api.HasDeviceKeyAsync()
+                ? "设备密钥已安全保存 · 留空表示不修改"
+                : "尚未配置设备访问密钥";
         }
-        catch(Exception error) { await DisplayAlertAsync("设置失败",error.Message,"OK"); }
+        catch
+        {
+            DeviceKeyStatus.Text = "无法读取设备密钥状态，请检查 Android 安全存储";
+        }
     }
 
-    private async void Test_Clicked(object sender,EventArgs e)
+    private async void SelectProduction_Clicked(object sender, EventArgs e)
     {
+        if (_environment == "Production") return;
+        var confirmed = await DisplayAlertAsync(
+            "切换到正式帐套",
+            "正式 · COB 会读取正式盘点数据。后端启用写入后，提交操作将真实修改正式帐套。\n确定切换吗？",
+            "确定切换", "取消");
+        if (!confirmed) return;
+        _environment = "Production";
+        UpdateEnvironmentButtons();
+    }
+
+    private void SelectTest_Clicked(object sender, EventArgs e)
+    {
+        _environment = "Test";
+        UpdateEnvironmentButtons();
+    }
+
+    private void UpdateEnvironmentButtons()
+    {
+        var production = _environment == "Production";
+        TestEnvironmentButton.BackgroundColor =
+            Color.FromArgb(production ? "#FFFFFF" : "#EDF3FF");
+        TestEnvironmentButton.TextColor =
+            Color.FromArgb(production ? "#5A6F8A" : "#305CB6");
+        TestEnvironmentButton.BorderColor =
+            Color.FromArgb(production ? "#DCE5F0" : "#9EBFFF");
+
+        ProductionEnvironmentButton.BackgroundColor =
+            Color.FromArgb(production ? "#FFF5E6" : "#FFFFFF");
+        ProductionEnvironmentButton.TextColor =
+            Color.FromArgb(production ? "#9B5C11" : "#5A6F8A");
+        ProductionEnvironmentButton.BorderColor =
+            Color.FromArgb(production ? "#E5B86E" : "#DCE5F0");
+        ProductionWarning.IsVisible = production;
+    }
+
+    private async void Save_Clicked(object sender, EventArgs e)
+    {
+        SaveButton.IsEnabled = false;
         try
         {
-            await _api.PingDatabaseAsync();
-            await DisplayAlertAsync("测试连接","后端数据库连接成功。","OK");
+            var nextUrl = ApiAddress.Text?.Trim() ?? "";
+            var nextKey = DeviceKey.Text ?? "";
+            var pending = await _pendingStore.LoadAsync(CancellationToken.None);
+            if (pending is not null &&
+                (_environment != pending.Environment ||
+                 !string.Equals(nextUrl.TrimEnd('/'), _api.BaseUrl,
+                     StringComparison.OrdinalIgnoreCase) ||
+                 !string.IsNullOrWhiteSpace(nextKey)))
+            {
+                await DisplayAlertAsync("存在待确认提交",
+                    "先恢复原帐套并确认提交结果，才可以更换 API 地址、帐套或设备密钥。\n当前草稿已安全保留。",
+                    "OK");
+                return;
+            }
+
+            await _api.ConfigureAsync(nextUrl, _environment, nextKey);
+            DeviceKey.Text = "";
+            DeviceKeyStatus.Text = await _api.HasDeviceKeyAsync()
+                ? "设备密钥已安全保存 · 留空表示不修改"
+                : "尚未配置设备访问密钥";
+            await DisplayAlertAsync("设置已保存",
+                "连接信息已保存到 PDA。请返回盘点单列表重新加载当前帐套。", "OK");
         }
-        catch(Exception error) { await DisplayAlertAsync("连接失败",error.Message,"OK"); }
+        catch (Exception error)
+        {
+            await DisplayAlertAsync("保存失败", error.Message, "OK");
+        }
+        finally { SaveButton.IsEnabled = true; }
     }
+
+    private async void Test_Clicked(object sender, EventArgs e)
+    {
+        ConnectionResult.Text = "正在检查 API 进程和数据库…";
+        try
+        {
+            if (!string.Equals(_environment, _api.EnvironmentName, StringComparison.Ordinal) ||
+                !string.Equals(ApiAddress.Text?.TrimEnd('/'), _api.BaseUrl, StringComparison.OrdinalIgnoreCase) ||
+                !string.IsNullOrWhiteSpace(DeviceKey.Text))
+            {
+                ConnectionResult.Text = "请先保存设置，再测试当前连接。";
+                return;
+            }
+
+            var apiOk = await _api.PingServerAsync();
+            if (!apiOk)
+            {
+                ConnectionResult.Text = "API 不可达，请检查 HTTPS 地址和网络。";
+                return;
+            }
+            try
+            {
+                var databaseOk = await _api.PingDatabaseAsync();
+                ConnectionResult.Text = databaseOk
+                    ? "✓ API 可达 · SQL Server SELECT 1 已就绪（不等于具备 ERP 写入权限）"
+                    : "✓ API 可达 · 数据库未就绪";
+            }
+            catch (Exception error)
+            {
+                ConnectionResult.Text = "✓ API 可达 · /ready 未通过：" + error.Message;
+            }
+        }
+        catch (Exception error)
+        {
+            ConnectionResult.Text = "连接异常：" + error.Message;
+        }
+    }
+
+    private async void Back_Clicked(object sender, EventArgs e) =>
+        await Navigation.PopAsync();
 }
