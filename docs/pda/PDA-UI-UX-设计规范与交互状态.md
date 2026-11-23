@@ -3,7 +3,7 @@ title: "StockCount PDA APK · UI 与交互设计规范 V1"
 aliases: ["PDA UI UX", "StockCount PDA 交互规范"]
 created: 2026-11-23
 updated: 2026-11-23
-status: proposed
+status: implemented-needs-build-and-device-qa
 type: design-spec
 area: pda
 tags: [StockCount, PDA, MAUI, UX, scanning]
@@ -12,7 +12,7 @@ up: "[[docs/pda/00-PDA扫码知识地图]]"
 
 # StockCount · 工业 Android PDA UI 与交互规范
 
-> 本文是设计规划，不是已运行 APK 的界面截图。设计基于仓库现有 MAUI 页面、CountScanWorkflow 和 2026-11-23 已确认的业务要求。全部样例均为合成数据，公开仓库不使用真实企业单号、箱码和凭据。
+> 本文最初是设计规划；2026-11-23 已按用户确认的 HTML 原型提交 MAUI XAML 页面及状态机改造，但不是已运行 APK 的界面截图。设计基于仓库现有 MAUI 页面、CountScanWorkflow 和 2026-11-23 已确认的业务要求。全部样例均为合成数据，公开仓库不使用真实企业单号、箱码和凭据。
 
 ## 1. 产品目标和设计假设
 
@@ -83,9 +83,9 @@ StockCount（无需登录）
 - 产品名称/规格过长最多2行截断，可点开查看全文；扫描结果全部只读，无法手工伪造标签。
 - 数量是**唯一业务可编辑字段**，初始空白；数字键盘适配硬件键盘和 Android IME。当前后端允许0、不允许负数；PCS 是否强制整数需要现场确认。
 - 提交键高52–56dp，未扫库位、未扫箱、数量空、网络不可达、提交中、提交结果未知时禁用并显示原因。
-- 当前界面源码将所有控件放 ScrollView 且成功前已清空箱草稿；视觉/交互重构要修正为固定提交栏并严格完成成功反馈后才清数据。
+- 2026-11-23 已将 CountingPage 改为三段 Grid + 固定提交栏，且 API 确认后先显示1000ms成功蒙层再清箱；仍需 Android 真机验证软件键盘/insets。
 
-### 2.3 已盘记录（P1）
+### 2.3 已盘记录（已编码，待真机验收）
 
 由「扫码盘点」页面顶部更多菜单进入本单只读明细：箱码、库位、实盘数量、提交时间。支持筛选、分页、刷新；无编辑/删除按钮。API 的 GET submissions/{requestId} 只能确认一个已知 UUID，**不能当作已盘明细列表**；新增本单列表需要 GET inventory-counts/{countNumber}/items API。
 
@@ -141,7 +141,7 @@ StockCount（无需登录）
 - 提交前生成并稳定保存 Idempotency-Key(UUID)，连同原环境、单号、箱、库位、数量保留到恢复草稿中。
 - 如果 HTTP 断开、超时或服务器返回 UNKNOWN，不等于失败。保持所有输入，调用 GET /api/v1/submissions/{requestId}?countNumber=...。
 - 200确认写入则执行成功流程；404表示未查到已提交记录，可**以原 UUID**重试；503或无响应则继续保留草稿并重新查询。
-- 增加本地受保护持久化存储（P0）：应用被 Android 系统杀掉或断电后，重新启动可恢复未知提交 UUID。建议由 Android Keystore 保护本地草稿加密密钥，保存最小字段至应用沙盒加密数据库/文件；该功能**当前代码尚未实现**。
+- 增加本地受保护持久化存储（P0）：应用被 Android 系统杀掉或断电后，重新启动可恢复未知提交 UUID。建议由 Android Keystore 保护本地草稿加密密钥，保存最小字段至应用沙盒加密数据库/文件；该功能已采用 `SecurePendingSubmissionStore` 在 POST 前写入 Android SecureStorage；真机杀进程恢复测试仍未完成。
 - 不提供自动离线向 ERP 写入；不要记录完整企业扫码字符串到公开控制台日志。
 
 ## 4. 视觉 Token 与空间规范
