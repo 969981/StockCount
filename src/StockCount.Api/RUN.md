@@ -1,3 +1,10 @@
+---
+title: "StockCount API · 运行与联调"
+aliases: ["StockCount API RUN", "ASP.NET Core 盘点 API"]
+tags: [StockCount, ASPNETCore, SQLServer, HTTP]
+status: active
+---
+
 # StockCount.Api — 启动、联调与部署（.NET 10）
 
 > 更新：2026-11-23。**已创建 .NET 10 只读 API + 受控 XTEST 事务写入与幂等查询源码。尚未在当前环境编译、运行或连接 SQL Server。** 这里的命令供 Windows 开发机验证；只有执行成功后才能说已经运行。正式 COB / 测试 XTEST 均可独立启用受控事务写入，两套帐套首次均默认关闭；需要单独配置、数据库核验与现场批准。
@@ -17,11 +24,11 @@
 git clone https://github.com/969981/StockCount.git
 cd StockCount
 dotnet --info
-dotnet restore StockCount.slnx
-dotnet build StockCount.slnx -c Debug
+dotnet restore StockCount.Backend.slnx
+dotnet build StockCount.Backend.slnx -c Debug
 ```
 
-这个 `.slnx` 当前是非 Android 的后端和纯 C# 单测项目（MAUI Android 单独编译），单独构建不需要安装 MAUI Android workload。
+**注意**：根目录 `StockCount.slnx` 现在包含后端、Avalonia Windows 管理器和 MAUI Android PDA；完整生成需安装 MAUI Android workload。如只调试 API 且不安装 Android SDK，应使用 `dotnet build StockCount.Backend.slnx -c Debug`。Visual Studio API 调试请使用 `StockCount.Api (HTTP)`，`http://127.0.0.1:5080`，不要选 IIS Express/HTTPS；详情见 [Visual Studio HTTP 调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。
 
 ## 3. 本地配置 SQL Server（不要提交真值）
 

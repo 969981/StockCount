@@ -1,4 +1,5 @@
 ---
+aliases: ["StockCount 局域网 HTTP 调试", "LAN HTTP"]
 title: StockCount · PDA 局域网 HTTP 编译与联调
 created: 2026-11-23
 updated: 2026-11-23

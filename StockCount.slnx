@@ -1,7 +1,12 @@
 <Solution>
+  <!-- Visual Studio: startup project can be the Avalonia manager, the ASP.NET API, or the MAUI Android PDA. -->
   <Project Path="src/StockCount.Contracts/StockCount.Contracts.csproj" />
   <Project Path="src/StockCount.Core/StockCount.Core.csproj" />
   <Project Path="src/StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
   <Project Path="src/StockCount.Api/StockCount.Api.csproj" />
+  <Project Path="src/StockCount.Server.Hosting/StockCount.Server.Hosting.csproj" />
+  <Project Path="src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj" />
+  <Project Path="src/StockCount.Pad/StockCount.Pad.csproj" />
   <Project Path="tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj" />
+  <Project Path="tests/StockCount.Server.Hosting.Tests/StockCount.Server.Hosting.Tests.csproj" />
 </Solution>
