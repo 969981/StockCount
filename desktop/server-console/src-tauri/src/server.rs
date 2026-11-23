@@ -18,6 +18,10 @@ pub struct Inner {
     last_error: Option<String>,
 }
 
+impl Inner {
+    pub fn child_is_running(&self) -> bool { self.child.is_some() }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ServerStatus {
@@ -64,7 +68,7 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
 
     let admin_token = uuid::Uuid::new_v4().to_string();
     let command = sidecar_command(&app, &settings, &admin_token)?;
-    let (mut rx, child) = {
+    let mut rx = {
         let mut inner = state.inner.lock().map_err(|_| "管理器状态锁不可用")?;
         if inner.child.is_some() { return Err("服务已在运行。".into()); }
         let (rx, child) = command.spawn().map_err(|e| format!("无法启动 API 子进程：{e}"))?;
@@ -73,7 +77,7 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
         inner.admin_token = admin_token;
         inner.last_error = None;
         inner.child = Some(child);
-        (rx, ())
+        rx
     };
 
     // Drain stdout/stderr to avoid blocking the child; never stream raw output
@@ -99,7 +103,6 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
             }
         }
     });
-    let _ = child;
     Ok(())
 }
 
