@@ -1,0 +1,33 @@
+name: StockCount API Build
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/StockCount.Api/**'
+      - 'src/StockCount.Core/**'
+      - 'src/StockCount.Contracts/**'
+      - 'src/StockCount.Infrastructure/**'
+      - 'StockCount.slnx'
+      - '.github/workflows/api-build.yml'
+  pull_request:
+    paths:
+      - 'src/StockCount.Api/**'
+      - 'src/StockCount.Core/**'
+      - 'src/StockCount.Contracts/**'
+      - 'src/StockCount.Infrastructure/**'
+      - 'StockCount.slnx'
+      - '.github/workflows/api-build.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore StockCount.slnx
+      - name: Build
+        run: dotnet build StockCount.slnx --no-restore -c Release
