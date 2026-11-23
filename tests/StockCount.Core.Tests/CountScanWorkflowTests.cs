@@ -166,6 +166,25 @@ public sealed class CountScanWorkflowTests
         Assert.Null(workflow.PendingRequestId);
     }
 
+    [Fact]
+    public async Task PendingSubmissionCannotBeRestoredUnderAnotherEnvironment()
+    {
+        var store = new MemoryStore();
+        var fake = new FakeGateway { ThrowDuringSubmit = true };
+        var test = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试", "Test", store);
+        await test.HandleScanAsync("LOC-DEMO01");
+        await test.HandleScanAsync(Qr);
+        test.EnterManualQuantity(99m);
+        Assert.Equal("Unknown", (await test.SubmitAsync()).Kind);
+
+        var production = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试",
+            "Production", store);
+        Assert.False(await production.RestorePendingAsync());
+        Assert.Null(production.Box);
+        Assert.Equal("Test", store.Draft?.Environment); // Never clear someone else's draft.
+        Assert.NotNull(store.Draft?.RequestId);
+    }
+
     private sealed class MemoryStore : IPendingSubmissionStore
     {
         public PendingSubmissionDraft? Draft { get; private set; }
