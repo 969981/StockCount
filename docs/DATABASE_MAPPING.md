@@ -1,7 +1,7 @@
 # Sage X3 / SQL Server 数据库字段映射规范
 
 - 版本：V1（2026-11-23）
-- **五表完整结构 / 中文标题 / 可执行只读 SQL**：参见 [数据库五表字段索引](database/SCHEMA_INDEX.md)。目前 XCOUTH16 / XCOUTD19 / XLABELDTL45 / STOLOC41 列实际物理证据齐全；ITMMASTER 已有197条中文**字典代码**，真实 SQL 物理全列尚待从数据库查询。
+- **七表结构 / 中文标题 / 可执行只读 SQL**：参见 [数据库七表字段索引](database/SCHEMA_INDEX.md)（业务五表 + `ATABZON` / `ATEXTE`）。目前 XCOUTH16 / XCOUTD19 / XLABELDTL45 / STOLOC41 列实际物理证据齐全；ITMMASTER 已有197条中文**字典代码**，真实 SQL 物理全列尚待从数据库查询。
 - 本文来源：此前经只读 SQL 核实的 `sagex3.COB` 物理列/字典与 `XTEST` 的单据/明细统计；**不是 DDL**，不自动授权任何写库操作。
 - **重要**：生产 `sagex3.COB`、测试 `sagex3.XTEST` 均为 `sagex3` 数据库下的 Schema；`COBTEST2` 曾发现，但不纳入 V1 环境切换。对 XTEST 的具体字段类型需独立核实，不能照抄 COB。
 
@@ -177,4 +177,6 @@ SELECT N'Test', COUNT_BIG(*) FROM [sagex3].[XTEST].[XCOUTH];
 
 参见 [requirements.md](../requirements.md)、[architecture.md](../architecture.md)、[docs/DECISIONS.md](DECISIONS.md)。
 
-**实际可执行的五表 SQL**：[完整物理结构 + 中文普通/长标题（COB/XTEST）](../sql/read_only/inspect_five_tables.sql) · [五表真实全字段中文别名抽样](../sql/read_only/select_five_tables_chinese_aliases.sql) · [六组常用业务查询](../sql/read_only/business_queries.sql)。
+**实际可执行的五张业务表 SQL**：[完整物理结构 + 中文普通/长标题（COB/XTEST）](../sql/read_only/inspect_five_tables.sql) · [五表真实全字段中文别名抽样](../sql/read_only/select_five_tables_chinese_aliases.sql) · [六组常用业务查询](../sql/read_only/business_queries.sql)。
+
+**两张 X3 字典表**： [ATABZON 字段映射](database/schema/ATABZON.md) · [ATEXTE 多语言标题](database/schema/ATEXTE.md) · [真实物理结构/索引查询](../sql/read_only/inspect_dictionary_tables.sql) · [中英文标题关联查询](../sql/read_only/query_dictionary_tables.sql)。
