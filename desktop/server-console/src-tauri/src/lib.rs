@@ -32,8 +32,12 @@ fn save_settings(
 }
 
 #[tauri::command]
-fn reveal_device_key() -> Result<String, String> {
-    config::device_key()
+fn copy_device_key() -> Result<(), String> {
+    let key = config::device_key()?;
+    arboard::Clipboard::new()
+        .map_err(|e| format!("无法打开 Windows 剪贴板：{e}"))?
+        .set_text(key)
+        .map_err(|e| format!("复制设备密钥失败：{e}"))
 }
 
 pub fn run() {
@@ -43,7 +47,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_settings,
             save_settings,
-            reveal_device_key,
+            copy_device_key,
             server::start_server,
             server::stop_server,
             server::server_status,
