@@ -53,10 +53,14 @@ if (args.Contains("--test-db", StringComparer.Ordinal))
     }
 }
 
-var root = Path.Combine(
-    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-    "StockCount", "ServerHost");
-var logDb = Path.Combine(root, "logs", "server-logs.db");
+// In packaged Tauri mode, Rust supplies the actual GUI exe directory.
+// Standalone CLI mode defaults to the API exe directory.
+// No implicit fallback to AppData: the operator explicitly requested a colocated database.
+var logDb = Environment.GetEnvironmentVariable("STOCKCOUNT_LOG_DB_PATH");
+if (string.IsNullOrWhiteSpace(logDb))
+    logDb = Path.Combine(AppContext.BaseDirectory, "server-logs.db");
+if (!Path.IsPathFullyQualified(logDb))
+    throw new InvalidOperationException("SQLite 日志路径必须是绝对路径。");
 await using var sqlite = new SqliteLogStore(logDb);
 
 var portText = Env("STOCKCOUNT_API_PORT");
