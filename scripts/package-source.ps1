@@ -62,7 +62,7 @@ $mustHave = @('README.md','StockCount.slnx',
   'src/StockCount.Pad/StockCount.Pad.csproj',
   'src/StockCount.Api/StockCount.Api.csproj',
   'desktop/server-console/src-tauri/Cargo.toml',
-  'scripts/build-local.ps1','scripts/package-source.ps1')
+  'scripts/build-local.ps1','scripts/build-android-release.ps1','scripts/package-source.ps1')
 foreach ($file in $mustHave) {
   if ($tracked -notcontains $file) {
     throw "Missing essential source file in $Ref ($commit): $file"
