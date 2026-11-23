@@ -85,6 +85,9 @@ dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Release -r win-x64 --
 $env:STOCKCOUNT_ENABLE_TEST_WRITES = "true"
 $env:STOCKCOUNT_XTEST_SCHEMA_REVIEWED = "true"
 $env:STOCKCOUNT_X3_AUDIT_USER = "PDA" # 仅示例：由现场 X3 负责人批准
+# 经过 COB 独立核验和现场授权后，才能选择启用正式帐套写入：
+$env:STOCKCOUNT_COB_SCHEMA_REVIEWED = "true"
+$env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 ```
 
 仅实际完成 SQL Server COMMIT 后返回 HTTP 201，复用同 UUID 且相同载荷返回200，未知结果必须以原 UUID 调用 GET /api/v1/submissions/{requestId}?countNumber=... 查询。完整文档见 [WRITE_FLOW_IMPLEMENTATION.md](../../docs/WRITE_FLOW_IMPLEMENTATION.md)。
