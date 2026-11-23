@@ -41,6 +41,44 @@ pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
 
 上述发布命令**仅触发 CI**；必须确认构建和签名均成功、Releases 页面已有完整资产，才算发布成功。密钥保存于仓库之外，不能上传到公开 GitHub 代码或写入文档。只有第一次需要生成 JKS，后续发布必须沿用同一签名密钥。详细安全配置：[Android Release 签名指南](ANDROID_RELEASE_SIGNING.md) · [发布完整手册](RELEASE_PACKAGING.md)。
 
+## 解决 Tauri exe was not built 与软件版本管理
+
+直接运行 `package-windows-portable.ps1`（不带 `-Build`）只打包已经编译好的程序。如果 `desktop/server-console/src-tauri/target/release/stockcount-server-console.exe` 不存在，说明本机还没构建 Tauri Release EXE。GitHub Actions 成功并不会自动下载 EXE 到本机。
+
+**推荐一键编译 + 打包**（软件版本自动读取）：
+
+```powershell
+cd 'D:\WorkSpace\Work\Business\00_WorkLogs\StockCount'
+pwsh -NoProfile -File .\scripts\package-windows-portable.ps1 -Build
+# 或使用统一构建入口，输出默认位于 dist\local
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows
+```
+
+已经编译过、只想重新打包时，无需再输入 Version，运行：
+
+```powershell
+pwsh -NoProfile -File .\scripts\package-windows-portable.ps1
+```
+
+### 版本号应该在软件配置中，而不是打包时才手输
+
+版本权威来源是 `desktop/server-console/src-tauri/tauri.conf.json` 的 `version`；`get-app-version.ps1` 会检查 `Cargo.toml`、npm `package.json` 和 MAUI `ApplicationDisplayVersion` 与其一致。两个 Windows 编译/打包脚本都默认读取该版本。
+
+```powershell
+# 查看软件真实版本（当前仓库是 0.2.0）
+pwsh -NoProfile -File .\scripts\get-app-version.ps1
+
+# 如果实际要将软件升级到 1.0.1，先预演，再统一修改工程版本
+# Android versionCode 为独立的递增整数；当前仓库为 3，下一版可改 4
+pwsh -NoProfile -File .\scripts\set-app-version.ps1 -Version 1.0.1 -AndroidVersionCode 4 -WhatIf
+pwsh -NoProfile -File .\scripts\set-app-version.ps1 -Version 1.0.1 -AndroidVersionCode 4
+
+# 再编译，程序和 ZIP 将采用一致的 1.0.1 版本
+pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows
+```
+
+`-Version` 是可选的，主要用于附加同一基础版本的后缀。例如软件 `0.2.0` 允许打包成 `0.2.0-preview.3`；但程序 `0.2.0` 时传入 `1.0.1` 会被拒绝，避免出现安装包标为 `1.0.1` 而程序仍为 `0.2.0` 的情况。请先修改并提交真实版本配置，再生成新的发布文件。
+
 ## 二、本地环境准备（Windows 10/11 x64）
 
 建议使用 **PowerShell 7**（不是必须以管理员启动）。需安装以下工具：
