@@ -1,7 +1,7 @@
 ---
 title: StockCount · 统一 GitHub Releases 发布与免安装版
 date: 2026-11-23
-status: implemented-ci-validation-pending
+status: ci-validated-preview2-security-fix
 tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
 ---
 
@@ -9,11 +9,13 @@ tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
 
 > CI 配置已加入。是否存在真实 Release 以及文件可用性，以 [Releases](https://github.com/969981/StockCount/releases) 和实际 [Actions](https://github.com/969981/StockCount/actions/workflows/publish-stockcount.yml) 成功记录为准。**没有同时通过 Android + Windows 构建时绝不发布缺少文件的版本。**
 
+**版本说明**：首版 `v0.2.0-preview.1` 的三平台打包已通过，但 Windows NuGet 审计提示旧版原生 SQLite `2.1.11` 有高危公告。此后已将 `Microsoft.Data.Sqlite` 升至 `10.0.14`、`SQLitePCLRaw.bundle_e_sqlite3` 升至 `2.1.14`，并触发 `v0.2.0-preview.2` 的全套重编译发布。**优先使用 Preview 2（以其 Actions 成功和实际 GitHub Release 出现为准）。**
+
 ## 输出资产
 
 | 文件 | 平台 | 内容 |
 | --- | --- | --- |
-| `StockCount-PDA-v0.2.0-preview.1-Android-Debug-Signed.apk` | Android / 海康 PDA | .NET MAUI 10 可安装调试签名包，非企业正式签名 |
+| `StockCount-PDA-v0.2.0-preview.2-Android-Debug-Signed.apk` | Android / 海康 PDA | .NET MAUI 10 可安装调试签名包，非企业正式签名 |
 | `StockCount-Server-v0.2.0-preview.1-Windows-x64-Setup.exe` | Windows 10/11 x64 | Tauri 2 + React 管理器、ASP.NET Core 10 Sidecar，NSIS 当前用户安装 |
 | `StockCount-Server-v0.2.0-preview.1-Windows-x64-Portable.zip` | Windows 10/11 x64 | 主程序 `stockcount-server-console.exe`、自包含 `StockCount.Api.exe`、`Start-StockCount.cmd`、说明 |
 | `SHA256SUMS.txt` | 多平台 | 上述3个发布文件的 SHA256 |
