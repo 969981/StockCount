@@ -17,7 +17,11 @@ pub struct Settings {
     pub encrypt_sql: bool,
     pub trust_server_certificate: bool,
     pub enable_test_writes: bool,
+    /// Independent production opt-in. Default false for existing installations.
+    pub enable_production_writes: bool,
+    /// Historical field for XTEST review; retained for backwards compatibility.
     pub schema_reviewed: bool,
+    pub production_schema_reviewed: bool,
     pub x3_audit_user: String,
 }
 
@@ -34,7 +38,9 @@ impl Default for Settings {
             encrypt_sql: true,
             trust_server_certificate: false,
             enable_test_writes: false,
+            enable_production_writes: false,
             schema_reviewed: false,
+            production_schema_reviewed: false,
             x3_audit_user: String::new(),
         }
     }
@@ -97,13 +103,16 @@ pub fn save_settings(settings: &Settings) -> Result<(), String> {
     if settings.sql_database.trim().is_empty() {
         return Err("数据库名称不可为空。".into());
     }
-    if settings.enable_test_writes {
-        if !settings.schema_reviewed {
-            return Err("请先现场核对 XTEST 的 XCOUTD 字段与事务，并勾选结构已验收。".into());
-        }
+    if settings.enable_test_writes && !settings.schema_reviewed {
+        return Err("XTEST 写入需要先完成该帐套的 XCOUTD 结构和 ERP 事务核验。".into());
+    }
+    if settings.enable_production_writes && !settings.production_schema_reviewed {
+        return Err("COB 正式写入需要独立完成 COB 字段、触发器、事务和单位核验。".into());
+    }
+    if settings.enable_test_writes || settings.enable_production_writes {
         let code = settings.x3_audit_user.trim();
         if code.is_empty() || code.chars().count() > 5 {
-            return Err("启用测试写入前需提供1-5字符的 X3 审计用户代码。".into());
+            return Err("启用写入需要填写现场批准的 1–5 字符 X3 审计用户编码。".into());
         }
     }
     if settings.allow_lan && settings.cert_path.trim().is_empty() {
