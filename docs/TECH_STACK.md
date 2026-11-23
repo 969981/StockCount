@@ -62,7 +62,7 @@ StockCount.slnx
 
 统一采用 .NET 10 兼容的稳定 NuGet 包，锁定可复现版本（建议 `Directory.Packages.props`）；升级包需要先执行 build/test，并更新兼容性说明。未经验证不硬编码某个第三方包小版本到业务规范里。
 
-## 5. 开发/构建命令（在工程建立后）
+## 5. 开发/构建命令（API 工程已创建，MAUI 工程待建）
 
 ```bash
 dotnet --info
