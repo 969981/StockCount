@@ -209,7 +209,7 @@ jobs:
           - Android Release-Signed.apk: optimized Release build signed by the persistent StockCount release keystore supplied via GitHub Secrets.
           - Windows Setup.exe: NSIS current-user installer with Tauri 2 manager and self-contained .NET 10 Sidecar.
           - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
-          - SHA256SUMS.txt: independent checksums of all three release binaries.
+          - SHA256SUMS.txt: independent checksums of all four release binaries (two APK variants, Setup and Portable).
 
           Windows logs (server-logs.db and SQLite WAL companions) are beside the desktop EXE. The portable ZIP keeps application settings in LOCALAPPDATA and passwords in Windows Credential Manager, not within the ZIP. WebView2 runtime is required.
 
