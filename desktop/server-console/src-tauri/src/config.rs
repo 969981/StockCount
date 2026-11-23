@@ -115,9 +115,8 @@ pub fn save_settings(settings: &Settings) -> Result<(), String> {
             return Err("启用写入需要填写现场批准的 1–5 字符 X3 审计用户编码。".into());
         }
     }
-    if settings.allow_lan && settings.cert_path.trim().is_empty() {
-        return Err("允许 PDA 局域网接入前必须配置 HTTPS PFX 证书。".into());
-    }
+    // LAN HTTP is opt-in and does not need a PFX. Retain legacy cert_path in
+    // serialized Settings so existing user configuration remains compatible.
     let base = base_dir()?;
     fs::create_dir_all(&base).map_err(|e| e.to_string())?;
     let text = serde_json::to_string_pretty(settings).map_err(|e| e.to_string())?;
