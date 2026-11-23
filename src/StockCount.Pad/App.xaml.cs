@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 namespace StockCount.Pad;
 
 public partial class App : Application
