@@ -14,7 +14,16 @@ public sealed class CountWriteException(int statusCode, string code, string mess
 }
 
 public sealed record CountWriteOptions(bool EnableTestWrites, bool EnableProductionWrites,
-    string AuditUser, bool SchemaReviewed);
+    string AuditUser, bool TestSchemaReviewed, bool ProductionSchemaReviewed)
+{
+    public bool IsEnabled(SelectedEnvironment environment) =>
+        environment.Name == "Test" ? EnableTestWrites :
+        environment.Name == "Production" && EnableProductionWrites;
+
+    public bool IsReviewed(SelectedEnvironment environment) =>
+        environment.Name == "Test" ? TestSchemaReviewed :
+        environment.Name == "Production" && ProductionSchemaReviewed;
+}
 
 public interface IInventoryWriteRepository
 {
@@ -90,9 +99,9 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             throw new CountWriteException(403, "PRODUCTION_WRITE_DISABLED", "生产写入未获授权，服务端开关关闭。");
         if (environment.Name == "Test" && !options.EnableTestWrites)
             throw new CountWriteException(503, "ERP_WRITE_UNAVAILABLE", "测试环境写入尚未由管理员启用。");
-        if (!options.SchemaReviewed)
+        if (!options.IsReviewed(environment))
             throw new CountWriteException(503, "SCHEMA_NOT_APPROVED",
-                "必须先验证 X3 字段/单位/触发器，再由管理员明确启用结构确认开关。");
+                $"必须先独立验证 {environment.Name} 对应的 X3 字段/单位/触发器，再为该帐套确认结构审查。");
 
         if (string.IsNullOrWhiteSpace(options.AuditUser) || options.AuditUser.Length > 5 ||
             options.AuditUser.Any(char.IsControl))
