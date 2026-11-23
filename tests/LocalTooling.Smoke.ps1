@@ -1,5 +1,6 @@
 #requires -Version 7.0
 # Runs on windows-latest, no .NET or Android workload required.
+# CI QA validates new JKS generator, secrets uploader and version-dispatcher -WhatIf safety.
 [CmdletBinding()]
 param()
 Set-StrictMode -Version Latest
