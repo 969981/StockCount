@@ -10,6 +10,10 @@
 - SQLite：`StockCount.Api.Logging.SqliteLogStore` 把 `ILogger` 写入数据库；Rust `rusqlite` 从相同文件只读，React 展示查询结果。
 - 配置：本机非敏感参数保存在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，数据库/证书密码和设备密钥单独存于 Windows Credential Manager。
 
+## 本地一键打包和免安装部署
+
+- [本地构建与部署完整说明](../../docs/LOCAL_BUILD_DEPLOY.md)：`pwsh -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-local` 生成 Setup + Portable + SHA256；用 `deploy-local.ps1 -Target WindowsPortable` 安全解压升级，保留 EXE 同目录的 SQLite 日志。
+- 源码包可用 `package-source.ps1 -Ref HEAD -Version 0.2.0-local` 制作，仅归档 Git 已提交源码，不附带现场凭据和编译产物。
 ## 开发与编译
 
 在 Windows 11 / Windows Server GUI 上，安装 .NET 10 SDK、Node.js 22、Rust MSVC 工具链、C++ Build Tools 和 WebView2（若尚未安装）。运行：
