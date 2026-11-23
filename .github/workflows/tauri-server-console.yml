@@ -1,4 +1,5 @@
 name: StockCount Tauri Server Console (Windows)
+# User-authorized v0.1.0-preview.1 publish request: app-adjacent server-logs.db.
 on:
   push:
     branches: [main]
