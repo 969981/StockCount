@@ -27,6 +27,8 @@ up: "[[docs/development/00-研发规范地图]]"
 
 服务端必须按白名单映射 `Production → COB` / `Test → XTEST`；`environment` 只是选择器，客户端不得上传任意 SQL server/database/schema/连接字符串。
 
+**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；LAN 必须可信 HTTPS 证书、设备 Key 和网络 ACL。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于开放任何生产写入。
+
 ## 2. 无登录的可接受防护
 
 不使用用户密码/登录页，并不意味着 API 对公网匿名开放。建议：受控工厂内网或 VPN / 专用设备网络、服务器防火墙源地址限制、HTTPS、设备准入/反向代理层鉴别、与环境分离的最小数据库凭据、所有写操作结构化审计。具体访问控制可以由部署环境承担，**不能把硬编码在 APK 里的共享密钥误认为足够强的身份验证**。
