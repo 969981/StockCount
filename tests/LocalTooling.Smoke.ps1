@@ -1,5 +1,6 @@
 #requires -Version 7.0
 # Runs on windows-latest, no .NET or Android workload required.
+# QA for canonical app-version packaging and missing-Tauri-exe build guidance.
 [CmdletBinding()]
 param()
 Set-StrictMode -Version Latest
