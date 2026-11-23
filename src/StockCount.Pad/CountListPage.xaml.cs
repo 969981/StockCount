@@ -33,6 +33,12 @@ public partial class CountListPage : ContentPage
         if (environmentChanged || _counts.Count == 0)
             await LoadAsync(true);
 
+        try
+        {
+            PendingRecoveryButton.IsVisible =
+                await _pendingStore.LoadAsync(CancellationToken.None) is not null;
+        }
+        catch { PendingRecoveryButton.IsVisible = true; }
         await OfferPendingRecoveryAsync();
     }
 
@@ -122,6 +128,12 @@ public partial class CountListPage : ContentPage
             return;
         CountList.SelectedItem = null;
         await Navigation.PushAsync(new CountingPage(_api, selected, _pendingStore));
+    }
+
+    private async void RecoverPending_Clicked(object sender, EventArgs e)
+    {
+        _lastPromptedRequestId = null;
+        await OfferPendingRecoveryAsync();
     }
 
     private async Task OfferPendingRecoveryAsync()
