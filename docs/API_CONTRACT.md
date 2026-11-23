@@ -15,9 +15,9 @@ up: "[[docs/development/00-研发规范地图]]"
 
 # StockCount V1 REST API 契约草案
 
-> **状态：首批只读 API 源码已提交（尚未执行编译和真实 SQL 联调），保存/幂等查询仅为明确拒绝的占位端点，不是已部署或已完成的接口。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
+> **状态：只读 API、XCOUTD 受控事务写入与 SQL Server 持久幂等查询的源码均已提交，写入默认关闭；尚未执行 Windows 编译、XTEST 真库写入及并发回滚联调。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
 
-> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。当前所有 `canSubmit=false`，直到受控写入真正实现并验收。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
+> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。只有服务端明确启用写入且目标单据状态为已批准的 0 时 `canSubmit=true`；XTEST 仍需经过库结构/单位适配验收，Production 默认 false。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
 
 
 ## 1. 基本约定
@@ -39,8 +39,8 @@ up: "[[docs/development/00-研发规范地图]]"
 | POST | `/api/v1/locations/resolve` | 解析/校验扫码库位 | P0 |
 | POST | `/api/v1/labels/resolve` | 解析完整箱标签 QR，查物料等 | P0 |
 | GET | `/api/v1/inventory-counts/{countNumber}/items` | 本单明细分页查询与重复提示 | P1 / 防重可内部实现 |
-| POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | P0，在 XTEST 受控通过后启用 |
-| GET | `/api/v1/submissions/{requestId}` | 查询不确定保存结果，避免超时双写 | P0 |
+| POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | 已有真实 SQL 事务代码，需 XTEST DBA 迁移、核验及管理员显式启用 |
+| GET | `/api/v1/submissions/{requestId}?countNumber=...` | 查询数据库持久提交记录，避免超时双写 | 已编码，依赖 dbo.StockCountSubmission |
 
 **没有** Create / Delete / Close / AdjustStock 端点；未来若追加须单独需求版本。
 
@@ -163,6 +163,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | --- | --- | --- |
 | 400 | `ENVIRONMENT_INVALID` | 环境非固定枚举 |
 | 400 | `BARCODE_UNSUPPORTED` | 不认识/无法解析二维码类型 |
+| 400 | `COUNT_QUANTITY_REQUIRED` | 箱内数量缺失，不能以默认0代替 |
 | 400 | `COUNT_QUANTITY_INVALID` | 空值/精度/值域违反批准规则 |
 | 404 | `COUNT_NOT_FOUND` | 没有该盘点单 |
 | 404 | `LABEL_NOT_FOUND` | 未查询到标签 |
@@ -176,7 +177,14 @@ up: "[[docs/development/00-研发规范地图]]"
 
 **不要定义 `LABEL_STATUS_FORBIDDEN` 作为因 STA_0 拒绝的规则。**
 
-## 6. 契约稳定性测试
+## 6. 实现与现场启用补充
+
+- 事务与幂等：[WRITE_FLOW_IMPLEMENTATION.md](WRITE_FLOW_IMPLEMENTATION.md)；需要 DBA 单次部署 `sql/migrations/001_stockcount_submission.sql`，而非写入 SQLite 日志。
+- POST 新提交成功 201，重复同 UUID/载荷为 200，`replayed=true`。GET 提交结果必须加 `?countNumber=...` 且携带同环境请求头。
+- 只有 XTEST 且 Tauri 管理器勾选“结构已核查/允许测试写入”、配置合规 X3 审计用户，才有条件进行真实 INSERT。生产侧桌面开关始终关闭。
+- 守住 `ROWID IDENTITY`、1:1 单位与合法单据状态等适配器先决条件，验证失败明确报错且不能假称提交成功。
+
+## 7. 契约稳定性测试
 
 - 统一 DTO snapshot / OpenAPI/schema 测试，C# 序列化一致；
 - 客户端校验每次响应 `environment` 匹配当前设置；
