@@ -4,6 +4,12 @@
 
 **构建核实（2026-11-23）**：[GitHub Actions #46](https://github.com/969981/StockCount/actions/runs/45110321348) **成功**：MAUI Android Debug APK 编译和 APK 生成检查通过、29 项 Core 单测通过。发布到 GitHub Releases 的带版本名 APK 将由 [统一发布流水线](../../.github/workflows/publish-stockcount.yml) 负责，只上传 `*-Signed.apk`，不会发布未签名同名文件。海康真机/SQL Server 现场验收仍待完成。
 
+## Debug / Release 双版 APK
+
+- Debug：用于扫码联调的调试签名包。`Release`：使用单独的长期 keystore 正式签名，不预置调试手动输入框。
+- [Android Release 签名与构建指南](../../docs/ANDROID_RELEASE_SIGNING.md)。
+- Release 只有四个 Actions Secrets 配齐并经正式 JKS 签名后才有可安装工件；签名不一致不可直接从 Debug 升级，不能自动卸载并清空待确认草稿。
+
 ## 本地编译和海康 PDA ADB 安装
 
 - 使用 [本地 PowerShell 操作手册](../../docs/LOCAL_BUILD_DEPLOY.md) 与 `scripts/build-local.ps1 -Target Android` 编译带 Debug 签名的安装 APK。
