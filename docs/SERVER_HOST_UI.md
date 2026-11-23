@@ -1,4 +1,5 @@
 ---
+aliases: ["StockCount Tauri 后端 UI", "Server Host UI"]
 title: "StockCount 后端管理器（Tauri 2）"
 type: work-spec
 date: 2026-11-23
