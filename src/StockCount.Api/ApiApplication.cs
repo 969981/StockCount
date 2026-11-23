@@ -246,7 +246,7 @@ public static class ApiApplication
         // server-side environment + schema-approval flags AND DBA journal migration.
         app.MapPost("/api/v1/inventory-counts/{countNumber}/items",
             async (HttpContext context, string countNumber, SaveCountItemRequest request,
-                IInventoryWriteRepository repository, ILogger<ApiApplication> logger,
+                IInventoryWriteRepository repository, ILogger<SqlInventoryWriteRepository> logger,
                 CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
@@ -285,7 +285,7 @@ public static class ApiApplication
 
         app.MapGet("/api/v1/submissions/{requestId:guid}",
             async (HttpContext context, Guid requestId, string? countNumber,
-                IInventoryWriteRepository repository, ILogger<ApiApplication> logger,
+                IInventoryWriteRepository repository, ILogger<SqlInventoryWriteRepository> logger,
                 CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
