@@ -6,9 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <ApplicationManifest></ApplicationManifest>
     <AssemblyName>StockCount.Server.Desktop</AssemblyName>
+    <ApplicationIcon>Assets/server.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
   <ItemGroup>
+    <AvaloniaResource Include="Assets/server.ico" />
     <PackageReference Include="Avalonia" Version="12.1.6" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
@@ -18,6 +20,14 @@
     <!-- Build the API before the desktop app; do not import the API into UI code. -->
     <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <!-- The same SVG drives both the Tauri ICO and Avalonia EXE/taskbar icon.
+       Generate before MSBuild consumes ApplicationIcon / AvaloniaResource. -->
+  <Target Name="PrepareStockCountWindowIcon" BeforeTargets="PrepareForBuild"
+          Condition="'$(OS)' == 'Windows_NT' and '$(DesignTimeBuild)' != 'true'">
+    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildProjectDirectory)\\..\\..\\scripts\\prepare-windows-brand-icons.ps1&quot;" />
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\\Assets\\server.ico')"
+           Text="StockCount server.ico missing after icon generation." />
+  </Target>
   <!-- Visual Studio F5: place the framework-dependent API and its runtime assets beside
        the Debug Avalonia EXE. Release/Portable uses build-avalonia-desktop.ps1 instead. -->
   <Target Name="StageApiForVisualStudioDebug"
