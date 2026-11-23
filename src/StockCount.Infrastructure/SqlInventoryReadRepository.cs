@@ -1,6 +1,5 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
 using StockCount.Contracts;
 using StockCount.Core;
 
@@ -10,11 +9,10 @@ namespace StockCount.Infrastructure;
 /// Read-only Sage X3 queries. All SQL identifiers come from the two-value server whitelist.
 /// Absolutely no ERP INSERT/UPDATE/DELETE is implemented here.
 /// </summary>
-public sealed class SqlInventoryReadRepository(IConfiguration configuration) : IInventoryReadRepository
+public sealed class SqlInventoryReadRepository(string connectionString) : IInventoryReadRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
-        var connectionString = configuration.GetConnectionString("SageX3");
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new InvalidOperationException("ConnectionStrings:SageX3 is not configured.");
 
