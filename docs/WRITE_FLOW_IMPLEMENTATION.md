@@ -1,6 +1,6 @@
 # StockCount · XCOUTD 事务写入与提交结果查询
 
-> 2026-11-23：已提交真实 SQL Server INSERT/事务、幂等记录查询及 MAUI 扫码流程代码；**尚未在实际 XTEST 数据库中执行验证，也未取得编译通过结果**。Production 继续默认禁写。
+> 2026-11-23：已提交真实 SQL Server INSERT/事务、幂等记录查询及 MAUI 扫码流程代码；**尚未在实际 XTEST / COB 数据库中执行验证，也未取得编译通过结果**.XTEST 与 COB 都具备独立授权写入能力，默认均关闭。
 
 ## API 实现状态
 
@@ -37,13 +37,13 @@ POST /api/v1/inventory-counts/COUNT-DEMO-001/items
 
 GET /api/v1/submissions/{requestId}?countNumber=COUNT-DEMO-001 要携带同一环境/设备请求头：200 代表确认已保存，404 代表当前未查到已提交记录，503 代表结果无法确认。404 后重试也必须使用原 UUID；503 时绝不能据此推断保存失败。
 
-## 启用 XTEST 测试写入（默认关闭）
+## 启用 XTEST / COB 双帐套写入（各自默认关闭）
 
 1. DBA 在 XTEST 执行 [verify_xcountd_write_prerequisites.sql](../sql/read_only/verify_xcountd_write_prerequisites.sql) 只读检查，核对 19 列、ROWID IDENTITY、ERP 触发器、PCU/STU 和审计规则。
 2. 在授权维护窗口执行 SQL Server 幂等迁移 [001_stockcount_submission.sql](../sql/migrations/001_stockcount_submission.sql)，给 API 账号最小权限：XTEST 五表必要 SELECT + XTEST.XCOUTD INSERT + dbo.StockCountSubmission SELECT/INSERT；不要为测试账号赋 COB INSERT。
-3. Windows Tauri 后端管理器数据库设置页填写 X3 审计用户（1–5字符）、勾选“XTEST结构已确认”和“允许 XTEST 写入”，停止并重新启动 C# Sidecar。
-4. 前台 MAUI 可选择 Test 环境扫码、人工输入数量提交；正式 Production 始终禁写，桌面 UI 不暴露生产开关。
-5. 在 XTEST 对照检查 201/200/409/503、并发、失败回滚、STA 任意状态、同一请求 UUID 重放，业务方验收后再考虑独立的生产变更。
+3. Windows Tauri 后端管理器数据库设置页填写 X3 审计用户（1–5字符），独立勾选 XTEST 的结构已确认/允许写入。若要启用正式帐套，另外执行 [COB 只读前检](../sql/read_only/verify_cob_write_prerequisites.sql)、核验 COB 触发器/ROWID/单位/账号权限，并勾选 COB 结构已确认/允许写入。保存后停止并重新启动 C# Sidecar。
+4. 前台 MAUI 可选择 Test 或 Production，扫码与人工数量提交使用相同接口，服务端根据帐套独立开关决定是否写入 `XTEST.XCOUTD` 或 `COB.XCOUTD`。
+5. 先在 XTEST 验证 201/200/409/503、并发和失败回滚；在专门批准窗口再对 COB 使用受控单据做端到端验证。现场还需评估其他旧 ERP 写入渠道产生的并发冲突。
 
 ## 客户端流程
 
@@ -61,11 +61,11 @@ MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码�
 | 409 | IDEMPOTENCY_PAYLOAD_MISMATCH | 同 UUID 不同请求 |
 | 409 | COUNT_NOT_WRITABLE | 该状态不允许写入 |
 | 409 | UNIT_MAPPING_UNSUPPORTED | 单位系数不兼容 |
-| 403 | PRODUCTION_WRITE_DISABLED | 正式帐套写入关闭 |
+| 403 | PRODUCTION_WRITE_DISABLED | COB 端未开启独立写入开关 |
 | 503 | ERP_WRITE_UNAVAILABLE | 未启用 XTEST 写入 |
 | 503 | SCHEMA_NOT_APPROVED | 现场尚未核准字段/单位与写入逻辑 |
 | 503 | ERP_SCHEMA_UNSUPPORTED | X3 表结构不满足适配器条件 |
 | 503 | SUBMISSION_OUTCOME_UNKNOWN | 提交结果未知，保持草稿 |
 | 404 | SUBMISSION_NOT_FOUND | 无已提交记录，不能生成新 UUID 盲重试 |
 
-**验收状态**：代码已提交、静态对照完成；实际编译、真机运行、SQL Server XTEST 写入/回滚、多个 PDA 并发测试和正式业务验收均待执行。
+**验收状态**：XTEST / COB 双帐套写入代码已提交；实际编译、真机运行、两套 SQL Server 的写入/回滚、多个 PDA 并发测试和正式业务验收均待执行。
