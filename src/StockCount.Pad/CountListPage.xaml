@@ -124,12 +124,16 @@
     </Grid>
 
     <Grid Grid.Row="4" Padding="14,10,14,16"
-          ColumnDefinitions="*,Auto">
+          RowDefinitions="Auto,Auto" ColumnDefinitions="*,Auto" RowSpacing="6">
       <Label x:Name="StatusText" Text="点击一张单据进入盘点"
              TextColor="#8C9CB2" FontSize="11" VerticalOptions="Center"/>
       <Button x:Name="MoreButton" Grid.Column="1"
               Text="加载更多" Style="{StaticResource SecondaryAction}"
               IsVisible="False" Clicked="More_Clicked"/>
+      <Button x:Name="PendingRecoveryButton" Grid.Row="1" Grid.ColumnSpan="2"
+              Text="⚠ 恢复待确认提交" IsVisible="False"
+              Style="{StaticResource SecondaryAction}"
+              Clicked="RecoverPending_Clicked"/>
     </Grid>
   </Grid>
 </ContentPage>
