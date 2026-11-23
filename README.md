@@ -19,6 +19,22 @@ up: "[[docs/development/00-研发规范地图]]"
 
 **当前阶段：Android MAUI Debug APK 已在 GitHub Actions #46 编译成功，29 项 Core 测试通过；Tauri Windows Setup/Portable 正在 CI 验证。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
 
+## 一键生成 JKS 与发布 GitHub Release
+
+```powershell
+# 仅第一次创建长期密钥，并备份到安全位置
+pwsh -File .\scripts\new-android-release-jks.ps1 -OutputPath D:\StockCountSecrets\stockcount-release.jks
+
+# 将 JKS、alias 和两组密码交互配置为 GitHub Secrets
+pwsh -File .\scripts\configure-android-release-secrets.ps1 -KeyStore D:\StockCountSecrets\stockcount-release.jks
+
+# 发布前预演，再触发完整 CI（Debug APK + Release APK + Windows Setup/Portable）
+pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3 -WhatIf
+pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
+```
+
+[PowerShell 发布全流程](docs/RELEASE_PACKAGING.md) · [JKS/Secrets 安全指南](docs/ANDROID_RELEASE_SIGNING.md)。缺少正式签名凭据时不能发布 Release APK；触发工作流并不意味着文件已经发布。
+
 ## Android Debug / Release 双版本 APK
 
 - [Release 编译与签名专用指南](docs/ANDROID_RELEASE_SIGNING.md)：保留长期 Android JKS 签名密钥，通过 GitHub Actions Secrets 发布 Release APK。
