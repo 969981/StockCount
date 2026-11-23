@@ -8,6 +8,7 @@ public partial class App : Application
     public App(IServiceProvider services)
     {
         InitializeComponent();
+        UserAppTheme = AppTheme.Light;
         _services=services;
     }
 
