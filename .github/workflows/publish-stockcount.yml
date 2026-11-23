@@ -1,4 +1,5 @@
 name: StockCount Release - APK, Setup, Portable
+# Explicit user-approved publish invocation for v0.2.0-preview.1; all three assets required.
 
 on:
   workflow_dispatch:
