@@ -32,7 +32,14 @@ jobs:
         run: dotnet workload install maui-android
       - name: Restore Android project
         run: dotnet restore src/StockCount.Pad/StockCount.Pad.csproj
-      - name: Build unsigned Android test package
-        run: dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debug --no-restore
+      - name: Build stand-alone Android debug APK
+        run: dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debug --no-restore -p:AndroidPackageFormat=apk -p:EmbedAssembliesIntoApk=true
+      - name: Upload installable Android APK (debug signed for testing)
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockCount-PDA-Android-Debug-APK
+          path: src/StockCount.Pad/bin/Debug/net10.0-android/**/*.apk
+          if-no-files-found: error
+          retention-days: 14
       - name: Run pure scanning/unit tests
         run: dotnet test tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj -c Release
