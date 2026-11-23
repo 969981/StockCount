@@ -22,6 +22,9 @@ up: "[[docs/development/00-研发规范地图]]"
 | 部位 | 采用技术 | 说明 |
 | --- | --- | --- |
 | 客户端 | C#、.NET 10、.NET MAUI Android、XAML | 只支持 Android 的工业终端，不引入 WebView 主应用 |
+| Windows 后端服务管理器 | Tauri 2 / React / TypeScript / Rust | 仅供 Windows 服务器/管理电脑；Sidecar 托管独立 C# API，替代已撤销的 WPF 草稿 |
+| 服务日志 | Microsoft.Data.Sqlite + ILogger（C#）/ rusqlite（Rust 只读） | 本机 SQLite WAL；不保存业务盘点数据 |
+| 服务端配置 | 本地 JSON + Windows Credential Manager | DB/证书密码、设备密钥独立安全存储；PDA 不能获得数据库凭据 |
 | 视图状态 | MVVM + `CommunityToolkit.Mvvm` | ObservableProperty / RelayCommand |
 | 扫码 | Android BroadcastReceiver + `IScannerService` | 海康扫码协议需真机确认，Mock 配置用于开发 |
 | HTTP | `IHttpClientFactory`、`System.Text.Json` | API 版本化，CancellationToken 与错误码 |
