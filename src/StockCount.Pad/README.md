@@ -27,7 +27,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 - `CountingPage`：按 HTML 原型改成三段 Grid，底部固定数量与提交；扫码确认后展示只读箱信息；先显示1000ms成功蒙层后清箱，不清单号/名称/库位；支持草稿防覆盖、未确认结果查询/同UUID重试。
 - `HistoryPage`：通过 `GET /api/v1/inventory-counts/{countNumber}/items` 读取真实已盘记录、分页、只读，不使用演示假数据。
 - `SettingsPage`：原型式连接卡片与 Test/Production 切换；正式帐套首次切换确认；存在未确认提交时阻止变更环境/服务器/密钥，设备密钥保存在 SecureStorage。
-- `Platforms/Android/MainActivity.cs`：动态接收广播 `com.service.scanner.data`，从 `ScanCode` Extra 读取扫码文本，前台页面订阅事件；**这套广播参数来自此前的技术路线，尚需在实际海康 PDA 上验证**。
+- `Platforms/Android/MainActivity.cs`：前台动态注册扫描广播，默认 Action 为 `com.service.scanner.data`、Extra 为 `ScanCode`。**现在可在 APK「设置 → 硬件扫码诊断」修改这两个参数并立即生效**，无需重新编译；具体取值必须通过真实海康 PDA 的 SDK/设备广播测试核验。
 
 生产 Release 构建隐藏手工扫码调试输入，盘点库位只能由扫描服务事件写入。开发 Debug 模式允许使用模拟扫码框进行无设备联调。页面实际扫码状态由 Core 的 `CountScanWorkflow` 控制，纯 .NET 单测覆盖重复箱不填充、数量必填、状态未知保留 UUID、成功后清箱不清库位。
 
@@ -39,6 +39,20 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 - 请求头 `X-StockCount-Device-Key` 存储于 MAUI SecureStorage；切换测试/正式环境需重新选择盘点单。
 - 提交时 `Idempotency-Key` 采用一个草稿一个 UUID，网络失败原 UUID 保留；状态查询 `GET /api/v1/submissions/{UUID}?countNumber=...`。
 - 标签 `STA_0` 不过滤，完整二维码匹配 `XLABELDTL.QRCOD_0`；箱码由数据库返回 `XLABELDTL.PID_0`。
+
+## 海康 PDA 扫码现场诊断
+
+1. 打开 APK「连接与设备设置」→「硬件扫码诊断」，查看当前广播 Action/Extra；默认是 `com.service.scanner.data` / `ScanCode`。
+2. 使用 PDA 的物理扫码键对任意**测试条码**扫描；面板会显示是否收到事件、时间、格式类型和字符长度。**不会打印完整二维码**。
+3. 如果未收到，按海康设备扫描服务设置或原厂文档填写正确的广播 Action、条码字符串 Extra 名称；点击「应用扫码参数」，接收器自动重新注册，再扫描验证。
+4. 进入真实盘点界面，先扫测试库位、再扫箱码。后台 API 必须已连接、两套帐套写入开关须分别核验后开启。**扫描广播可被其他 Android 应用模拟，不能作为服务端授权的凭据**；服务端设备密钥、HTTPS 及业务 SQL 校验仍必需。
+5. 如果因设备扫码服务使用键盘模拟而不是广播回传，请在设备扫描服务中切换为广播输出；不能以 Debug 的手输模拟成功作为海康真机扫码验收。
+
+## APK 构建与工件
+
+- GitHub Actions [StockCount MAUI PDA Android Build](../../.github/workflows/pda-android-build.yml) 现支持手动 `Run workflow`；先运行 Core 单元测试，再构建 APK、验证实际 APK 文件/打印 SHA256，成功后上传 `StockCount-PDA-Android-Debug-APK` 工件（保留 14 天）。
+- 这只是 **Debug 签名的测试版安装包**，不代表 XTEST/COB 真库写入已验收。现场环境的 HTTPS 证书需要被 Android 信任；不要通过关闭证书校验来绕过。
+- 安装验证示例：`adb install -r <实际生成的apk路径>`，再用 `adb logcat` 排查崩溃和广播事件，但不要将真实二维码或企业密钥原文上传公开 Issues。
 
 ## 待验收和待增强
 
