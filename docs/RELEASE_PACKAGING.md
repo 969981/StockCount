@@ -1,0 +1,53 @@
+---
+title: StockCount · 统一 GitHub Releases 发布与免安装版
+date: 2026-11-23
+status: implemented-ci-validation-pending
+tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
+---
+
+# 统一发布：APK + Setup + Portable
+
+> CI 配置已加入。是否存在真实 Release 以及文件可用性，以 [Releases](https://github.com/969981/StockCount/releases) 和实际 [Actions](https://github.com/969981/StockCount/actions/workflows/publish-stockcount.yml) 成功记录为准。**没有同时通过 Android + Windows 构建时绝不发布缺少文件的版本。**
+
+## 输出资产
+
+| 文件 | 平台 | 内容 |
+| --- | --- | --- |
+| `StockCount-PDA-v0.2.0-preview.1-Android-Debug-Signed.apk` | Android / 海康 PDA | .NET MAUI 10 可安装调试签名包，非企业正式签名 |
+| `StockCount-Server-v0.2.0-preview.1-Windows-x64-Setup.exe` | Windows 10/11 x64 | Tauri 2 + React 管理器、ASP.NET Core 10 Sidecar，NSIS 当前用户安装 |
+| `StockCount-Server-v0.2.0-preview.1-Windows-x64-Portable.zip` | Windows 10/11 x64 | 主程序 `stockcount-server-console.exe`、自包含 `StockCount.Api.exe`、`Start-StockCount.cmd`、说明 |
+| `SHA256SUMS.txt` | 多平台 | 上述3个发布文件的 SHA256 |
+
+**预览版说明**：Android debug 签名会与企业以后采用的 Release 签名不同，未来更换签名可能需要先迁移设备应用数据再卸载调试版。Windows 尚无代码签名，可能出现系统 SmartScreen 警示；不得关闭安全机制或从非官方地址安装。
+
+## Portable 免安装版如何使用
+
+1. 下载 Portable.zip 并校验 SHA256，解压到当前用户可写目录，比如 `D:\Apps\StockCount-Server\`。
+2. 直接执行 `Start-StockCount.cmd` 或 `stockcount-server-console.exe`。与 Setup 使用相同的桌面UI和 C# API。
+3. 保持 `StockCount.Api.exe` 与 Tauri exe **处于同一目录**。这是运行时 Sidecar 依赖，不是可丢弃的临时安装程序。
+4. 本机日志文件为 `<exe目录>\server-logs.db`，可能生成 WAL/SHM 文件。不要放进受写保护的 `Program Files`，也不应直接从压缩包内部启动。
+5. **免安装仅指免 Setup，不代表彻底免依赖**：Windows WebView2 Runtime 必须存在。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
+6. 设置文件继续在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，密码/设备密钥在 **Windows Credential Manager**。因此免安装 ZIP **不是**可随 U 盘跨机器迁移全部密钥的绿色版。
+7. 关闭 Tauri 管理器会停止该用户会话的 API Sidecar。日志/密钥备份以及更新时需先停止服务。
+
+## Setup 安装版
+
+- 默认 NSIS `currentUser` 模式，减少管理员权限要求，选择当前用户可写的安装路径。
+- 与 Portable 版使用相同源代码、API、SQLite 日志规则、设置位置与 Windows Credential Manager。
+- 现场 API 需要 HTTPS PFX 才可对 PDA 开放局域网监听；不能通过关闭 TLS 验证替代可信证书。
+
+## 发布流水线和门禁
+
+工作流：[publish-stockcount.yml](../.github/workflows/publish-stockcount.yml)。
+
+1. Android Windows Runner：安装 MAUI Android workload，运行 Core 测试，生成 APK，**只选择 `*-Signed.apk`**，将原始未签名 APK 排除在发布资产之外。
+2. Windows x64 Runner：编译 ASP.NET Core、发布 self-contained Sidecar、构建 Tauri NSIS Setup，运行 [便携版打包脚本](../scripts/package-windows-portable.ps1)；验证主程序、Sidecar、启动脚本和压缩包内容。
+3. 两个 Job 都成功后，Linux Runner 校验三个完整资产、生成 SHA256SUMS，并将四个文件发布到**同一个** GitHub 预发布版本。
+4. PR 只构建、不发布；`workflow_dispatch` 显式发布，或在 main 的提交消息中包含 `[publish-stockcount]` 且修改触发路径。发布标签 `v0.2.0-preview.1` 存在时禁止静默覆盖。
+5. 后续正式版本需另行建立 Windows 签名证书管理和企业 Android Release keystore 注入，不能把 debug-signed 预览版当生产包。
+
+## 与 Sage X3 写入权限的关系
+
+XTEST 和 COB 都有独立写入能力，但**首次均不启用**。安装、更新或免安装启动不会自动打开写入开关；管理员须分别核验 `XCOUTD` 字段、单位换算、SQL Server 原子事务和幂等记录迁移。免安装包内绝不可预置现场 SQL Server 地址、账号、密码或设备密钥。
+
+关联：[[docs/WRITE_FLOW_IMPLEMENTATION|受控写入]] · [Markdown](WRITE_FLOW_IMPLEMENTATION.md)；[[docs/SCANNER_INTEGRATION|扫码联调]] · [Markdown](SCANNER_INTEGRATION.md)；[[docs/00-文档导航|文档导航]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)。
