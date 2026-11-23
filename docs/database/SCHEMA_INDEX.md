@@ -20,7 +20,7 @@
 
 | SQL 脚本 | 内容 | 范围 |
 | --- | --- | --- |
-| [inspect_five_tables.sql](../../sql/read_only/inspect_five_tables.sql) | 依据 `sys.columns` 实际列关联 `ATABZON + ATEXTE`，输出五表全部字段、类型、长度、精度、小数位、可空、中文普通/长标题、菜单与 `MS_Description` | **同时查询 COB 和 XTEST 元数据**；能补齐 ITMMASTER 实际物理列 |
+| [inspect_five_tables.sql](../../sql/read_only/inspect_five_tables.sql) | 依据 `sys.columns` 实际列关联 `ATABZON + ATEXTE`，输出五表全部字段、类型、长度、精度、小数位、可空、中文普通/长标题、菜单与 `MS_Description`，并检查**主键/唯一索引、默认值、外键、触发器、检查约束** | **同时查询 COB 和 XTEST 元数据**；能补齐 ITMMASTER 实际物理列 |
 | [select_five_tables_chinese_aliases.sql](../../sql/read_only/select_five_tables_chinese_aliases.sql) | 动态按 SQL 真实物理列生成 `[中文标题（字段名）]`，分别 `TOP 20` 查询五表，支持按单号、箱号/二维码、物料、站点、仓库、库位筛选 | **默认 XTEST**，可手工设为 COB |
 | [business_queries.sql](../../sql/read_only/business_queries.sql) | 盘点单列表、指定单据明细与数量、标签+物料、库位、物料资料、五表业务关联，共六组查询 | **默认 XTEST**，可手工设为 COB；各查询最多 TOP 30 |
   
