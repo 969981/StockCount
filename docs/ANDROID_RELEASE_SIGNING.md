@@ -23,12 +23,14 @@ tags: [StockCount, Android, Release, MAUI, Signing, GitHubActions]
 安装 JDK 和 Android SDK 后，打开 Windows PowerShell 7：
 
 ```powershell
-# 选定仓库之外的安全目录，不要把 JKS 放进 Git 工作区
-New-Item -ItemType Directory D:\StockCountSecrets -Force
-keytool -genkeypair -v -keystore D:\StockCountSecrets\stockcount-release.jks -alias stockcount -storetype JKS -keyalg RSA -keysize 3072 -validity 10000
+# 推荐：使用仓库提供的脚本，禁止覆盖已有密钥，也禁止在 Git 工作区内创建 JKS
+pwsh -NoProfile -File .\scripts\new-android-release-jks.ps1 -OutputPath D:\StockCountSecrets\stockcount-release.jks -WhatIf
+pwsh -NoProfile -File .\scripts\new-android-release-jks.ps1 -OutputPath D:\StockCountSecrets\stockcount-release.jks -Alias stockcount
+
+# 底层原理：脚本调用 JDK keytool -genkeypair -storetype JKS -keyalg RSA -keysize 3072
 ```
 
-`keytool` 会交互询问 keystore 密码、证书信息和 Key 密码。自行设置强密码，**不要把密码写入文档、脚本、仓库、Issues 或终端聊天记录**。将 `.jks` 和密码保存在独立加密备份中，最好有第二份离线备份。不要每次重新生成 keystore，否则 APK 以后可能无法原地升级。
+[JKS 生成脚本](../scripts/new-android-release-jks.ps1) 会调用 `keytool`，交互询问 keystore 密码、证书信息和 Key 密码。自行设置强密码，**不要把密码写入文档、脚本、仓库、Issues 或终端聊天记录**。将 `.jks` 和密码保存在独立加密备份中，最好有第二份离线备份。不要每次重新生成 keystore，否则 APK 以后可能无法原地升级。
 
 ## 三、在 GitHub 配置四个 Actions Secrets
 
@@ -44,11 +46,14 @@ keytool -genkeypair -v -keystore D:\StockCountSecrets\stockcount-release.jks -al
 可以在本地读取 JKS 字节、转换为 Base64 后直接写入 GitHub Secret（需要安装并登录 GitHub CLI `gh`）：
 
 ```powershell
-$file = 'D:\StockCountSecrets\stockcount-release.jks'
-[Convert]::ToBase64String([IO.File]::ReadAllBytes($file)) | gh secret set STOCKCOUNT_ANDROID_KEYSTORE_BASE64 -R 969981/StockCount
+# 所有密码通过隐藏的交互式输入读取，不写入 PowerShell 命令历史
+pwsh -NoProfile -File .\scripts\configure-android-release-secrets.ps1 -KeyStore D:\StockCountSecrets\stockcount-release.jks -KeyAlias stockcount
+
+# GitHub 只允许查看 Secret 名称，不能读回明文
+gh secret list -R 969981/StockCount
 ```
 
-其它三个值推荐直接在 GitHub 设置网页里录入，避免密码出现在 shell 历史中。**请不要公开 Base64 内容**，Base64 不是加密方式，它依旧是完整的私钥文件。脚本只在 GitHub Runner 的临时目录中恢复 keystore，作业结束删除文件；签名口令经 MSBuild 的 `env:` 变量引用，不以明文 `-p` 参数写入命令行。
+[配置 Secrets 脚本](../scripts/configure-android-release-secrets.ps1) 会通过 GitHub CLI 的标准输入设置四个 Secrets，密码通过 `Read-Host -AsSecureString` 交互输入；已有同名 Secrets 时拒绝覆盖，确认仍使用同一原始 JKS 时才允许显式 `-Force`。**请不要公开 Base64 内容**，Base64 不是加密方式，它依旧是完整的私钥文件。脚本只在 GitHub Runner 的临时目录中恢复 keystore，作业结束删除文件；签名口令经 MSBuild 的 `env:` 变量引用，不以明文 `-p` 参数写入命令行。
 
 ## 四、Actions 自动双版编译与 Releases
 
@@ -56,6 +61,24 @@ $file = 'D:\StockCountSecrets\stockcount-release.jks'
 - [StockCount GitHub Release](../.github/workflows/publish-stockcount.yml)：新版本 `v0.2.0-preview.3` 需要同时具有 **Debug APK + Release APK + Windows Setup.exe + Windows Portable.zip** 和 `SHA256SUMS.txt`，否则**不创建不完整版本**。
 - 由于未获得本仓库正式 keystore，也没有权限自行设置仓库 Secrets，**此轮仅完成代码与流程接入，不声称 GitHub Releases 已含可安装 Release APK**。配置 Secrets 后，可在 Actions 页面手动运行 `StockCount Release - Android Debug and Release APK, Setup, Portable`，并检查日志与 Release 资产。
 - GitHub 工作流已进一步限制：**所有 Pull Request（含同仓库 PR）均不会执行读取 Release Secrets 的步骤**，只编译 Release 配置。签名步骤只允许在主分支构建中使用密钥；不要修改条件让 PR 接触正式私钥。
+
+### 通过 PowerShell 指定版本发布完整 GitHub Release
+
+GitHub Actions 的 `workflow_dispatch` 接受 `version` 参数。建议使用 [发布脚本](../scripts/publish-stockcount-release.ps1) 代替手工修改 YAML。**这一步只是触发 CI，只有 Android Debug/Release、Windows Setup/Portable 全部成功，Releases 才会出现新版本。**
+
+```powershell
+# 预演，不会提交到 GitHub
+pwsh -NoProfile -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3 -WhatIf
+
+# 真正触发 main 分支的统一构建与 GitHub Release
+pwsh -NoProfile -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
+
+# 后续检查工作流和 Release 是否真正生成
+gh run list -R 969981/StockCount --workflow publish-stockcount.yml --limit 5
+gh release view v0.2.0-preview.3 -R 969981/StockCount
+```
+
+生成下一版本前，必须检查安卓 `ApplicationVersion`（versionCode）是否递增、Windows 产品版本与 Release 名称是否一致；`-Version` 只设置产物文件名和 Git 标签，不会自动更新项目程序集版本。完整发布手册：[[docs/RELEASE_PACKAGING|StockCount 统一 Releases]] · [Markdown](RELEASE_PACKAGING.md)。
 
 ## 五、PowerShell 本地构建
 
