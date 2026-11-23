@@ -69,7 +69,7 @@ const defaults: SettingsView = {
 const navItems = [
   { id: "overview" as const, label: "服务总览", caption: "运行状态与快捷操作", icon: LayoutDashboard },
   { id: "database" as const, label: "数据库连接", caption: "SQL Server 配置", icon: Database },
-  { id: "access" as const, label: "API 与设备", caption: "HTTPS 和 PDA 接入", icon: Globe2 },
+  { id: "access" as const, label: "API 与设备", caption: "内网 HTTP 和 PDA 接入", icon: Globe2 },
   { id: "logs" as const, label: "SQLite 日志", caption: "运行事件与诊断", icon: FileClock },
 ];
 
@@ -82,7 +82,6 @@ export default function App() {
   const [view, setView] = useState<View>("overview");
   const [settings, setSettings] = useState<SettingsView>(defaults);
   const [sqlPassword, setSqlPassword] = useState("");
-  const [certPassword, setCertPassword] = useState("");
   const [status, setStatus] = useState<ServerStatus>({
     running: false, healthy: false, apiPort: 5080, allowLan: false, lastError: null
   });
@@ -151,11 +150,10 @@ export default function App() {
     const saved = await invoke<SettingsView>("save_settings", {
       settings: config,
       sqlPassword: sqlPassword || null,
-      certPassword: certPassword || null
+      certPassword: null
     });
     setSettings(saved);
     setSqlPassword("");
-    setCertPassword("");
     if (showToast) toast("success", "配置已保存到本机；密码保存在 Windows 凭据管理器。");
   };
 
@@ -194,15 +192,15 @@ export default function App() {
   const pageTitle = navItems.find(n => n.id === view)?.label ?? "服务管理";
   const active = status.running && status.healthy;
   const baseAddress = settings.allowLan
-    ? "https://<现场服务器域名>:" + settings.apiPort
+    ? "http://<Windows局域网IP>:" + settings.apiPort
     : "http://127.0.0.1:" + settings.apiPort;
   const alerts = useMemo(() => {
     const items: string[] = [];
     if (!settings.sqlServer.trim()) items.push("SQL Server 尚未配置");
-    if (settings.allowLan && !settings.certPath.trim()) items.push("HTTPS 证书尚未配置");
+    if (settings.allowLan) items.push("局域网 HTTP 为明文传输，请限制到可信 PDA 网段并禁止公网端口映射。");
     if (status.lastError) items.push(status.lastError);
     return items;
-  }, [settings.sqlServer, settings.allowLan, settings.certPath, status.lastError]);
+  }, [settings.sqlServer, settings.allowLan, status.lastError]);
 
   return (
     <div className="app">
@@ -265,7 +263,7 @@ export default function App() {
               <span>{active ? "健康接口已响应" : status.running ? "等待健康检查 / 查看日志" : "点击启动服务运行 API"}</span>
             </section>
             <section className="stat-card"><div className="stat-name"><Globe2 size={18} /> 监听端口</div>
-              <strong className="mono">{settings.apiPort}</strong><span>{settings.allowLan ? "HTTPS · 局域网" : "HTTP · 仅本机"}</span>
+              <strong className="mono">{settings.apiPort}</strong><span>{settings.allowLan ? "HTTP · 局域网" : "HTTP · 仅本机"}</span>
             </section>
             <section className="stat-card"><div className="stat-name"><HardDrive size={18} /> 数据源</div>
               <strong>{settings.sqlServer ? "已填写配置" : "待配置"}</strong>
@@ -314,8 +312,8 @@ export default function App() {
                 <div><strong>数据库连接</strong><small>{settings.sqlServer ? "已填写服务器地址，仍须实际连接测试" : "请在数据库连接页填写现场服务器和账号"}</small></div></div>
               <div className="checkline"><span className="check">2</span>
                 <div><strong>验证只读 API</strong><small>先在 XTEST 查看盘点单、库位与箱码</small></div></div>
-              <div className="checkline"><span className={settings.allowLan && settings.certPath ? "check yes" : "check"}>{settings.allowLan && settings.certPath ? <Check size={13}/> : "3"}</span>
-                <div><strong>PDA 内网接入</strong><small>配置可信 HTTPS 证书和设备密钥</small></div></div>
+              <div className="checkline"><span className={settings.allowLan ? "check yes" : "check"}>{settings.allowLan ? <Check size={13}/> : "3"}</span>
+                <div><strong>PDA 内网接入</strong><small>配置内网 HTTP 地址、设备密钥及防火墙白名单</small></div></div>
               <div className="security-note"><ShieldCheck size={18}/><span>测试与正式帐套可分别授权写入。仅服务端开关、结构核验和数据库权限均满足时才允许实际提交。</span></div>
             </section>
           </div>
@@ -429,37 +427,28 @@ export default function App() {
 
         {view === "access" && <div className="form-layout">
           <section className="panel form-panel">
-            <div className="section-head"><div><h3>监听与网络接入</h3><p>先在本机调试，再配置允许 PDA 访问的 HTTPS 服务。</p></div><Globe2 size={23}/></div>
+            <div className="section-head"><div><h3>监听与网络接入</h3><p>先在本机调试，再开启可信局域网 HTTP 服务。</p></div><Globe2 size={23}/></div>
             <div className="form-grid">
               <label className="field">监听端口
                 <input disabled={status.running || busy} type="number" min={1024} max={65534} value={settings.apiPort}
                   onChange={e=>set("apiPort",Number(e.target.value))}/>
               </label>
               <div className="field"><span>运行模式</span>
-                <div className="mode-pill">{settings.allowLan ? "HTTPS / 受控内网" : "HTTP / localhost"}</div>
+                <div className="mode-pill">{settings.allowLan ? "HTTP / 受控内网" : "HTTP / localhost"}</div>
               </div>
               <label className="toggle full"><input disabled={status.running || busy} type="checkbox" checked={settings.allowLan}
                 onChange={e=>set("allowLan",e.target.checked)}/>
-                <span>允许通过受控局域网向 PDA 提供 HTTPS API</span>
+                <span>允许通过受控局域网向 PDA 提供 HTTP API</span>
               </label>
-              {settings.allowLan && <>
-                <label className="field full">HTTPS PFX 证书路径
-                  <input disabled={status.running || busy} value={settings.certPath} onChange={e=>set("certPath",e.target.value)}
-                    placeholder={"C:\\Certificates\\stockcount-server.pfx"}/>
-                </label>
-                <label className="field full">PFX 证书密码
-                  <input disabled={status.running || busy} type="password" value={certPassword} onChange={e=>setCertPassword(e.target.value)}
-                    placeholder={settings.certPasswordSaved ? "已安全保存；留空不修改" : "填写证书密码"}/>
-                </label>
-              </>}
+              {settings.allowLan && <div className="hint-block full"><AlertCircle size={18}/><span>HTTP 无需 PFX 证书。设备密钥和业务数据采用明文传输，仅限隔离可信 PDA 局域网；必须配置防火墙白名单，禁止暴露到公网。</span></div>}
             </div>
             <div className="form-actions">
               <button className="primary-btn" disabled={status.running || busy} onClick={()=>void perform(()=>save())}><Save size={18}/> 保存 API 配置</button>
             </div>
-            <div className="hint-block"><ShieldCheck size={18}/><span>局域网模式额外使用本机管理端口 {settings.apiPort+1}（仅 127.0.0.1）。生产部署需要合法的 PFX 证书与内网防火墙规则。</span></div>
+            <div className="hint-block"><ShieldCheck size={18}/><span>局域网模式无需 PFX；本机管理端口 {settings.apiPort+1} 仍仅监听 localhost。请在 Windows 防火墙中限制 PDA 网段，禁止公网端口映射。</span></div>
           </section>
           <aside className="panel tip-panel"><KeyRound size={24}/><h3>PDA 访问设置</h3>
-            <p>现场 PDA 只需设置 HTTPS API 地址、环境和设备访问密钥；没有 SQL Server 凭据。</p>
+            <p>PDA 填写 http://Windows局域网IP:端口、环境和设备密钥；无需 PFX。HTTP 会明文传输请求数据及设备密钥。</p>
             <div className="endpoint-small">{baseAddress}</div>
             <button className="outline-btn full-btn" disabled={busy} onClick={copyDeviceKey}><Clipboard size={16}/> 复制设备接入密钥</button>
             <p className="footnote">密钥首次打开时自动生成并保存到 Windows 凭据管理器。前台 MAUI 配置页后续接入此参数。</p>
