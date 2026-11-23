@@ -148,4 +148,4 @@ POST CountItem
 
 **待定**：盘点单其他状态可写性、真实库位码完整协议、**两数量列同值对应的系数与单位适配**和所有必填列、同单去重/复盘、认证替代的设备访问控制细节、后端采用 X3 业务服务还是数据库受控写入。
 
-所有 AI 修改必须参照 [AGENTS.md](AGENTS.md)、[docs/DECISIONS.md](docs/DECISIONS.md) 和 [五表物理结构/中文字段/只读 SQL 索引](docs/database/SCHEMA_INDEX.md)。
+所有 AI 修改必须参照 [AGENTS.md](AGENTS.md)、[docs/DECISIONS.md](docs/DECISIONS.md) 和 [七表结构/中文字段/只读 SQL 索引](docs/database/SCHEMA_INDEX.md)。
