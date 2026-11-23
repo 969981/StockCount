@@ -18,6 +18,9 @@ type Settings = {
   sqlUser: string;
   encryptSql: boolean;
   trustServerCertificate: boolean;
+  enableTestWrites: boolean;
+  schemaReviewed: boolean;
+  x3AuditUser: string;
 };
 type SettingsView = Settings & {
   sqlPasswordSaved: boolean;
@@ -52,6 +55,9 @@ const defaults: SettingsView = {
   sqlUser: "",
   encryptSql: true,
   trustServerCertificate: false,
+  enableTestWrites: false,
+  schemaReviewed: false,
+  x3AuditUser: "",
   sqlPasswordSaved: false,
   certPasswordSaved: false,
   deviceKeyReady: false,
@@ -131,6 +137,9 @@ export default function App() {
       sqlUser: settings.sqlUser,
       encryptSql: settings.encryptSql,
       trustServerCertificate: settings.trustServerCertificate,
+      enableTestWrites: settings.enableTestWrites,
+      schemaReviewed: settings.schemaReviewed,
+      x3AuditUser: settings.x3AuditUser,
     };
     // Credentials are sent to trusted native Rust IPC, never written into JSON.
     const saved = await invoke<SettingsView>("save_settings", {
@@ -344,6 +353,35 @@ export default function App() {
                 onChange={e=>set("encryptSql",e.target.checked)}/><span>加密 SQL Server 连接</span></label>
               <label className="toggle"><input type="checkbox" disabled={status.running || busy} checked={settings.trustServerCertificate}
                 onChange={e=>set("trustServerCertificate",e.target.checked)}/><span>跳过证书验证（仅受控测试）</span></label>
+            </div>
+            <div className="hint-block" style={{ marginTop: 26 }}>
+              <ShieldCheck size={18}/>
+              <div style={{ flex: 1 }}>
+                <strong style={{ display: "block", marginBottom: 8 }}>XTEST 实盘数据写入（受控测试）</strong>
+                <p style={{ marginBottom: 11, lineHeight: 1.6 }}>
+                  启用前请由数据库管理员执行 sql/migrations/001_stockcount_submission.sql，
+                  核对 XTEST 的 XCOUTD.ROWID 为 IDENTITY、全部非空字段、Sage X3 触发器及 1:1 单位规则。
+                  只允许 CUNSTA_0=0 的已存在盘点单写入。正式 COB 写入始终关闭。
+                </p>
+                <label className="field" style={{ marginBottom: 13 }}>X3 审计用户编码（最大5字符）
+                  <input disabled={status.running || busy} maxLength={5}
+                    value={settings.x3AuditUser}
+                    onChange={e=>set("x3AuditUser",e.target.value)}
+                    placeholder="例如：PDA（须经现场确认）"/>
+                </label>
+                <label className="toggle" style={{ marginBottom: 12 }}>
+                  <input type="checkbox" disabled={status.running || busy}
+                    checked={settings.schemaReviewed}
+                    onChange={e=>set("schemaReviewed",e.target.checked)}/>
+                  <span>我已核查 XTEST 的物理结构、单位与 ERP 写入兼容性</span>
+                </label>
+                <label className="toggle">
+                  <input type="checkbox" disabled={status.running || busy || !settings.schemaReviewed}
+                    checked={settings.enableTestWrites}
+                    onChange={e=>set("enableTestWrites",e.target.checked)}/>
+                  <span>允许向 XTEST.XCOUTD 写入真实测试盘点数据</span>
+                </label>
+              </div>
             </div>
             <div className="form-actions">
               <button className="primary-btn" disabled={status.running || busy} onClick={()=>void perform(()=>save())}><Save size={18}/> 保存配置</button>
