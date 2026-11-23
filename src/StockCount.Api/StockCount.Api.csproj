@@ -8,6 +8,6 @@
     <ProjectReference Include="../StockCount.Contracts/StockCount.Contracts.csproj" />
     <ProjectReference Include="../StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
-      <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
   </ItemGroup>
 </Project>
