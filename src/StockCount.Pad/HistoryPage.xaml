@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="StockCount.Pad.HistoryPage"
+             NavigationPage.HasNavigationBar="False"
+             Title="已盘记录"
+             BackgroundColor="{StaticResource PageBackground}">
+  <Grid RowDefinitions="Auto,Auto,*,Auto">
+    <Grid Grid.Row="0" BackgroundColor="White" ColumnDefinitions="Auto,*,Auto"
+          Padding="8,6,12,6" HeightRequest="60">
+      <Button Text="‹" Style="{StaticResource IconButton}"
+              Clicked="Back_Clicked"/>
+      <Label Grid.Column="1" Text="已盘记录" Style="{StaticResource PageTitle}"
+             Margin="6,0,0,0"/>
+      <Button Grid.Column="2" Text="↻" Style="{StaticResource IconButton}"
+              Clicked="Refresh_Clicked"/>
+    </Grid>
+    <VerticalStackLayout Grid.Row="1" Padding="14,12" Spacing="10">
+      <Border x:Name="EnvironmentBanner" BackgroundColor="#EDF3FF"
+              Stroke="#DCE8FF" StrokeShape="RoundRectangle 10" Padding="12,9">
+        <Label x:Name="EnvironmentLabel" Text="测试 · XTEST"
+               TextColor="#305CB6" FontAttributes="Bold" FontSize="13"/>
+      </Border>
+      <Border BackgroundColor="White" Stroke="#E5EAF1"
+              StrokeShape="RoundRectangle 10" Padding="13,11">
+        <VerticalStackLayout Spacing="5">
+          <Label Text="当前盘点单 · 已盘箱记录" Style="{StaticResource SecondaryText}"/>
+          <Label x:Name="CountNumberText" FontSize="15" FontAttributes="Bold"
+                 TextColor="#1C2D48"/>
+          <Label x:Name="CountNameText" FontSize="12" TextColor="#72829C"/>
+        </VerticalStackLayout>
+      </Border>
+      <Grid ColumnDefinitions="*,Auto" Padding="3,5,3,0">
+        <Label Text="已盘箱列表" Style="{StaticResource SectionTitle}"/>
+        <Label Grid.Column="1" x:Name="CountStatusText"
+               Text="正在读取" TextColor="#8493A8" FontSize="12"/>
+      </Grid>
+    </VerticalStackLayout>
+    <Grid Grid.Row="2" Padding="14,0,14,0">
+      <CollectionView x:Name="ItemsList" SelectionMode="None">
+        <CollectionView.ItemTemplate>
+          <DataTemplate>
+            <Border BackgroundColor="White" Stroke="#E3E9F1"
+                    StrokeShape="RoundRectangle 12" Padding="14"
+                    Margin="0,0,0,10">
+              <VerticalStackLayout Spacing="9">
+                <Grid ColumnDefinitions="*,Auto">
+                  <Label Text="{Binding BoxNumber}" FontSize="15"
+                         FontAttributes="Bold" TextColor="#1C2D48"
+                         LineBreakMode="MiddleTruncation"/>
+                  <Label Grid.Column="1" Text="已盘"
+                         BackgroundColor="#E8F6EE" TextColor="#19805B"
+                         FontSize="11" FontAttributes="Bold" Padding="7,3"/>
+                </Grid>
+                <Label Text="{Binding LocationCode, StringFormat='库位：{0}'}"
+                       FontSize="12" TextColor="#72829C"/>
+                <Grid ColumnDefinitions="*,Auto">
+                  <HorizontalStackLayout Spacing="4">
+                    <Label Text="实盘：" TextColor="#72829C" FontSize="12"/>
+                    <Label Text="{Binding QuantityStu}" FontSize="16"
+                           FontAttributes="Bold" TextColor="#376BEE"/>
+                    <Label Text="{Binding PackageUnit}" FontSize="12"
+                           TextColor="#72829C" VerticalOptions="Center"/>
+                  </HorizontalStackLayout>
+                  <Label Grid.Column="1"
+                         Text="{Binding CreatedAt, StringFormat='{0:MM-dd HH:mm}'}"
+                         FontSize="11" TextColor="#8B9CB2"
+                         VerticalOptions="Center"/>
+                </Grid>
+              </VerticalStackLayout>
+            </Border>
+          </DataTemplate>
+        </CollectionView.ItemTemplate>
+      </CollectionView>
+      <VerticalStackLayout x:Name="EmptyPanel" IsVisible="False"
+                           VerticalOptions="Center" Spacing="10">
+        <Label Text="▤" FontSize="44" TextColor="#9EB0C9"
+               HorizontalOptions="Center"/>
+        <Label x:Name="EmptyText" Text="暂无已盘记录"
+               HorizontalOptions="Center" TextColor="#63738A"
+               FontSize="14"/>
+      </VerticalStackLayout>
+      <ActivityIndicator x:Name="LoadingIndicator"
+                         Color="{StaticResource Primary}"
+                         IsVisible="False" VerticalOptions="Center"
+                         HorizontalOptions="Center"/>
+    </Grid>
+    <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Padding="14,10,14,15">
+      <Label Text="只读记录 · 不支持修改或删除" FontSize="11"
+             TextColor="#8C9CB2" VerticalOptions="Center"/>
+      <Button x:Name="MoreButton" Grid.Column="1" Text="加载更多"
+              IsVisible="False" Style="{StaticResource SecondaryAction}"
+              Clicked="More_Clicked"/>
+    </Grid>
+  </Grid>
+</ContentPage>
