@@ -5,13 +5,13 @@ namespace StockCount.Core.Tests;
 
 public sealed class CountScanWorkflowTests
 {
-    private const string Qr="ID.1794814541901|1@@PT.PTHG01260700005@@LN.1000@@MT.A10000087@@LT.L26070146@@QT.100@@PG.100";
+    private const string Qr="ID.BOX-DEMO-001@@PT.DOC-DEMO-001@@LN.1000@@MT.ITM-DEMO-01@@LT.LOT-01@@QT.100@@PG.100";
 
     [Fact]
     public async Task BoxBeforeLocationShowsPromptWithoutFetchingLabel()
     {
         var fake=new FakeGateway();
-        var workflow=new CountScanWorkflow(fake,"1712474746529","789号仓库辅料盘点");
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试盘点单");
         var result=await workflow.HandleScanAsync(Qr);
         Assert.Equal("请先扫描盘点库位！",result.Message);
         Assert.Equal(0,fake.LabelRequests);
@@ -22,20 +22,20 @@ public sealed class CountScanWorkflowTests
     public async Task DuplicateBoxDoesNotPopulateAnyBoxField()
     {
         var fake=new FakeGateway { Duplicate=true };
-        var workflow=new CountScanWorkflow(fake,"1712474746529","测试");
-        await workflow.HandleScanAsync("0700Q0001");
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
         var result=await workflow.HandleScanAsync(Qr);
         Assert.Equal("该箱号已扫描！",result.Message);
         Assert.Null(workflow.Box);
-        Assert.Equal("0700Q0001",workflow.Location);
+        Assert.Equal("LOC-DEMO01",workflow.Location);
     }
 
     [Fact]
     public async Task AfterSuccessfulSubmissionKeepOrderAndLocationClearBoxOnly()
     {
         var fake=new FakeGateway();
-        var workflow=new CountScanWorkflow(fake,"1712474746529","789号仓库辅料盘点");
-        await workflow.HandleScanAsync("0700Q0001");
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试盘点单");
+        await workflow.HandleScanAsync("LOC-DEMO01");
         await workflow.HandleScanAsync(Qr);
         workflow.EnterManualQuantity(99m);
         var result=await workflow.SubmitAsync();
@@ -45,8 +45,8 @@ public sealed class CountScanWorkflowTests
         Assert.Null(workflow.Box);
         Assert.Null(workflow.ManualQuantity);
         Assert.Null(workflow.PendingRequestId);
-        Assert.Equal("0700Q0001",workflow.Location);
-        Assert.Equal("1712474746529",workflow.CountNumber);
+        Assert.Equal("LOC-DEMO01",workflow.Location);
+        Assert.Equal("COUNT-DEMO-001",workflow.CountNumber);
         Assert.Equal(99m,fake.LastSubmittedQuantity);
     }
 
@@ -54,15 +54,15 @@ public sealed class CountScanWorkflowTests
     public async Task UnknownOutcomePreservesDraftAndRequestId()
     {
         var fake=new FakeGateway { ThrowDuringSubmit=true };
-        var workflow=new CountScanWorkflow(fake,"1712474746529","测试");
-        await workflow.HandleScanAsync("0700Q0001");
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
         await workflow.HandleScanAsync(Qr);
         workflow.EnterManualQuantity(99m);
         var result=await workflow.SubmitAsync();
         Assert.Equal("Unknown",result.Kind);
         Assert.NotNull(workflow.PendingRequestId);
         var requestId=workflow.PendingRequestId;
-        Assert.Equal("1794814541901|1",workflow.Box?.BoxNumber);
+        Assert.Equal("BOX-DEMO-001",workflow.Box?.BoxNumber);
         Assert.Equal(99m,workflow.ManualQuantity);
         Assert.Throws<InvalidOperationException>(()=>workflow.EnterManualQuantity(100m));
         fake.ThrowDuringSubmit=false;
@@ -75,27 +75,27 @@ public sealed class CountScanWorkflowTests
     public async Task ExplicitConcurrentDuplicateReturnsBusinessPopup()
     {
         var fake=new FakeGateway { RejectDuplicateAtCommit=true };
-        var workflow=new CountScanWorkflow(fake,"1712474746529","测试");
-        await workflow.HandleScanAsync("0700Q0001");
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
         await workflow.HandleScanAsync(Qr);
         workflow.EnterManualQuantity(99m);
         var result=await workflow.SubmitAsync();
         Assert.Equal("该箱号已扫描！",result.Message);
         Assert.Null(workflow.Box);
-        Assert.Equal("0700Q0001",workflow.Location);
+        Assert.Equal("LOC-DEMO01",workflow.Location);
     }
 
     [Fact]
     public async Task RescanningDifferentLocationClearsPreviousBoxButRetainsCount()
     {
-        var workflow=new CountScanWorkflow(new FakeGateway(),"1712474746529","测试");
-        await workflow.HandleScanAsync("0700Q0001");
+        var workflow=new CountScanWorkflow(new FakeGateway(),"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
         await workflow.HandleScanAsync(Qr);
-        var result=await workflow.HandleScanAsync("0700Q0002");
+        var result=await workflow.HandleScanAsync("LOC-DEMO02");
         Assert.Equal("LocationUpdated",result.Kind);
-        Assert.Equal("0700Q0002",workflow.Location);
+        Assert.Equal("LOC-DEMO02",workflow.Location);
         Assert.Null(workflow.Box);
-        Assert.Equal("1712474746529",workflow.CountNumber);
+        Assert.Equal("COUNT-DEMO-001",workflow.CountNumber);
     }
 
     private sealed class FakeGateway : ICountScanGateway
@@ -107,12 +107,12 @@ public sealed class CountScanWorkflowTests
         public decimal? LastSubmittedQuantity { get; private set; }
         public Guid? LastRequestId { get; private set; }
         public Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct) =>
-            Task.FromResult<string?>(rawCode is "0700Q0001" or "0700Q0002" ? rawCode : null);
+            Task.FromResult<string?>(rawCode is "LOC-DEMO01" or "LOC-DEMO02" ? rawCode : null);
         public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct)
         {
             LabelRequests++;
-            return Task.FromResult<BoxScanData?>(new BoxScanData("1794814541901|1",
-                "A10000087","PCD刀片","TNGA160404 PCD-010","L26070146","PCS",Duplicate));
+            return Task.FromResult<BoxScanData?>(new BoxScanData("BOX-DEMO-001",
+                "ITM-DEMO-01","示例物料","DEMO-SPEC","LOT-01","PCS",Duplicate));
         }
 
         public Task<bool> SubmitAsync(string countNumber,Guid requestId,string qr,
