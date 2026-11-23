@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="StockCount.Server.Desktop.MainWindow"
-        Title="StockCount · 服务管理器 (Avalonia)" Width="1120" Height="780"
+        Title="StockCount · 服务管理器 (Avalonia)" Icon="/Assets/server.ico" Width="1120" Height="780"
         MinWidth="850" MinHeight="600">
   <DockPanel Margin="22">
     <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,16">
