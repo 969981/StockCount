@@ -47,7 +47,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) {
   throw "Git reference cannot be resolved to a commit: $Ref"
 }
 $commit = $commit.Trim()
-$tracked = @(& git -C $root ls-tree -r --name-only $commit)
+$tracked = @(& git -C $root -c core.quotePath=false ls-tree -r --name-only $commit)
 if ($LASTEXITCODE -ne 0 -or $tracked.Count -eq 0) { throw 'Selected commit contains no tracked files.' }
 
 # Fail closed if secrets or compiled build output were accidentally committed.
@@ -157,6 +157,11 @@ try {
 } finally { $archive.Dispose() }
 
 $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$restoreInfo = if ($isModernSnapshot) {
+  "Solutions: StockCount.slnx (API + Avalonia + MAUI Android), StockCount.Backend.slnx (backend-only).$([Environment]::NewLine)Avalonia build: scripts/build-avalonia-desktop.ps1.$([Environment]::NewLine)Tauri + Android build: scripts/build-local.ps1."
+} else {
+  "Legacy layout: follow the build scripts and solution files included in this historical commit."
+}
 "$hash  $folder.zip" | Set-Content -LiteralPath (Join-Path $out "$folder.SHA256SUMS.txt") -Encoding ascii
 @"
 StockCount SOURCE SNAPSHOT
@@ -168,10 +173,7 @@ SHA256: $hash
 Source: ONLY committed Git files at this ref. No Git history, compiled binaries,
 local secrets, untracked files or working tree modifications are included.
 Restore: extract, then follow docs/LOCAL_BUILD_DEPLOY.md.
-Modern solutions: StockCount.slnx (API + Avalonia + MAUI Android) and
-StockCount.Backend.slnx (backend-only).
-Avalonia build: scripts/build-avalonia-desktop.ps1 (modern snapshots).
-Tauri + Android build: scripts/build-local.ps1.
+$restoreInfo
 "@ | Set-Content -LiteralPath (Join-Path $out "$folder.SourceInfo.txt") -Encoding utf8
 Write-Host "SOURCE ZIP CREATED: $zip" -ForegroundColor Green
 Write-Host "Commit: $commit"
