@@ -1,5 +1,6 @@
 #requires -Version 7.0
 # CI QA: parse signed Release helper and compile Release configuration without a secret keystore.
+# The verified Release artifact must never use a temporary or debug keystore.
 <#
 .SYNOPSIS
   Build an installable, signed .NET MAUI Android Release APK.
