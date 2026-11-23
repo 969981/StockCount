@@ -1,3 +1,10 @@
+---
+title: "StockCount · XCOUTD 事务写入与提交结果查询"
+aliases: ["StockCount 事务写入", "XCOUTD 写入"]
+tags: [StockCount, SQLServer, WriteFlow, QA]
+status: implemented-awaiting-erp-validation
+---
+
 # StockCount · XCOUTD 事务写入与提交结果查询
 
 > 2026-11-23：已提交真实 SQL Server INSERT/事务、幂等记录查询及 MAUI 扫码流程代码；**尚未在实际 XTEST / COB 数据库中执行验证，也未取得编译通过结果**.XTEST 与 COB 都具备独立授权写入能力，默认均关闭。
