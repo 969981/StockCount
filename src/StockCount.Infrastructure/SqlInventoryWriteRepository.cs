@@ -72,8 +72,11 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         if (request is null)
             throw new CountWriteException(400, "COUNT_REQUEST_INVALID", "请填写本次实盘信息。");
 
+        if (!request.CountedQtyStu.HasValue)
+            throw new CountWriteException(400, "COUNT_QUANTITY_REQUIRED", "箱内数量为必填项，请人工输入。");
+
         var validation = CountWritePolicy.Validate(countNumber, request.RawQrCode,
-            request.BoxNumber, request.CountedLocation, request.CountedQtyStu);
+            request.BoxNumber, request.CountedLocation, request.CountedQtyStu.Value);
         if (validation is not null)
             throw new CountWriteException(400, validation, validation switch
             {
@@ -98,7 +101,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
         var schema = EnvironmentSelector.TablePrefix(environment);
         var payloadHash = CountWritePolicy.PayloadHash(environment.Name, countNumber,
-            request.RawQrCode, request.BoxNumber, request.CountedLocation, request.CountedQtyStu);
+            request.RawQrCode, request.BoxNumber, request.CountedLocation, request.CountedQtyStu.Value);
 
         await using var connection = await OpenAsync(ct);
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(
@@ -230,7 +233,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (duplicate != 0)
                 throw new CountWriteException(409, "BOX_ALREADY_RECORDED", "该箱号已扫描！");
 
-            var qty = request.CountedQtyStu;
+            var qty = request.CountedQtyStu.Value;
             // Every mandatory XCOUTD field is assigned explicitly except
             // ROWID, which the preflight above requires SQL Server IDENTITY to generate.
             // Unmapped optional business strings are blank (not SQL NULL).
