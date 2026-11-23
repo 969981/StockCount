@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="StockCount.Pad.SettingsPage"
+             Title="PDA 设置" BackgroundColor="#F6F8FC">
+  <ScrollView>
+    <VerticalStackLayout Padding="20" Spacing="13">
+      <Label Text="服务端连接" FontSize="20" FontAttributes="Bold"/>
+      <Label Text="API HTTPS 地址" FontAttributes="Bold" />
+      <Entry x:Name="ApiAddress" Placeholder="https://现场服务域名:5080" Keyboard="Url"/>
+      <Label Text="帐套" FontAttributes="Bold" />
+      <Picker x:Name="EnvironmentPicker" Title="选择帐套" >
+        <Picker.Items><x:String>Test</x:String><x:String>Production</x:String></Picker.Items>
+      </Picker>
+      <Label Text="PDA 设备接入密钥" FontAttributes="Bold"/>
+      <Entry x:Name="DeviceKey" IsPassword="True" Placeholder="由服务器管理器复制；保存在 SecureStorage"/>
+      <Button Text="保存设置" Clicked="Save_Clicked" BackgroundColor="#376BEE" TextColor="White"/>
+      <Button Text="测试连接" Clicked="Test_Clicked"/>
+      <Label Text="PDA 只能配置 API 地址、环境和设备密钥；SQL Server 用户名、密码只能在 Windows Tauri 后端管理器维护。"
+             TextColor="#68768B" FontSize="12"/>
+      <Label Text="切换帐套后返回盘点单列表重新选择，不允许沿用之前帐套的盘点库位和箱码。"
+             TextColor="#B35E11" FontSize="12"/>
+    </VerticalStackLayout>
+  </ScrollView>
+</ContentPage>
