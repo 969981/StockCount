@@ -4,7 +4,7 @@
 
 ## 1. 工作入口
 
-`AGENTS.md` → `requirements.md` → `architecture.md` → `docs/DECISIONS.md` → **数据库任务必读 `docs/database/SCHEMA_INDEX.md`** → 本次任务相关 docs → 当前源码与测试。
+`AGENTS.md` → `requirements.md` → `architecture.md` → `docs/DECISIONS.md` → **数据库任务必读 `docs/database/SCHEMA_INDEX.md`（含 ATABZON / ATEXTE）** → 本次任务相关 docs → 当前源码与测试。
 
 业务行为以最新确认的 `requirements.md` 为准；技术实现必须基于当前真实代码。发现差异时先记录，不得无声替换/覆盖。
 
