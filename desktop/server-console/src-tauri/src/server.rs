@@ -1,6 +1,6 @@
 use crate::config::{self, Settings};
 use serde::Serialize;
-use std::{path::Path, sync::Mutex, time::Duration};
+use std::{sync::Mutex, time::Duration};
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::{process::{CommandChild, CommandEvent, Command}, ShellExt};
 
@@ -70,9 +70,9 @@ pub async fn start_server(app: AppHandle, state: State<'_, ServerState>) -> Resu
     if !(1024..=65534).contains(&settings.api_port) {
         return Err("无效监听端口，必须在 1024..65534。".into());
     }
-    if settings.allow_lan && !Path::new(&settings.cert_path).is_file() {
-        return Err("局域网模式必须配置一个现有的 PFX HTTPS 证书文件。".into());
-    }
+    // LAN HTTP is intentionally permitted without a certificate, but device
+    // authorization is still enforced by the API and the management channel
+    // remains bound to localhost.
 
     let admin_token = uuid::Uuid::new_v4().to_string();
     let command = sidecar_command(&app, &settings, &admin_token)?;
