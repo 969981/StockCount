@@ -24,9 +24,8 @@ public sealed class StockCountApiClient : ICountScanGateway
     public async Task ConfigureAsync(string baseUrl,string environment,string deviceKey)
     {
         if (!Uri.TryCreate(baseUrl,UriKind.Absolute,out var uri) ||
-            (uri.Scheme != Uri.UriSchemeHttps &&
-             !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
-            throw new InvalidOperationException("API 地址必须使用 HTTPS（只有 localhost 测试允许 HTTP）。");
+            !ApiEndpointPolicy.IsAllowed(uri))
+            throw new InvalidOperationException("API 地址须为 http://192.168.x.x:5080 等内网 IP，或 HTTPS 地址；HTTP 不允许公网域名/IP。");
         if (environment is not ("Test" or "Production"))
             throw new InvalidOperationException("环境必须为 Test 或 Production。");
         Preferences.Default.Set("StockCountApiUrl",baseUrl.TrimEnd('/'));
@@ -39,7 +38,7 @@ public sealed class StockCountApiClient : ICountScanGateway
         HttpContent? content=null)
     {
         if (string.IsNullOrEmpty(BaseUrl))
-            throw new InvalidOperationException("请先在设置页填写后端 API HTTPS 地址。");
+            throw new InvalidOperationException("请先在设置页填写后端 API 地址（例如 http://192.168.1.100:5080）。");
         var request = new HttpRequestMessage(method,BaseUrl+path) { Content=content };
         request.Headers.TryAddWithoutValidation("X-StockCount-Environment",EnvironmentName);
         var key=await SecureStorage.Default.GetAsync("StockCountDeviceKey");
