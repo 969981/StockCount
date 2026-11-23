@@ -37,7 +37,7 @@ $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $configuredVersion = & (Join-Path $PSScriptRoot 'get-app-version.ps1')
 if (-not $Version) { $Version = $configuredVersion }
 if ($Version -ne $configuredVersion -and
-    -not $Version.StartsWith("$configuredVersion-", [StringComparison]::Ordinal)) {
+    -not $Version.StartsWith(($configuredVersion + '-'), [StringComparison]::Ordinal)) {
   throw "Packaging version $Version does not match the application version $configuredVersion. Use scripts/set-app-version.ps1 first to change the actual software version."
 }
 Write-Host "StockCount application version: $configuredVersion. Build artifact version: $Version"
