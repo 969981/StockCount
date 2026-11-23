@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="StockCount.Pad.CountListPage"
+             Title="选择盘点单" BackgroundColor="#F6F8FC">
+  <Grid Padding="18" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
+    <HorizontalStackLayout Grid.Row="0" Spacing="12">
+      <Label x:Name="EnvironmentLabel" Text="测试帐套 Test" TextColor="#376BEE" FontAttributes="Bold" FontSize="18"
+             VerticalOptions="Center" HorizontalOptions="FillAndExpand"/>
+      <Button Text="设置" Clicked="OpenSettings_Clicked" />
+    </HorizontalStackLayout>
+    <HorizontalStackLayout Grid.Row="1" Spacing="10">
+      <Entry x:Name="SearchInput" Placeholder="输入盘点单号或名称" HorizontalOptions="FillAndExpand" />
+      <Button Text="刷新" Clicked="Refresh_Clicked" />
+    </HorizontalStackLayout>
+    <CollectionView Grid.Row="2" x:Name="CountList" SelectionMode="Single"
+                    SelectionChanged="CountList_SelectionChanged">
+      <CollectionView.ItemTemplate>
+        <DataTemplate>
+          <Border Background="White" Stroke="#E2E6F0" StrokeThickness="1"
+                  Margin="0,0,0,10" Padding="14">
+            <VerticalStackLayout Spacing="6">
+              <Label Text="{Binding CountNumber}" FontSize="18" FontAttributes="Bold"/>
+              <Label Text="{Binding Description}" FontSize="15" />
+              <HorizontalStackLayout Spacing="10">
+                <Label Text="{Binding SiteCode}" TextColor="#66748B" FontSize="12"/>
+                <Label Text="{Binding WarehouseCode}" TextColor="#66748B" FontSize="12"/>
+                <Label Text="{Binding StatusCode}" TextColor="#66748B" FontSize="12"/>
+              </HorizontalStackLayout>
+            </VerticalStackLayout>
+          </Border>
+        </DataTemplate>
+      </CollectionView.ItemTemplate>
+    </CollectionView>
+    <HorizontalStackLayout Grid.Row="3" Spacing="10">
+      <Button x:Name="MoreButton" Text="加载更多" Clicked="More_Clicked"
+              HorizontalOptions="FillAndExpand"/>
+      <Label x:Name="StatusText" TextColor="#6B768B" FontSize="12" VerticalOptions="Center"/>
+    </HorizontalStackLayout>
+  </Grid>
+</ContentPage>
