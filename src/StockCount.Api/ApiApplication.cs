@@ -27,7 +27,8 @@ public static class ApiApplication
                 config.GetConnectionString("SageX3") ?? "",
                 config.GetValue<bool>("StockCount:EnableTestWrites"),
                 config.GetValue<bool>("StockCount:EnableProductionWrites"),
-                config.GetValue<bool>("StockCount:Write:SchemaReviewed"));
+                config.GetValue<bool>("StockCount:Write:TestSchemaReviewed"),
+                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"));
         });
         builder.Services.AddScoped<IInventoryWriteRepository>(services =>
         {
@@ -36,7 +37,8 @@ public static class ApiApplication
                 config.GetValue<bool>("StockCount:EnableTestWrites"),
                 config.GetValue<bool>("StockCount:EnableProductionWrites"),
                 config["StockCount:Write:AuditUser"] ?? "",
-                config.GetValue<bool>("StockCount:Write:SchemaReviewed"));
+                config.GetValue<bool>("StockCount:Write:TestSchemaReviewed"),
+                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"));
             return new SqlInventoryWriteRepository(config.GetConnectionString("SageX3") ?? "", options);
         });
         
