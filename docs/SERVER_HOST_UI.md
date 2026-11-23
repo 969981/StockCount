@@ -38,12 +38,12 @@ API 本地端口默认 `5080`，管理接口专用 loopback 端口 `5081`（固�
 
 ## 本机配置、密码和 SQLite
 
-- `server-settings.json`：只含非敏感配置，默认未填写 SQL Server 地址、数据库名 `sagex3`、端口 5080；所有变更必须先停止正在运行的服务。
+- `<Tauri EXE 所在目录>/server-settings.json`：只含非敏感配置，默认未填写 SQL Server 地址、数据库名 `sagex3`、端口 5080；所有变更必须先停止正在运行的服务。若不存在，首次运行会从旧 AppData 路径安全复制有效 JSON，旧文件保留。
 - SQL 密码/PFX 密码/设备密钥：Windows Credential Manager，**不写入 JSON**。跨 Windows 用户账户迁移时应重新配置。
 - SQLite：`<Tauri 桌面程序 EXE 所在目录>/server-logs.db`，存 API HTTP、错误和系统日志；真实扫码请求体、密钥和数据库密码不得被记录。
 - 客户端 MAUI 后续提供 API URL、Test/Production、设备密钥的可编辑配置界面；客户端不得知道服务器的 SQL 连接信息。
 
-**日志落盘约束**：NSIS 使用 `currentUser` 安装模式；`server-logs.db` 与 Tauri EXE 相邻，配置 JSON 和凭据位置不变。目录不可写则报错，不隐式换到 AppData；更新或卸载前需备份该日志文件和 WAL 相关文件。
+**同目录持久化约束**：NSIS 使用 `currentUser` 安装模式；`server-settings.json` 与 `server-logs.db` 均与 Tauri EXE 相邻。目录不可写则报错，不隐式换到 AppData；Portable 更新只覆盖程序文件，保留同目录配置、SQLite、WAL/SHM。移动或卸载前应备份 JSON 和 SQLite 全部相关文件。Windows Credential Manager 中的凭据位置不变。
 
 ## Windows 本地构建
 
