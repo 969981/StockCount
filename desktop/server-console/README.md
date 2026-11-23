@@ -57,6 +57,7 @@ CI 定义：[tauri-server-console.yml](../../.github/workflows/tauri-server-cons
 2. 点击「测试连接」，通过 .NET API Sidecar 查询 `SELECT 1`（只读），验证连通性。
 3. 进入「API 与设备」，设置监听端口（默认 5080）。默认 HTTP 仅监听 localhost，管理员测试优先保持这个模式。
 4. 如需 PDA 通过 Wi-Fi 连接，在「API 与设备」开启 LAN HTTP（无需 PFX），PDA 使用 `http://<Windows局域网IP>:5080`，同时设置 Windows 防火墙仅允许可信 PDA 网段；不得开放到公网。
+   联调命令及来源网段白名单参考：[PDA 局域网 HTTP 联调指南](../../docs/HTTP_LAN_DEBUG.md)。HTTP 会明文传输设备密钥和盘点数据。
 5. 返回「服务总览」，点击「启动服务」。Rust 启动托管 C# API，并通过额外的 **localhost 管理端口（API 端口+1）** 查询 `/health`；界面显示进程状态/健康结果。
 6. 点击「停止服务」，Rust 向 loopback 管理端口发短期随机令牌授权的 `/internal/shutdown` POST，等待 C# 关闭并刷新 SQLite 日志；异常时兜底终止子进程。
 7. 切到「SQLite 日志」按日志等级、分类和内容搜索，查看日期及错误详情。
