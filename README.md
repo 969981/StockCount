@@ -77,7 +77,7 @@ docs/
 
 ## 数据库七表文档和只读 SQL
 
-- [七表字段结构和中文标题总索引](docs/database/SCHEMA_INDEX.md)：已确认四张业务表 16 + 19 + 45 + 41 列物理元数据，另有 ITMMASTER 197 条 X3 字典标题；`ATABZON` / `ATEXTE` 的完整物理列需用新脚本查询。
+- [七表字段结构和中文标题总索引](docs/database/SCHEMA_INDEX.md)：已确认四张业务表 16 + 19 + 45 + 41 列物理元数据，另有 ITMMASTER 197 条 X3 字典标题，2026-06-30 历史 DDL 包含 258 个物理字段（今日现网尚待核）；`ATABZON` / `ATEXTE` 的完整物理列需用新脚本查询。
 - [五张业务表物理列及中文标题](sql/read_only/inspect_five_tables.sql)；[两张字典表完整结构](sql/read_only/inspect_dictionary_tables.sql)；[ATABZON + ATEXTE 中英文标题关联](sql/read_only/query_dictionary_tables.sql)；[五表中文别名抽样](sql/read_only/select_five_tables_chinese_aliases.sql)；[业务关联 SQL](sql/read_only/business_queries.sql)。
 
 ## 重要约束
