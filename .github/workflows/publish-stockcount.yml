@@ -17,7 +17,7 @@ permissions:
   contents: read
 
 env:
-  RELEASE_VERSION: 0.2.0-preview.1
+  RELEASE_VERSION: 0.2.0-preview.2
 
 jobs:
   android:
@@ -169,6 +169,6 @@ jobs:
 
           Windows logs (server-logs.db and SQLite WAL companions) are beside the desktop EXE. The portable ZIP keeps application settings in LOCALAPPDATA and passwords in Windows Credential Manager, not within the ZIP. WebView2 runtime is required.
 
-          The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This is a technical prerelease, not production certification; Windows executables are unsigned and the APK is debug signed.
+          The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This preview upgrades the SQLite native bundle to a patched line (Microsoft.Data.Sqlite 10.0.14 and SQLitePCLRaw.bundle_e_sqlite3 2.1.14) following a NU1903 advisory detected in the preceding preview. This is a technical prerelease, not production certification; Windows executables are unsigned and the APK is debug signed.
           NOTES
           gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - APK / Setup / Portable" --notes-file /tmp/stockcount-notes.md --prerelease
