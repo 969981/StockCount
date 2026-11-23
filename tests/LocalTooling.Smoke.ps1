@@ -64,6 +64,7 @@ try {
             throw 'Forbidden artifacts found in Git source archive'
         }
     } finally { $archive.Dispose() }
+    if ((Get-Item -LiteralPath $sourceZip).Length -lt 10240) { throw 'Source ZIP unexpectedly small' }
     Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity.' -ForegroundColor Green
 }
 finally {
