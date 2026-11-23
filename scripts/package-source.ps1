@@ -63,6 +63,7 @@ $mustHave = @('README.md','StockCount.slnx',
   'src/StockCount.Api/StockCount.Api.csproj',
   'desktop/server-console/src-tauri/Cargo.toml',
   'scripts/build-local.ps1','scripts/build-android-release.ps1',
+  'scripts/get-app-version.ps1','scripts/set-app-version.ps1',
   'scripts/new-android-release-jks.ps1','scripts/configure-android-release-secrets.ps1',
   'scripts/publish-stockcount-release.ps1','scripts/package-source.ps1')
 foreach ($file in $mustHave) {
