@@ -21,13 +21,13 @@ up: "[[docs/development/00-研发规范地图]]"
 
 | 用户选择 | 可信服务端枚举 | Sage X3 数据目标 | V1 行为 |
 | --- | --- | --- | --- |
-| 正式帐套 | `Production` | `sagex3.COB` | 查询允许；**写入默认禁用，须另行授权** |
-| 测试帐套 | `Test` | `sagex3.XTEST` | 查询允许；受控测试集允许写入 |
+| 正式帐套 | `Production` | `sagex3.COB` | 查询允许；支持独立授权后执行真实事务写入，默认关闭 |
+| 测试帐套 | `Test` | `sagex3.XTEST` | 查询允许；支持独立授权后执行真实事务写入，默认关闭 |
 | 其他 Schema | 不允许 | 包括 `COBTEST2` | 不出现在 UI、后端拒绝 |
 
 服务端必须按白名单映射 `Production → COB` / `Test → XTEST`；`environment` 只是选择器，客户端不得上传任意 SQL server/database/schema/连接字符串。
 
-**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；LAN 必须可信 HTTPS 证书、设备 Key 和网络 ACL。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于开放任何生产写入。
+**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；LAN 必须可信 HTTPS 证书、设备 Key 和网络 ACL。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于自动开放正式写入；需在 Tauri 中分别核验并打开对应帐套写入开关。
 
 ## 2. 无登录的可接受防护
 
@@ -37,7 +37,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 ## 3. 生产保护
 
-- `EnableProductionWrites=false` 默认；有授权的服务端部署才能开启，且客户端 UI 必须持续展示环境。
+- `EnableProductionWrites=false` 与 `EnableTestWrites=false` 为首次安装默认值；**两个开关均可由管理员在 Tauri 中分别启用**，还必须满足 Production/Test 独立的 SchemaReviewed 条件；客户端 UI 必须持续展示环境。
 - 服务端只读/写入权限可采用不同 SQL principal（优先）。
 - 测试/正式连接和应用配置不得通过日志、编译常量或前端接口泄露。
 - 切换帐套强制确认；清空盘点单/库位/箱信息/缓存；对状态未知的提交先查询原环境结果，不可转发到新环境。
@@ -59,7 +59,7 @@ up: "[[docs/development/00-研发规范地图]]"
 - [ ] 服务端确实有可靠的网络/设备访问限制
 - [ ] XTEST 已验证 X3 完整写入字段、事务、防重、审计及回滚
 - [ ] 数量/状态/库位/复盘规则已业务确认
-- [ ] 生产默认只读开关具有可审计部署变更
+- [ ] COB / XTEST 独立写入开关与结构复核具备可审计的部署变更
 - [ ] 已经过真实设备和生产只读联调
 - [ ] 具有备份/故障回滚、日志告警、问题应急处置办法
 
