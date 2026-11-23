@@ -55,7 +55,7 @@ up: "[[docs/development/00-研发规范地图]]"
 ### T1-02 环境路由
 
 - 服务端受信任静态映射 Production→COB、Test→XTEST；拒绝任意 Schema。
-- 环境分离日志/缓存/幂等命名空间，`EnableProductionWrites=false`。
+- 环境分离日志/缓存/幂等命名空间，Test/Production 写入默认 false、分别可配置 true，须独立通过结构核验。
 - 测试两套环境读取不同数据且绝不跨访问。
 
 ### T1-03 单据列表、详情 API
@@ -119,7 +119,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 ### T4-02 生产发布与审批
 - 业务规则签字、生产只读核对、密钥/网络策略审核、回滚与告警准备。
-- 仅运维授权打开 `EnableProductionWrites`，先低风险试运行，再扩大。
+- 仅运维授权分别打开 `EnableTestWrites` 与 `EnableProductionWrites`，两套帐套独立核验，先低风险验证再扩大。
 - 记录 APK 版本、API 版本、数据库 Schema 变更依赖；不因文档完成就宣称已上线。
 
 ## 7. 并行开发与交接
