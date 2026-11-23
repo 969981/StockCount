@@ -52,6 +52,7 @@ jobs:
           Get-FileHash $dest -Algorithm SHA256 | Format-List
       - name: Check persistent Android Release signing configuration
         id: android_signing
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
@@ -74,7 +75,7 @@ jobs:
           dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
           if ($LASTEXITCODE -ne 0) { throw "Android Release compilation failed" }
       - name: Build, sign and verify Android Release APK
-        if: steps.android_signing.outputs.configured == 'true'
+        if: steps.android_signing.outputs.configured == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
