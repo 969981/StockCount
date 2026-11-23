@@ -19,6 +19,12 @@ up: "[[docs/development/00-研发规范地图]]"
 
 **当前阶段：Android MAUI Debug APK 已在 GitHub Actions #46 编译成功，29 项 Core 测试通过；Tauri Windows Setup/Portable 正在 CI 验证。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
 
+## Android Debug / Release 双版本 APK
+
+- [Release 编译与签名专用指南](docs/ANDROID_RELEASE_SIGNING.md)：保留长期 Android JKS 签名密钥，通过 GitHub Actions Secrets 发布 Release APK。
+- [Android Release 构建脚本](scripts/build-android-release.ps1)：使用 `dotnet publish -c Release`、持久签名、`apksigner` 和 SHA256 验证。
+- 本地 `build-local.ps1 -Target Android -AndroidVariant Both` 可生成两个版本；CI 无正式签名密钥时只做 Release 编译核验，**不能冒充已发布正式签名 APK**。
+
 ## Windows 本地编译、部署与源码打包
 
 - [完整 PowerShell 7 使用手册](docs/LOCAL_BUILD_DEPLOY.md)：环境准备、编译 Android APK/Windows Setup/Portable、ADB 安装、Windows 免安装升级和源码归档。
