@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.CountingPage"
              Title="扫码盘点" BackgroundColor="#F6F8FC">
+ <Grid>
  <ScrollView>
   <VerticalStackLayout Padding="16" Spacing="10">
     <Border Stroke="#E5E9F2" Background="White" Padding="14">
@@ -23,7 +24,7 @@
     <HorizontalStackLayout Spacing="8">
       <Entry x:Name="ScanInput" Placeholder="扫码模拟输入 / 调试" HorizontalOptions="FillAndExpand"
              ClearButtonVisibility="WhileEditing"/>
-      <Button Text="模拟扫码" Clicked="Scan_Clicked"/>
+      <Button x:Name="SimulateScanButton" Text="模拟扫码" Clicked="Scan_Clicked"/>
     </HorizontalStackLayout>
     <Border Stroke="#E5E9F2" Background="White" Padding="14">
       <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
@@ -51,11 +52,15 @@
             TextColor="White" FontAttributes="Bold" Clicked="Submit_Clicked"/>
     <Button x:Name="CheckButton" Text="检查上次未确认的提交结果"
             IsVisible="False" Clicked="Check_Clicked"/>
-    <Border x:Name="SuccessBanner" IsVisible="False" Background="#E1F7E9" Stroke="#ACEDC6" Padding="12">
-      <Label Text="提交成功！" TextColor="#138253" FontAttributes="Bold" HorizontalOptions="Center"/>
-    </Border>
     <Label Text="提交成功后仅清空当前箱信息和数量，继续保留盘点单与盘点库位。"
            TextColor="#728098" FontSize="12"/>
   </VerticalStackLayout>
  </ScrollView>
+ <Border x:Name="SuccessBanner" IsVisible="False"
+         HorizontalOptions="Center" VerticalOptions="Center"
+         Stroke="#ACEDC6" Background="#E1F7E9" Padding="28"
+         ZIndex="10" StrokeThickness="2">
+   <Label Text="提交成功！" FontSize="21" TextColor="#138253" FontAttributes="Bold"/>
+ </Border>
+ </Grid>
 </ContentPage>
