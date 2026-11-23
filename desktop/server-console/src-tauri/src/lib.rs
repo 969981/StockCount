@@ -13,13 +13,30 @@ fn read_settings() -> Result<SettingsView, String> {
 #[tauri::command]
 fn save_settings(
     app: tauri::AppHandle,
-    settings: Settings,
+    mut settings: Settings,
     sql_password: Option<String>,
     cert_password: Option<String>,
 ) -> Result<SettingsView, String> {
     let state = app.state::<server::ServerState>();
     if state.inner.lock().map_err(|_| "状态锁不可用")?.child_is_running() {
         return Err("服务运行中，请先停止服务再保存配置。".into());
+    }
+    // Schema approval must not silently transfer to a different SQL Server,
+    // database, principal or password. A new target needs new review for BOTH schemas.
+    let previous = config::load_settings()?;
+    let database_identity_changed =
+        settings.sql_server != previous.sql_server
+        || settings.sql_database != previous.sql_database
+        || settings.integrated_security != previous.integrated_security
+        || settings.sql_user != previous.sql_user
+        || settings.encrypt_sql != previous.encrypt_sql
+        || settings.trust_server_certificate != previous.trust_server_certificate
+        || sql_password.as_deref().is_some_and(|p| !p.is_empty());
+    if database_identity_changed {
+        settings.enable_test_writes = false;
+        settings.enable_production_writes = false;
+        settings.schema_reviewed = false;
+        settings.production_schema_reviewed = false;
     }
     config::save_settings(&settings)?;
     if let Some(password) = sql_password {
