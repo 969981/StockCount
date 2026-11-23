@@ -23,7 +23,7 @@ public sealed class StockCountApiClient : ICountScanGateway
 
     public async Task ConfigureAsync(string baseUrl,string environment,string deviceKey)
     {
-        if (!Uri.TryCreate(baseUrl,out var uri) ||
+        if (!Uri.TryCreate(baseUrl,UriKind.Absolute,out var uri) ||
             (uri.Scheme != Uri.UriSchemeHttps &&
              !(uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback)))
             throw new InvalidOperationException("API 地址必须使用 HTTPS（只有 localhost 测试允许 HTTP）。");
@@ -75,9 +75,11 @@ public sealed class StockCountApiClient : ICountScanGateway
             ?? throw new InvalidOperationException("服务端返回了空响应。");
     }
 
-    public async Task<CountPage> GetCountsAsync(CancellationToken ct=default) =>
+    public async Task<CountPage> GetCountsAsync(string? cursor=null,CancellationToken ct=default) =>
         await ReadJsonAsync<CountPage>(HttpMethod.Get,
-            "/api/v1/inventory-counts?pageSize=100",null,ct);
+            "/api/v1/inventory-counts?pageSize=100" +
+            (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)),
+            null,ct);
 
     public async Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
     {
@@ -117,11 +119,25 @@ public sealed class StockCountApiClient : ICountScanGateway
             $"/api/v1/inventory-counts/{Uri.EscapeDataString(countNumber)}/items",
             JsonContent.Create(new SaveCountItemRequest(qr,boxNumber,location,qty),options:Json));
         request.Headers.TryAddWithoutValidation("Idempotency-Key",requestId.ToString("D"));
-        using var response=await SendAsync(request,ct);
-        var item=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct);
-        return item is not null && item.Status=="Committed" &&
-            item.RequestId==requestId &&
-            item.SavedQtyStu==qty && item.SavedQtyPcu==qty;
+        HttpResponseMessage response;
+        try { response=await SendAsync(request,ct); }
+        catch(ScanApiException error) when (error.Code is
+            "BOX_ALREADY_RECORDED" or "PRODUCTION_WRITE_DISABLED" or
+            "ERP_WRITE_UNAVAILABLE" or "SCHEMA_NOT_APPROVED" or
+            "COUNT_QUANTITY_INVALID" or "COUNT_NOT_WRITABLE" or
+            "UNIT_MAPPING_UNSUPPORTED" or "LOCATION_INVALID" or
+            "BOX_MISMATCH" or "ERP_SCHEMA_UNSUPPORTED" or "AUDIT_USER_NOT_CONFIGURED")
+        {
+            throw new ScanCommitRejectedException(error.Code,error.Message);
+        }
+        using (response)
+        {
+            var item=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct);
+            return item is not null && item.Status=="Committed" &&
+                item.RequestId==requestId &&
+                item.SavedQtyStu==qty && item.SavedQtyPcu==qty;
+        }
+
     }
 
     public async Task<bool?> GetSubmissionAsync(string countNumber,Guid requestId,CancellationToken ct)
