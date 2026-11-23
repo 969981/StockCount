@@ -76,10 +76,12 @@ public sealed class StockCountApiClient : ICountScanGateway
             ?? throw new InvalidOperationException("服务端返回了空响应。");
     }
 
-    public async Task<CountPage> GetCountsAsync(string? cursor=null,CancellationToken ct=default) =>
+    public async Task<CountPage> GetCountsAsync(string? cursor=null,string? search=null,
+        CancellationToken ct=default) =>
         await ReadJsonAsync<CountPage>(HttpMethod.Get,
             "/api/v1/inventory-counts?pageSize=100" +
-            (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)),
+            (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)) +
+            (string.IsNullOrWhiteSpace(search) ? "" : "&search="+Uri.EscapeDataString(search.Trim())),
             null,ct);
 
     public async Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
