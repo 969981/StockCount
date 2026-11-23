@@ -8,8 +8,8 @@ using StockCount.Infrastructure;
 namespace StockCount.Api;
 
 /// <summary>
-/// Share the exact same API routes between standalone CLI and the Windows WPF host.
-/// The host may supply SQL settings, Kestrel listeners and a SQLite logging provider.
+/// Share the exact same API routes between standalone CLI and the Tauri 2 C# Sidecar.
+/// The host supplies SQL settings, Kestrel listeners and a SQLite logging provider.
 /// </summary>
 public static class ApiApplication
 {
@@ -23,6 +23,16 @@ public static class ApiApplication
         builder.Services.AddScoped<IInventoryReadRepository>(services =>
             new SqlInventoryReadRepository(
                 services.GetRequiredService<IConfiguration>().GetConnectionString("SageX3") ?? ""));
+        builder.Services.AddScoped<IInventoryWriteRepository>(services =>
+        {
+            var config = services.GetRequiredService<IConfiguration>();
+            var options = new CountWriteOptions(
+                config.GetValue<bool>("StockCount:EnableTestWrites"),
+                config.GetValue<bool>("StockCount:EnableProductionWrites"),
+                config["StockCount:Write:AuditUser"] ?? "",
+                config.GetValue<bool>("StockCount:Write:SchemaReviewed"));
+            return new SqlInventoryWriteRepository(config.GetConnectionString("SageX3") ?? "", options);
+        });
         
         var app = builder.Build();
         app.UseExceptionHandler();
@@ -118,7 +128,7 @@ public static class ApiApplication
         {
             service = "StockCount.Api",
             status = "Running",
-            version = "0.1.0-readonly",
+            version = "0.2.0-transactional",
             utc = DateTimeOffset.UtcNow
         }));
         
@@ -232,24 +242,76 @@ public static class ApiApplication
             return Results.Ok(new CountItemPage(environment.Name, rows.Take(size).ToArray(), next));
         });
         
-        // Deliberate fail-closed placeholder: NOT an ERP write implementation.
-        // Keep this route for the MAUI client contract but never pretend it saved records.
+        // Idempotent, transactional write. Actual mutation requires explicit
+        // server-side environment + schema-approval flags AND DBA journal migration.
         app.MapPost("/api/v1/inventory-counts/{countNumber}/items",
-            (HttpContext context, string countNumber, SaveCountItemRequest request) =>
+            async (HttpContext context, string countNumber, SaveCountItemRequest request,
+                IInventoryWriteRepository repository, ILogger<ApiApplication> logger,
+                CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
-            if (environment.Name == "Production")
-                return Error(403, "PRODUCTION_WRITE_DISABLED", "正式帐套写入尚未通过受控验收。", environment.Name);
-            return Error(503, "ERP_WRITE_UNAVAILABLE",
-                "测试帐套写入尚未实现：需先完成 X3 字段/事务/幂等核验。", environment.Name);
+            var keyHeader = context.Request.Headers["Idempotency-Key"].ToString();
+            if (!Guid.TryParse(keyHeader, out var requestId) || requestId == Guid.Empty)
+                return Error(400, "IDEMPOTENCY_KEY_REQUIRED",
+                    "Idempotency-Key 必须为非空 UUID；同一笔请求重试要复用原 UUID。", environment.Name);
+            try
+            {
+                var saved = await repository.SubmitAsync(
+                    environment, countNumber, requestId, request, cancellationToken);
+                var location = $"/api/v1/submissions/{requestId}?countNumber={Uri.EscapeDataString(countNumber)}";
+                return saved.Replayed
+                    ? Results.Ok(saved)
+                    : Results.Created(location, saved);
+            }
+            catch (CountWriteException error)
+            {
+                logger.LogWarning("Count submit rejected: {Code}, {Environment}, {RequestId}",
+                    error.Code, environment.Name, requestId);
+                return Error(error.StatusCode, error.Code, error.Message, environment.Name);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return Error(503, "SUBMISSION_OUTCOME_UNKNOWN",
+                    "请求已取消，提交结果可能不确定。请使用原 Idempotency-Key 查询结果，勿换新请求ID。", environment.Name);
+            }
+            catch (Exception error)
+            {
+                logger.LogError(error, "Count submission uncertain: {Environment}, {RequestId}",
+                    environment.Name, requestId);
+                return Error(503, "SUBMISSION_OUTCOME_UNKNOWN",
+                    "提交状态未知，请使用原请求ID查询结果，切勿生成新请求重试。", environment.Name);
+            }
         });
-        
+
         app.MapGet("/api/v1/submissions/{requestId:guid}",
-            (HttpContext context, Guid requestId) =>
+            async (HttpContext context, Guid requestId, string? countNumber,
+                IInventoryWriteRepository repository, ILogger<ApiApplication> logger,
+                CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
-            return Error(503, "ERP_WRITE_UNAVAILABLE",
-                "幂等提交记录查询尚未实现，不可将此响应当作未保存的证明。", environment.Name);
+            if (string.IsNullOrWhiteSpace(countNumber) || countNumber.Length > 30)
+                return Error(400, "COUNT_NUMBER_INVALID",
+                    "查询提交结果必须指定盘点单号 ?countNumber=。", environment.Name);
+            try
+            {
+                var stored = await repository.GetSubmissionAsync(
+                    environment, countNumber, requestId, cancellationToken);
+                return stored is null
+                    ? Error(404, "SUBMISSION_NOT_FOUND",
+                        "未找到该请求的已提交记录；如之前发生网络超时，请以原 UUID 安全重试。", environment.Name)
+                    : Results.Ok(stored);
+            }
+            catch (CountWriteException error)
+            {
+                return Error(error.StatusCode, error.Code, error.Message, environment.Name);
+            }
+            catch (Exception error)
+            {
+                logger.LogWarning(error, "Submission lookup failed: {Environment}, {RequestId}",
+                    environment.Name, requestId);
+                return Error(503, "SUBMISSION_LOOKUP_UNAVAILABLE",
+                    "提交日志暂时不可查询，不能据此断言 ERP 未写入。", environment.Name);
+            }
         });
         
         return app;
