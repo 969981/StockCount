@@ -23,7 +23,8 @@
 | [OPENAI.md](OPENAI.md) | OpenAI / Codex 工作规范与执行模板 |
 | [docs/TECH_STACK.md](docs/TECH_STACK.md) | 语言、依赖、项目结构和构建约定 |
 | [docs/PROJECT_GUIDE.md](docs/PROJECT_GUIDE.md) | 项目说明、职责、开发交付流程 |
-| [docs/DATABASE_MAPPING.md](docs/DATABASE_MAPPING.md) | 已核实数据库字段/类型/映射与风险 |
+| [docs/DATABASE_MAPPING.md](docs/DATABASE_MAPPING.md) | 核心字段/DTO 映射与业务风险 |
+| [docs/database/SCHEMA_INDEX.md](docs/database/SCHEMA_INDEX.md) | **五表完整已知字段、X3 中文标题、只读 SQL 总索引**（含 XCOUTH / XCOUTD / XLABELDTL / STOLOC / ITMMASTER） |
 | [docs/API_CONTRACT.md](docs/API_CONTRACT.md) | V1 API 契约草案、错误和幂等 |
 | [docs/SCANNER_INTEGRATION.md](docs/SCANNER_INTEGRATION.md) | Android 工业扫描接入规范 |
 | [docs/SECURITY_AND_ENVIRONMENTS.md](docs/SECURITY_AND_ENVIRONMENTS.md) | 无登录时的网络安全和正式/测试隔离 |
@@ -51,6 +52,11 @@ tests/
   StockCount.Pad.Tests/
 docs/
 ```
+
+## 五表数据库文档和只读 SQL
+
+- [字段结构和中文标题总索引](docs/database/SCHEMA_INDEX.md)：已确认 16 + 19 + 45 + 41 列物理元数据，另有 ITMMASTER 197 条 X3 字典标题（真实物理列清单待查询）。
+- [一键核验正式/测试物理列和 X3 中文字段](sql/read_only/inspect_five_tables.sql)；[五表中文别名数据抽样](sql/read_only/select_five_tables_chinese_aliases.sql)；[盘点/标签/库位/物料业务 SQL](sql/read_only/business_queries.sql)。
 
 ## 重要约束
 
