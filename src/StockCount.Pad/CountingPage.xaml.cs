@@ -14,6 +14,7 @@ public partial class CountingPage : ContentPage
     private readonly Queue<string> _scanQueue = new();
     private bool _busy;
     private bool _draining;
+    private bool _submitting;
     private bool _restored;
     private bool _navigating;
 
@@ -78,7 +79,7 @@ public partial class CountingPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (_busy || _workflow.IsSuccessAwaitingDismiss)
+            if (_submitting || _workflow.IsSuccessAwaitingDismiss)
             {
                 ConnectionStateText.Text = "正在处理，请稍后重扫";
                 return;
@@ -105,14 +106,18 @@ public partial class CountingPage : ContentPage
                 await ProcessScanAsync(raw);
             }
         }
-        finally { _draining = false; }
+        finally
+        {
+            _draining = false;
+            UpdateSubmitButton();
+        }
     }
 
     private async void Scan_Clicked(object sender, EventArgs e)
     {
         var raw = ScanInput.Text ?? "";
         ScanInput.Text = "";
-        if (_busy) return;
+        if (_submitting) return;
         _scanQueue.Enqueue(raw);
         await DrainScanQueueAsync();
     }
@@ -202,8 +207,9 @@ public partial class CountingPage : ContentPage
 
     private async Task SubmitCurrentAsync()
     {
-        if (_busy) return;
+        if (_busy || _draining) return;
         _busy = true;
+        _submitting = true;
         ConnectionStateText.Text = "正在提交…";
         BusyIndicator.IsVisible = true;
         BusyIndicator.IsRunning = true;
@@ -224,6 +230,7 @@ public partial class CountingPage : ContentPage
         finally
         {
             _busy = false;
+            _submitting = false;
             BusyIndicator.IsRunning = false;
             BusyIndicator.IsVisible = false;
             RefreshScreen();
@@ -232,8 +239,9 @@ public partial class CountingPage : ContentPage
 
     private async void Check_Clicked(object sender, EventArgs e)
     {
-        if (_busy) return;
+        if (_busy || _draining) return;
         _busy = true;
+        _submitting = true;
         ConnectionStateText.Text = "正在查询结果…";
         BusyIndicator.IsVisible = true;
         BusyIndicator.IsRunning = true;
@@ -246,6 +254,7 @@ public partial class CountingPage : ContentPage
         finally
         {
             _busy = false;
+            _submitting = false;
             BusyIndicator.IsRunning = false;
             BusyIndicator.IsVisible = false;
             RefreshScreen();
@@ -314,7 +323,7 @@ public partial class CountingPage : ContentPage
 
     private void UpdateSubmitButton()
     {
-        SubmitButton.IsEnabled = _selected.CanSubmit && !_busy &&
+        SubmitButton.IsEnabled = _selected.CanSubmit && !_busy && !_draining &&
             !_workflow.HasUnresolvedSubmission &&
             !_workflow.IsSuccessAwaitingDismiss &&
             _workflow.Box is not null && _workflow.Location is not null &&
