@@ -30,6 +30,10 @@ status: active
 
 Visual Studio 2026 请打开根目录 `StockCount.slnx`（不是后端专用的 `StockCount.Backend.slnx`），右键 `StockCount.Pad` 设置为启动项目并选择 Android 真机/模拟器。安装 MAUI Android workload 后才可编译；详见 [VS HTTP + 双 UI 调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。
 
+启动器图标已改为库存扫码终端 SVG（`Resources/AppIcon/appicon.svg`），
+在 `StockCount.Pad.csproj` 的 `MauiIcon` 通过 MAUI Resizetizer 自动生成不同 Android 分辨率；
+无需逐个手动替换 mipmap。源图与矢量预设见 [品牌图标](../../assets/branding/README.md)。
+
 ## Windows 构建
 
 1. 安装 .NET 10 SDK、Android SDK、MAUI Android workload 和 adb。
