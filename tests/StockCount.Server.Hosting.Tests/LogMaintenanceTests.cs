@@ -38,7 +38,7 @@ public sealed class LogMaintenanceTests
         {
             var store = new SettingsStore(root);
             using (var conn = new SqliteConnection(new SqliteConnectionStringBuilder
-                { DataSource = store.LogPath, Mode = SqliteOpenMode.ReadWriteCreate }.ConnectionString))
+                { DataSource = store.LogPath, Mode = SqliteOpenMode.ReadWriteCreate, Pooling = false }.ConnectionString))
             {
                 conn.Open();
                 using var schema = conn.CreateCommand();
