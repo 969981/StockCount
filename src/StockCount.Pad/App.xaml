@@ -4,7 +4,70 @@
              x:Class="StockCount.Pad.App">
   <Application.Resources>
     <ResourceDictionary>
+      <!-- Palette adapted from the confirmed single-file HTML PDA prototype. -->
       <Color x:Key="Primary">#376BEE</Color>
+      <Color x:Key="PageBackground">#F5F7FB</Color>
+      <Color x:Key="Surface">#FFFFFF</Color>
+      <Color x:Key="SurfaceBorder">#E3E9F1</Color>
+      <Color x:Key="TextPrimary">#1C2D48</Color>
+      <Color x:Key="TextMuted">#72829C</Color>
+      <Color x:Key="Success">#19805B</Color>
+      <Color x:Key="SuccessSurface">#E8F6EE</Color>
+      <Color x:Key="Warning">#9B5C11</Color>
+      <Color x:Key="WarningSurface">#FFF5E6</Color>
+      <Color x:Key="Error">#C73535</Color>
+
+      <Style x:Key="PageTitle" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}"/>
+        <Setter Property="FontSize" Value="19"/>
+        <Setter Property="FontAttributes" Value="Bold"/>
+        <Setter Property="VerticalOptions" Value="Center"/>
+      </Style>
+      <Style x:Key="SecondaryText" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource TextMuted}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="LineBreakMode" Value="TailTruncation"/>
+      </Style>
+      <Style x:Key="SectionTitle" TargetType="Label">
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontAttributes" Value="Bold"/>
+      </Style>
+      <Style x:Key="IconButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent"/>
+        <Setter Property="TextColor" Value="#496489"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="MinimumHeightRequest" Value="48"/>
+        <Setter Property="MinimumWidthRequest" Value="48"/>
+        <Setter Property="CornerRadius" Value="10"/>
+      </Style>
+      <Style x:Key="PrimaryAction" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource Primary}"/>
+        <Setter Property="TextColor" Value="White"/>
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontAttributes" Value="Bold"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="MinimumHeightRequest" Value="54"/>
+        <Setter Property="Padding" Value="14,8"/>
+      </Style>
+      <Style x:Key="SecondaryAction" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="White"/>
+        <Setter Property="BorderColor" Value="#DCE5F0"/>
+        <Setter Property="BorderWidth" Value="1"/>
+        <Setter Property="TextColor" Value="#365477"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="CornerRadius" Value="9"/>
+        <Setter Property="MinimumHeightRequest" Value="48"/>
+        <Setter Property="Padding" Value="10,6"/>
+      </Style>
+      <Style x:Key="FormEntry" TargetType="Entry">
+        <Setter Property="BackgroundColor" Value="White"/>
+        <Setter Property="TextColor" Value="{StaticResource TextPrimary}"/>
+        <Setter Property="PlaceholderColor" Value="#9AA9BC"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="HeightRequest" Value="52"/>
+      </Style>
     </ResourceDictionary>
   </Application.Resources>
 </Application>
