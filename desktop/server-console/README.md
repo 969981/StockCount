@@ -8,7 +8,7 @@
 - 业务 API：`src/StockCount.Api`，仍为 .NET 10 ASP.NET Core Minimal API，不迁移数据库业务到 Rust。
 - 进程：Rust 通过 `tauri-plugin-shell` 的受限 Sidecar 启动 `StockCount.Api.exe`，负责启停/状态/DB 测试；UI 没有通用 Shell 权限。
 - SQLite：`StockCount.Api.Logging.SqliteLogStore` 把 `ILogger` 写入数据库；Rust `rusqlite` 从相同文件只读，React 展示查询结果。
-- 配置：本机非敏感参数保存在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，数据库/证书密码和设备密钥单独存于 Windows Credential Manager。
+- 配置：非敏感参数保存在 **Windows 管理器 EXE 同目录**的 `server-settings.json`，与 `server-logs.db` 相邻；数据库密码和 PDA 设备密钥仍保存在 Windows Credential Manager。旧 AppData 配置仅在同目录文件不存在时自动复制迁移，旧文件不删除。
 
 ## 本地一键打包和免安装部署
 
@@ -48,7 +48,7 @@ CI 定义：[tauri-server-console.yml](../../.github/workflows/tauri-server-cons
 - 便携 ZIP 由 [package-windows-portable.ps1](../../scripts/package-windows-portable.ps1) 在已完成同一 Tauri Release 构建之后生成，不重新编译或改动功能。
 - 解压到用户可写目录，例如 `D:\Apps\StockCount-Server\`，双击启动脚本即可；SQLite `server-logs.db` 与主 EXE 同目录，切勿直接从 ZIP 内启动或放进受保护 Program Files。
 - 免安装也需要系统 WebView2 Runtime；.NET 10 Sidecar 是 self-contained，无需另外安装 .NET Runtime。
-- 非敏感设置依旧在 LOCALAPPDATA 下，密码/设备访问密钥仍在 Windows Credential Manager，因此这不是将全部设置与凭据随 ZIP 转移的绿色便携版。
+- `server-settings.json` 与 `server-logs.db` 都在主 EXE 同目录。Portable 升级不覆盖这些文件；搬迁整套文件时可一起带走非敏感配置和日志。密码/设备访问密钥仍在 Windows Credential Manager，跨电脑或 Windows 账户需要重新配置。
 - [统一发布流程和校验](../../docs/RELEASE_PACKAGING.md) · [GitHub Releases](https://github.com/969981/StockCount/releases)。
 
 ## 操作流程
@@ -70,8 +70,8 @@ PDA 端的 MAUI 配置页在未来接入：只允许配置 API URL、`Test` / `P
 
 - 正式环境对应 `sagex3.COB`；测试对应 `sagex3.XTEST`。服务器固定白名单，不允许动态 Schema。
 - C# API 已有受控 XCOUTD 事务和幂等代码：不创建/关闭单据、不修改标签；Production 与 XTEST 均支持独立开启真实写入，默认均关闭。分别核验对应 Schema、执行 DBA 幂等表迁移、核对 1:1 单位与 ROWID，才能在“数据库连接”页显式启用。详见 [写入启用说明](../../docs/WRITE_FLOW_IMPLEMENTATION.md)。
-- SQLite 默认位置：`<桌面管理端 EXE 所在目录>\server-logs.db`，采用 WAL、后台单写入队列；启动时清理 30 天前记录。不是正式业务数据仓库。
-- SQLite 日志与 Tauri EXE 放在同一文件夹，NSIS 固定当前用户安装模式，避免默认放进 Program Files。如果手动改到不可写目录，服务启动会提示权限错误，绝不静默切回 AppData。同目录可能生成 `server-logs.db-wal` 与 `server-logs.db-shm`；更新/卸载前应备份。
+- 非敏感配置：`<桌面管理端 EXE 所在目录>\server-settings.json`；日志：同目录 `server-logs.db`，采用 SQLite WAL、后台单写入队列。只有配置 JSON 随 EXE 目录移动，Windows Credential Manager 中的凭据不会自动转移。
+- 配置 JSON 和 SQLite 日志均与 Tauri EXE 放在同一文件夹，NSIS 固定当前用户安装模式。目录不可写会提示错误，绝不静默切回 AppData。同目录可能生成 `server-logs.db-wal` 与 `server-logs.db-shm`；更新/卸载前需备份 `server-settings.json` 和 SQLite 相关文件。
 - 本程序是用户会话桌面管理器，**不是 Windows Service**；当前 Tauri 关闭时会终止 Sidecar。未来需要开机自启/无人值守时，应另行实现 Windows Service 和远程管理 UI。
 - 管理端口仅监听 127.0.0.1 / ::1 并要求进程级随机 admin token；不会公开下发到 PDA。
 - 公开 GitHub 中不应提交实际连接凭据、API 设备密钥、证书、内网主机、现场日志、真实箱码。
