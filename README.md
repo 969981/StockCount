@@ -41,6 +41,14 @@ pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
 - [Android Release 构建脚本](scripts/build-android-release.ps1)：使用 `dotnet publish -c Release`、持久签名、`apksigner` 和 SHA256 验证。
 - 本地 `build-local.ps1 -Target Android -AndroidVariant Both` 可生成两个版本；CI 无正式签名密钥时只做 Release 编译核验，**不能冒充已发布正式签名 APK**。
 
+## Visual Studio · 完整解决方案、Avalonia UI 和 Android
+
+请用 Visual Studio 2026 打开根目录的 **`StockCount.slnx`**，现在该解决方案同时包含 **`StockCount.Api`、`StockCount.Server.Desktop`（Avalonia）和 `StockCount.Pad`（MAUI Android）**，以及公共依赖及测试项目。若只需要后端且不想安装 MAUI/Android 工作负载，可打开独立的 `StockCount.Backend.slnx`。
+
+启动 API 时选择 **`StockCount.Api (HTTP)`**：仅 `http://127.0.0.1:5080`，无需信任开发 HTTPS 证书，默认不打开浏览器。Avalonia 在 Windows Debug/F5 时会自动将本机 Debug API Sidecar 复制到 UI EXE 同目录；MAUI Android 则需安装 **.NET Multi-platform App UI development** 工作负载，并选择 Android 设备/模拟器启动。注意 **Visual Studio 解决方案“全部生成”需要本机 MAUI Android SDK 工作负载**；独立构建各项目不受另一 UI 技术栈影响。
+
+[Visual Studio 全项目 HTTP 调试指南](docs/VISUAL_STUDIO_HTTP_DEBUG.md) · [Avalonia 管理器](src/StockCount.Server.Desktop/README.md) · [MAUI Android 客户端](src/StockCount.Pad/README.md)。
+
 ## Windows 免安装版构建与软件版本
 
 如果运行 `package-windows-portable.ps1` 提示 **Tauri exe was not built**，说明本机尚未构建 `target/release/stockcount-server-console.exe`，应先运行一键编译。
