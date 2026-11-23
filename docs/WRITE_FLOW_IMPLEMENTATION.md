@@ -15,12 +15,12 @@
 
 ## 业务请求
 
-POST /api/v1/inventory-counts/1712474746529/items
+POST /api/v1/inventory-counts/COUNT-DEMO-001/items
 
 请求头：X-StockCount-Environment: Test，X-StockCount-Device-Key: <PDA令牌>，Idempotency-Key: <每笔提交固定的UUID>。
 
 ```json
-{"rawQrCode":"ID.1794814541901|1@@PT.PTHG01260700005@@LN.1000@@MT.A10000087@@LT.L26070146@@QT.100@@PG.100","boxNumber":"1794814541901|1","countedLocation":"0700Q0001","countedQtyStu":99}
+{"rawQrCode":"ID.BOX-DEMO-001@@PT.DOC-DEMO-001@@LN.1000@@MT.ITM-DEMO-01@@LT.LOT-01@@QT.100@@PG.100","boxNumber":"BOX-DEMO-001","countedLocation":"0700Q0001","countedQtyStu":99}
 ```
 
 箱内数量改成 nullable decimal，**未填写会返回 400 COUNT_QUANTITY_REQUIRED**，人工输入99时保存 QTYSTU_0=QTYPCU_0=99，不会从二维码 QT.100 带入。数量为0当前允许，负数或 numeric(28,13) 超出范围拒绝；PCS 整数要求尚待业务确认。标签 STA_0 无任何白名单限制。
@@ -35,7 +35,7 @@ POST /api/v1/inventory-counts/1712474746529/items
 
 幂等记录表必须与 ERP 表在同一 SQL Server 数据库：SQLite server-logs.db **只用于程序日志，不能用于原子提交幂等**。迁移为 [001_stockcount_submission.sql](../sql/migrations/001_stockcount_submission.sql)，仅 DBA 备份并授权后执行一次；API 不在启动时自动创建或改动表结构。
 
-GET /api/v1/submissions/{requestId}?countNumber=1712474746529 要携带同一环境/设备请求头：200 代表确认已保存，404 代表当前未查到已提交记录，503 代表结果无法确认。404 后重试也必须使用原 UUID；503 时绝不能据此推断保存失败。
+GET /api/v1/submissions/{requestId}?countNumber=COUNT-DEMO-001 要携带同一环境/设备请求头：200 代表确认已保存，404 代表当前未查到已提交记录，503 代表结果无法确认。404 后重试也必须使用原 UUID；503 时绝不能据此推断保存失败。
 
 ## 启用 XTEST 测试写入（默认关闭）
 
