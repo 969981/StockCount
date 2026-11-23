@@ -47,7 +47,7 @@ BEGIN
         C.is_computed AS [计算列_1是],
         TN.TEXTE_0 AS [X3中文普通标题],
         TL.TEXTE_0 AS [X3中文长标题],
-        TS.TEXTE_0 AS [X3中文短标题],
+        CAST(NULL AS nvarchar(4000)) AS [X3中文短标题_来源待核],
         Z.CODTYP_0 AS [X3逻辑类型],
         Z.NOLIB_0 AS [本地菜单号],
         Z.LONG_0 AS [X3定义长度],
@@ -84,8 +84,6 @@ BEGIN
        ON TN.NUMERO_0 = Z.NOCOURT_0 AND TN.LAN_0 = N''CHI''
     LEFT JOIN ' + QUOTENAME(@schema) + N'.[ATEXTE] AS TL
        ON TL.NUMERO_0 = Z.NOLONG_0 AND TL.LAN_0 = N''CHI''
-    LEFT JOIN ' + QUOTENAME(@schema) + N'.[ATEXTE] AS TS
-       ON TS.NUMERO_0 = Z.NOLIB_0 AND 1=0 -- 不将菜单号当作短标题文字编号
     LEFT JOIN sys.extended_properties AS EP
        ON EP.major_id = C.object_id AND EP.minor_id = C.column_id
       AND EP.class = 1 AND EP.name = N''MS_Description''
@@ -96,15 +94,8 @@ BEGIN
         WHEN N''XLABELDTL'' THEN 3 WHEN N''STOLOC'' THEN 4 ELSE 5 END,
         C.column_id;
     ';
-    -- ATABZON 的短标题应使用对应的短标题编号字段，且不同定制库可能不同；
-    -- 不在无法确认实际列名时硬接菜单号。将其固定置空，普通/长标题仍可完整返回。
-    SET @sql = REPLACE(@sql,
-      N'TS.TEXTE_0 AS [X3中文短标题]', N'CAST(NULL AS nvarchar(4000)) AS [X3中文短标题_源字段待核]');
-    SET @sql = REPLACE(@sql,
-      N'    LEFT JOIN ' + QUOTENAME(@schema) + N'.[ATEXTE] AS TS
-       ON TS.NUMERO_0 = Z.NOLIB_0 AND 1=0 -- 不将菜单号当作短标题文字编号
-', N'');
-
+    -- 仅输出经 X3 NOCOURT_0 / NOLONG_0 明确核实的普通、长标题；
+    -- 短标题字段的字典关联尚未验证，留空避免错误地把菜单号当作文本。
     PRINT N'===== '+@schema+N'：5 张表实际物理字段与中文标题 =====';
     EXEC sys.sp_executesql @sql, N'@SourceSchema sysname', @SourceSchema=@schema;
     SET @i += 1;
