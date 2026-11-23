@@ -14,13 +14,12 @@ pub struct LogRow {
 
 #[tauri::command]
 pub fn log_path() -> Result<String, String> {
-    Ok(crate::config::base_dir()?
-        .join("logs").join("server-logs.db").to_string_lossy().to_string())
+    Ok(crate::config::log_db_path()?.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 pub fn read_logs(search: Option<String>, limit: Option<usize>) -> Result<Vec<LogRow>, String> {
-    let path = crate::config::base_dir()?.join("logs").join("server-logs.db");
+    let path = crate::config::log_db_path()?;
     if !path.exists() { return Ok(Vec::new()); }
 
     let connection = Connection::open_with_flags(path,
