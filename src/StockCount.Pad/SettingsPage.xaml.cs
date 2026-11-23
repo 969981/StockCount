@@ -22,6 +22,11 @@ public partial class SettingsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
+        ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
+        UpdateScannerDiagnostic(ScanFeed.LatestDiagnostic);
+        ScanFeed.ScanObserved -= OnScanObserved;
+        ScanFeed.ScanObserved += OnScanObserved;
         try
         {
             DeviceKeyStatus.Text = await _api.HasDeviceKeyAsync()
@@ -32,6 +37,26 @@ public partial class SettingsPage : ContentPage
         {
             DeviceKeyStatus.Text = "无法读取设备密钥状态，请检查 Android 安全存储";
         }
+    }
+
+    protected override void OnDisappearing()
+    {
+        ScanFeed.ScanObserved -= OnScanObserved;
+        base.OnDisappearing();
+    }
+
+    private void OnScanObserved(ScanFeed.ScanDiagnostic diagnostic)
+    {
+        MainThread.BeginInvokeOnMainThread(() => UpdateScannerDiagnostic(diagnostic));
+    }
+
+    private void UpdateScannerDiagnostic(ScanFeed.ScanDiagnostic? diagnostic)
+    {
+        ScannerStatusText.Text = diagnostic is null ? "等待硬件扫描" : "✓ 广播已收到";
+        ScannerStatusText.TextColor = Color.FromArgb(
+            diagnostic is null ? "#7F91AA" : "#19805B");
+        LastScanText.Text = diagnostic is null ? "尚未收到扫码广播"
+            : $"{diagnostic.ObservedAt:HH:mm:ss} · {diagnostic.Kind} · {diagnostic.Length} 字符";
     }
 
     private async void SelectProduction_Clicked(object sender, EventArgs e)
