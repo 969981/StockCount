@@ -90,6 +90,25 @@
                    LineBreakMode="CharacterWrap"/>
             <Label x:Name="ScannerExtraText" Text="字段：ScanCode"
                    FontSize="12" TextColor="#61738D"/>
+            <Label Text="扫码广播 Action（不同机型可修改）"
+                   TextColor="#536581" FontSize="12"/>
+            <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9" Padding="8,0">
+              <Entry x:Name="ScannerActionInput"
+                     Placeholder="com.service.scanner.data"
+                     FontSize="12" HeightRequest="45"
+                     BackgroundColor="Transparent"/>
+            </Border>
+            <Label Text="扫码字符串 Extra 字段名"
+                   TextColor="#536581" FontSize="12"/>
+            <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9" Padding="8,0">
+              <Entry x:Name="ScannerExtraInput"
+                     Placeholder="ScanCode"
+                     FontSize="12" HeightRequest="45"
+                     BackgroundColor="Transparent"/>
+            </Border>
+            <Button Text="应用扫码参数（即时生效）"
+                    Style="{StaticResource SecondaryAction}"
+                    Clicked="SaveScanner_Clicked"/>
             <Border BackgroundColor="#F5F8FE" Stroke="#E2EAF7"
                     StrokeShape="RoundRectangle 9" Padding="12,11">
               <VerticalStackLayout Spacing="5">
