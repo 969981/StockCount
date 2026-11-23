@@ -2,24 +2,98 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.SettingsPage"
-             Title="PDA 设置" BackgroundColor="#F6F8FC">
-  <ScrollView>
-    <VerticalStackLayout Padding="20" Spacing="13">
-      <Label Text="服务端连接" FontSize="20" FontAttributes="Bold"/>
-      <Label Text="API HTTPS 地址" FontAttributes="Bold" />
-      <Entry x:Name="ApiAddress" Placeholder="https://现场服务域名:5080" Keyboard="Url"/>
-      <Label Text="帐套" FontAttributes="Bold" />
-      <Picker x:Name="EnvironmentPicker" Title="选择帐套" >
-        <Picker.Items><x:String>Test</x:String><x:String>Production</x:String></Picker.Items>
-      </Picker>
-      <Label Text="PDA 设备接入密钥" FontAttributes="Bold"/>
-      <Entry x:Name="DeviceKey" IsPassword="True" Placeholder="由服务器管理器复制；保存在 SecureStorage"/>
-      <Button Text="保存设置" Clicked="Save_Clicked" BackgroundColor="#376BEE" TextColor="White"/>
-      <Button Text="测试连接" Clicked="Test_Clicked"/>
-      <Label Text="PDA 只能配置 API 地址、环境和设备密钥；SQL Server 用户名、密码只能在 Windows Tauri 后端管理器维护。"
-             TextColor="#68768B" FontSize="12"/>
-      <Label Text="切换帐套后返回盘点单列表重新选择，不允许沿用之前帐套的盘点库位和箱码。"
-             TextColor="#B35E11" FontSize="12"/>
-    </VerticalStackLayout>
-  </ScrollView>
+             NavigationPage.HasNavigationBar="False"
+             Title="连接与设备设置" BackgroundColor="{StaticResource PageBackground}">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <Grid Grid.Row="0" BackgroundColor="White" Padding="8,6,12,6"
+          ColumnDefinitions="Auto,*" HeightRequest="60">
+      <Button Text="‹" Style="{StaticResource IconButton}"
+              Clicked="Back_Clicked"/>
+      <Label Grid.Column="1" Text="连接与设备设置"
+             Style="{StaticResource PageTitle}" Margin="6,0,0,0"/>
+    </Grid>
+    <ScrollView Grid.Row="1">
+      <VerticalStackLayout Padding="14,14,14,16" Spacing="13">
+        <Border BackgroundColor="White" Stroke="#E3E9F1"
+                StrokeShape="RoundRectangle 12" Padding="15">
+          <VerticalStackLayout Spacing="12">
+            <Label Text="◫  API 连接" Style="{StaticResource SectionTitle}"/>
+            <Label Text="服务端 API 地址" FontSize="12" FontAttributes="Bold"
+                   TextColor="#536581"/>
+            <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
+                    Padding="8,0">
+              <Entry x:Name="ApiAddress" Keyboard="Url"
+                     Placeholder="https://现场服务器:5080"
+                     FontSize="14" BackgroundColor="Transparent"
+                     HeightRequest="48"/>
+            </Border>
+            <Label Text="服务器地址由现场人员填写；APK 只通过 HTTPS 访问 API，不直接连接 SQL Server。"
+                   Style="{StaticResource SecondaryText}" LineBreakMode="WordWrap"/>
+
+            <Label Text="PDA 设备访问密钥" FontSize="12"
+                   FontAttributes="Bold" TextColor="#536581"/>
+            <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
+                    Padding="8,0">
+              <Entry x:Name="DeviceKey" IsPassword="True"
+                     Placeholder="输入新密钥；留空保留原密钥"
+                     BackgroundColor="Transparent" FontSize="14"
+                     HeightRequest="48"/>
+            </Border>
+            <Label x:Name="DeviceKeyStatus" Text="设备密钥保存在 Android SecureStorage"
+                   Style="{StaticResource SecondaryText}"
+                   LineBreakMode="WordWrap"/>
+            <Button Text="◉  测试连接" Style="{StaticResource SecondaryAction}"
+                    Clicked="Test_Clicked"/>
+            <Label x:Name="ConnectionResult" Text="请先保存配置，再测试服务连接"
+                   FontSize="12" TextColor="#72829C"
+                   LineBreakMode="WordWrap"/>
+          </VerticalStackLayout>
+        </Border>
+
+        <Border BackgroundColor="White" Stroke="#E3E9F1"
+                StrokeShape="RoundRectangle 12" Padding="15">
+          <VerticalStackLayout Spacing="12">
+            <Label Text="◇  帐套选择" Style="{StaticResource SectionTitle}"/>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+              <Button x:Name="TestEnvironmentButton" Grid.Column="0"
+                      Text="测试 · XTEST" Style="{StaticResource SecondaryAction}"
+                      Clicked="SelectTest_Clicked"/>
+              <Button x:Name="ProductionEnvironmentButton" Grid.Column="1"
+                      Text="正式 · COB" Style="{StaticResource SecondaryAction}"
+                      Clicked="SelectProduction_Clicked"/>
+            </Grid>
+            <Label Text="切换帐套后重新选择盘点单，库位和箱码不能跨帐套沿用。"
+                   Style="{StaticResource SecondaryText}"
+                   LineBreakMode="WordWrap"/>
+            <Border x:Name="ProductionWarning" IsVisible="False"
+                    BackgroundColor="#FFF5E6" Stroke="#F3DEBA"
+                    StrokeShape="RoundRectangle 10" Padding="11">
+              <Label Text="⚠ 当前选择正式帐套 COB。提交将依据后端正式帐套写入授权，直接操作生产盘点明细。"
+                     FontSize="12" TextColor="#9B5C11"
+                     LineBreakMode="WordWrap"/>
+            </Border>
+          </VerticalStackLayout>
+        </Border>
+
+        <Border BackgroundColor="#EEF3FB" Stroke="#E1E9F6"
+                StrokeShape="RoundRectangle 10" Padding="13">
+          <VerticalStackLayout Spacing="7">
+            <Label Text="安全说明" FontAttributes="Bold"
+                   TextColor="#496485" FontSize="13"/>
+            <Label Text="PDA 仅保存 API 地址、Test/Production 环境和设备访问密钥。数据库服务器、账号、密码只能在 Windows Tauri 管理器配置。"
+                   FontSize="12" TextColor="#647A9C"/>
+            <Label Text="已提交但响应丢失时，原单据、数量和 UUID 会加密保存；确认结果之前，不允许切换服务器或帐套。"
+                   FontSize="12" TextColor="#647A9C"/>
+          </VerticalStackLayout>
+        </Border>
+      </VerticalStackLayout>
+    </ScrollView>
+
+    <Border Grid.Row="2" BackgroundColor="White"
+            Stroke="#E3E9F1" Padding="14,12,14,15">
+      <Button x:Name="SaveButton" Text="✓  保存设置"
+              Style="{StaticResource PrimaryAction}"
+              Clicked="Save_Clicked"/>
+    </Border>
+  </Grid>
 </ContentPage>
