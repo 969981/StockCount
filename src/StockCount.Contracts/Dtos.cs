@@ -59,3 +59,18 @@ public sealed record SaveCountItemRequest(
     string CountedLocation,
     decimal CountedQtyStu
 );
+
+
+/// <summary>One committed XCOUTD row. Both values equal the manually entered STU count.</summary>
+public sealed record SaveCountItemResult(
+    string Environment,
+    string CountNumber,
+    string BoxNumber,
+    string DetailId,
+    decimal SavedQtyStu,
+    decimal SavedQtyPcu,
+    string StockUnit,
+    Guid RequestId,
+    string Status,
+    bool Replayed
+);
