@@ -1,0 +1,173 @@
+name: StockCount Release - APK, Setup, Portable
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/publish-stockcount.yml'
+      - 'scripts/package-windows-portable.ps1'
+  pull_request:
+    paths:
+      - '.github/workflows/publish-stockcount.yml'
+      - 'scripts/package-windows-portable.ps1'
+
+permissions:
+  contents: read
+
+env:
+  RELEASE_VERSION: 0.2.0-preview.1
+
+jobs:
+  android:
+    runs-on: windows-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Install MAUI Android workload
+        run: dotnet workload install maui-android
+      - name: Test counting business rules
+        run: dotnet test tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj -c Release
+      - name: Build signed debug APK
+        shell: pwsh
+        run: |
+          dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debug -p:AndroidPackageFormat=apk -p:EmbedAssembliesIntoApk=true
+          if ($LASTEXITCODE -ne 0) { throw "MAUI Android build failed" }
+      - name: Stage only signed APK
+        shell: pwsh
+        run: |
+          $path = "src/StockCount.Pad/bin/Debug/net10.0-android"
+          $signed = @(Get-ChildItem $path -File -Filter "*-Signed.apk")
+          if ($signed.Count -ne 1) { throw "Expected one signed APK, got $($signed.Count)" }
+          New-Item -ItemType Directory release-android -Force | Out-Null
+          $dest = "release-android/StockCount-PDA-v$env:RELEASE_VERSION-Android-Debug-Signed.apk"
+          Copy-Item -LiteralPath $signed[0].FullName -Destination $dest
+          if ((Get-Item $dest).Length -lt 1048576) { throw "APK unexpectedly small" }
+          Get-FileHash $dest -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StockCount-Release-Android
+          path: release-android/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Build C# API
+        run: |
+          dotnet build src/StockCount.Api/StockCount.Api.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { throw "ASP.NET build failed" }
+      - name: Publish self-contained API Sidecar
+        run: ./scripts/build-tauri-sidecar.ps1
+      - name: Restore JS dependencies
+        working-directory: desktop/server-console
+        run: npm install
+      - name: Generate desktop icon
+        working-directory: desktop/server-console
+        run: npm run tauri -- icon ./assets/app-icon.svg
+      - name: Build Tauri NSIS installer and EXE
+        working-directory: desktop/server-console
+        run: npm run build:desktop
+      - name: Stage Setup and portable ZIP
+        run: |
+          New-Item -ItemType Directory release-windows -Force | Out-Null
+          $setup = @(Get-ChildItem "desktop/server-console/src-tauri/target/release/bundle/nsis" -File -Filter "*.exe")
+          if ($setup.Count -ne 1) { throw "Expected exactly one NSIS installer, got $($setup.Count)" }
+          $dest = "release-windows/StockCount-Server-v$env:RELEASE_VERSION-Windows-x64-Setup.exe"
+          Copy-Item -LiteralPath $setup[0].FullName -Destination $dest
+          if ((Get-Item $dest).Length -lt 1048576) { throw "Installer unexpectedly small" }
+          ./scripts/package-windows-portable.ps1 -Version $env:RELEASE_VERSION -OutputDirectory "release-windows"
+          $zip = "release-windows/StockCount-Server-v$env:RELEASE_VERSION-Windows-x64-Portable.zip"
+          if (-not (Test-Path -LiteralPath $zip)) { throw "Portable ZIP missing" }
+          Get-FileHash $dest -Algorithm SHA256 | Format-List
+          Get-FileHash $zip -Algorithm SHA256 | Format-List
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StockCount-Release-Windows
+          path: |
+            release-windows/*.exe
+            release-windows/*.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish all three binaries to GitHub Releases
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' &&
+       contains(github.event.head_commit.message, '[publish-stockcount]'))
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: StockCount-Release-Android
+          path: release-android
+      - uses: actions/download-artifact@v4
+        with:
+          name: StockCount-Release-Windows
+          path: release-windows
+      - name: Validate all three and hash
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir release-files
+          cp release-android/*.apk release-files/
+          cp release-windows/*.exe release-windows/*.zip release-files/
+          shopt -s nullglob
+          apk=(release-files/*-Android-Debug-Signed.apk)
+          setup=(release-files/*-Windows-x64-Setup.exe)
+          portable=(release-files/*-Windows-x64-Portable.zip)
+          if (( ${#apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 )); then
+            echo "Missing assets: APK=${#apk[@]} Setup=${#setup[@]} Portable=${#portable[@]}" >&2
+            exit 1
+          fi
+          cd release-files
+          sha256sum ./*.apk ./*.exe ./*.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Create a single immutable GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          GIT_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v${RELEASE_VERSION}"
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "Release $tag already exists; refusing to replace a published binary." >&2
+            exit 1
+          fi
+          cat > /tmp/stockcount-notes.md <<'NOTES'
+          ## StockCount - Android PDA and Windows Server Manager
+
+          - Android Signed.apk: installable DEBUG-signed APK for hardware tests, not a production signing certificate.
+          - Windows Setup.exe: NSIS current-user installer with Tauri 2 manager and self-contained .NET 10 Sidecar.
+          - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
+          - SHA256SUMS.txt: independent checksums of all three release binaries.
+
+          Windows logs (server-logs.db and SQLite WAL companions) are beside the desktop EXE. The portable ZIP keeps application settings in LOCALAPPDATA and passwords in Windows Credential Manager, not within the ZIP. WebView2 runtime is required.
+
+          The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This is a technical prerelease, not production certification; Windows executables are unsigned and the APK is debug signed.
+          NOTES
+          gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - APK / Setup / Portable" --notes-file /tmp/stockcount-notes.md --prerelease
