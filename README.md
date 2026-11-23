@@ -140,6 +140,11 @@ tests/
 docs/
 ```
 
+## Windows Avalonia UI · 启动与日志管理
+
+- [Avalonia Windows 管理器](src/StockCount.Server.Desktop/README.md)：主界面默认尝试启动 C# API；首次未填 SQL Server 地址时先等待完成配置。SQLite 日志页支持中文显示、中文检索、按 1/3/7/14/30 天二次确认手动删除旧日志。数据库内原始日志保持原样，原 API 启动时自动清理 30 天前记录的机制不变。
+- XTEST/COB 四个写入安全门禁仍须完成独立核验和人工确认才能启用；**不能将未验证的 ERP 写入状态默认标记为授权**。正式 Tauri 发布入口仍保留，Avalonia 可单独运行与调试。
+
 ## Windows 后端服务管理器（Tauri 2）
 
 - **已改为 Tauri 2 + React + TypeScript**：一键启动/停止 C# ASP.NET Core API Sidecar，数据库参数在本机可读/可改，日志写入 SQLite；不使用 WPF。

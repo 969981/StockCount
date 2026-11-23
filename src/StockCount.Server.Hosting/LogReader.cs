@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using System.Globalization;
 
 namespace StockCount.Server.Hosting;
 
@@ -7,13 +8,52 @@ public sealed record ServerLog(long Id, string TimestampUtc, string Level, strin
 
 public sealed class LogReader(SettingsStore store)
 {
+    /// <summary>
+    /// Delete historical rows from the existing SQLite DB. A second connection is safe
+    /// with WAL mode; never delete the database, WAL, or SHM files while API is running.
+    /// Invalid ranges are rejected before opening a connection.
+    /// </summary>
+    public int DeleteOlderThan(int days, DateTimeOffset? referenceUtc = null)
+    {
+        if (days is < 1 or > 3650) throw new ArgumentOutOfRangeException(nameof(days));
+        if (!File.Exists(store.LogPath)) return 0;
+
+        var connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = store.LogPath,
+            Mode = SqliteOpenMode.ReadWrite,
+            Cache = SqliteCacheMode.Default,
+            Pooling = false
+        }.ConnectionString;
+
+        using var connection = new SqliteConnection(connectionString);
+        connection.Open();
+        using (var busy = connection.CreateCommand())
+        {
+            busy.CommandText = "PRAGMA busy_timeout=5000";
+            busy.ExecuteNonQuery();
+        }
+
+        using var tx = connection.BeginTransaction();
+        using var delete = connection.CreateCommand();
+        delete.Transaction = tx;
+        delete.CommandText = "DELETE FROM log_entries WHERE timestamp_utc < $cutoff";
+        delete.Parameters.AddWithValue("$cutoff",
+            (referenceUtc ?? DateTimeOffset.UtcNow).ToUniversalTime()
+            .AddDays(-days).ToString("O", CultureInfo.InvariantCulture));
+        var removed = delete.ExecuteNonQuery();
+        tx.Commit();
+        return removed;
+    }
+
     public IReadOnlyList<ServerLog> Read(string? search = null, int limit = 200)
     {
         if (!File.Exists(store.LogPath)) return Array.Empty<ServerLog>();
         var builder = new SqliteConnectionStringBuilder
         {
             DataSource = store.LogPath, Mode = SqliteOpenMode.ReadOnly,
-            Cache = SqliteCacheMode.Default
+            Cache = SqliteCacheMode.Default,
+            Pooling = false
         };
         using var connection = new SqliteConnection(builder.ConnectionString);
         connection.Open();

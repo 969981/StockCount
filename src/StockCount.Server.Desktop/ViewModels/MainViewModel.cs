@@ -13,11 +13,34 @@ public partial class MainViewModel : ObservableObject
     private readonly LogReader _logs;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private bool _settingsInvalid;
+    private bool _initialized;
 
     [ObservableProperty] private ServerSettings settings = new();
     [ObservableProperty] private string sqlPasswordInput = "";
     [ObservableProperty] private string certPasswordInput = "";
     [ObservableProperty] private string logSearch = "";
+    [ObservableProperty] private int logCleanupDays = 7;
+    [ObservableProperty] private bool confirmLogCleanupPending;
+    [ObservableProperty] private bool confirmAllWriteGatesPending;
+
+    public IReadOnlyList<int> LogCleanupOptions { get; } = new[] { 1, 3, 7, 14, 30 };
+    public string CleanupButtonText => ConfirmLogCleanupPending
+        ? $"确认删除 {LogCleanupDays} 天前日志"
+        : "清理旧日志";
+    public string WriteGatesButtonText => ConfirmAllWriteGatesPending
+        ? "确认双帐套已核验并全选"
+        : "已核验？集中勾选四项";
+
+    partial void OnLogCleanupDaysChanged(int value)
+    {
+        ConfirmLogCleanupPending = false;
+        OnPropertyChanged(nameof(CleanupButtonText));
+    }
+
+    partial void OnConfirmLogCleanupPendingChanged(bool value) =>
+        OnPropertyChanged(nameof(CleanupButtonText));
+    partial void OnConfirmAllWriteGatesPendingChanged(bool value) =>
+        OnPropertyChanged(nameof(WriteGatesButtonText));
     [ObservableProperty] private string message = "准备就绪。";
     [ObservableProperty] private string serviceState = "未启动";
     [ObservableProperty] private string databaseState = "未测试";
@@ -47,6 +70,51 @@ public partial class MainViewModel : ObservableObject
         catch (Exception ex) { CredentialState = "凭据读取失败：" + ex.Message; }
     }
 
+    /// <summary>Called only after the window has opened; keeps start failures visible in UI.</summary>
+    public async Task InitializeAsync()
+    {
+        if (_initialized) return;
+        _initialized = true;
+        if (_settingsInvalid)
+        {
+            await RefreshStatusAsync();
+            return;
+        }
+
+        if (Settings.AutoStartApi)
+        {
+            if (string.IsNullOrWhiteSpace(Settings.SqlServer))
+            {
+                Message = "请先填写并保存 SQL Server 地址；配置完成后会自动启动 API。";
+            }
+            else
+            {
+                await StartAsync();
+            }
+        }
+        await RefreshStatusAsync();
+        await RefreshLogsAsync();
+    }
+
+    [RelayCommand]
+    private void SelectAllWriteGates()
+    {
+        if (_settingsInvalid) { Message = "配置文件无效，禁止修改写入权限。"; return; }
+        if (!ConfirmAllWriteGatesPending)
+        {
+            ConfirmAllWriteGatesPending = true;
+            Message = "仅在 XTEST 与 COB 已分别完成 DBA 前检、幂等迁移和现场授权后，再点击一次确认勾选四项；不会自动保存。";
+            return;
+        }
+        ConfirmAllWriteGatesPending = false;
+        Settings.SchemaReviewed = true;
+        Settings.EnableTestWrites = true;
+        Settings.ProductionSchemaReviewed = true;
+        Settings.EnableProductionWrites = true;
+        OnPropertyChanged(nameof(Settings));
+        Message = "已勾选四项（尚未生效），请填写经批准的 X3 审计用户编码并保存；更换数据库身份会重置授权。";
+    }
+
     [RelayCommand]
     private async Task SaveSettingsAsync()
     {
@@ -62,11 +130,15 @@ public partial class MainViewModel : ObservableObject
             if (newSqlPassword) _vault.Write("sql-password", SqlPasswordInput);
             if (!string.IsNullOrEmpty(CertPasswordInput)) _vault.Write("cert-password", CertPasswordInput);
             _store.Save(Settings);
+            Settings = _store.Load(); // refresh nested checkbox bindings after revoking old approvals
+            ConfirmAllWriteGatesPending = false;
             SqlPasswordInput = "";
             CertPasswordInput = "";
             CredentialState = _vault.Read("sql-password") is null ? "未保存 SQL 密码" : "SQL 密码已保存";
             ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
             Message = "配置已保存至 EXE 同目录。数据库身份变化时写入授权已重置。";
+            if (Settings.AutoStartApi && !string.IsNullOrWhiteSpace(Settings.SqlServer))
+                await StartAsync();
         }
         catch (Exception ex) { Message = "保存失败：" + ex.Message; }
         await RefreshStatusAsync();
@@ -126,9 +198,49 @@ public partial class MainViewModel : ObservableObject
     private async Task RefreshLogsAsync()
     {
         if (!await _refreshGate.WaitAsync(0)) return;
-        try { LogEntries = new ObservableCollection<ServerLog>(_logs.Read(LogSearch)); }
+        try
+        {
+            // Translate only for display, retaining the unmodified source in SQLite.
+            // Searching Chinese labels also works within the most recent 500 raw records.
+            var translated = _logs.Read(limit: 500).Select(LogLocalizer.ToChinese);
+            var query = LogSearch?.Trim() ?? "";
+            if (query.Length > 0)
+                translated = translated.Where(row =>
+                    row.Level.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    row.Category.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    row.Message.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                    (row.Exception?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false));
+            LogEntries = new ObservableCollection<ServerLog>(translated.Take(200));
+        }
         catch (Exception ex) { Message = "日志读取失败：" + ex.Message; }
         finally { _refreshGate.Release(); }
+    }
+
+    [RelayCommand]
+    private async Task DeleteOldLogsAsync()
+    {
+        if (!LogCleanupOptions.Contains(LogCleanupDays))
+        {
+            Message = "请选择 1、3、7、14 或 30 天，未执行删除。";
+            return;
+        }
+
+        if (!ConfirmLogCleanupPending)
+        {
+            ConfirmLogCleanupPending = true;
+            Message = $"将永久删除 {LogCleanupDays} 天前的 SQLite 历史日志。再点击一次“确认删除”才会执行；不会删除数据库及 WAL 文件。";
+            return;
+        }
+
+        ConfirmLogCleanupPending = false;
+        try
+        {
+            var days = LogCleanupDays;
+            var removed = await Task.Run(() => _logs.DeleteOlderThan(days));
+            Message = $"日志清理完成：删除了 {removed} 条 {days} 天前的记录。";
+            await RefreshLogsAsync();
+        }
+        catch (Exception ex) { Message = "日志清理失败：" + ex.Message; }
     }
 
     public string GetDeviceKeyForClipboard() => _vault.GetOrCreateDeviceKey();

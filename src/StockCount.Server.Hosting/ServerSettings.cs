@@ -5,6 +5,9 @@ namespace StockCount.Server.Hosting;
 // JSON property names deliberately match the existing Tauri/Rust serde camelCase file.
 public sealed class ServerSettings
 {
+    // Existing Tauri JSON files without this property default to auto-starting the API
+    // after a valid SQL server address has been configured.
+    public bool AutoStartApi { get; set; } = true;
     public int ApiPort { get; set; } = 5080;
     public bool AllowLan { get; set; }
     public string CertPath { get; set; } = "";

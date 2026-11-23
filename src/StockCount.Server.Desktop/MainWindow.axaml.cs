@@ -15,7 +15,7 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Opened += (_, _) =>
+        Opened += async (_, _) =>
         {
             if (DataContext is not MainViewModel vm) return;
             _timer.Tick += async (_, _) =>
@@ -23,9 +23,8 @@ public sealed partial class MainWindow : Window
                 await vm.RefreshStatusCommand.ExecuteAsync(null);
                 await vm.RefreshLogsCommand.ExecuteAsync(null);
             };
-            _timer.Start();
-            _ = vm.RefreshStatusCommand.ExecuteAsync(null);
-            _ = vm.RefreshLogsCommand.ExecuteAsync(null);
+            await vm.InitializeAsync();
+            if (!_shutdownComplete) _timer.Start();
         };
         Closing += async (_, args) =>
         {
