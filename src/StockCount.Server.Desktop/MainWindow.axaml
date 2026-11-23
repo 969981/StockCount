@@ -20,6 +20,7 @@
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21"/>
                 <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
+                <TextBlock Text="打开管理器时默认自动启动 API（SQL Server 地址尚未配置时先等待保存）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="API 健康检查使用仅本机的管理端口（业务端口 + 1）。" TextWrapping="Wrap" Opacity="0.7"/>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <Button Content="启动 API" Command="{Binding StartCommand}" />
@@ -82,6 +83,9 @@
                 <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding Settings.EnableTestWrites, Mode=TwoWay}"/>
                 <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding Settings.ProductionSchemaReviewed, Mode=TwoWay}"/>
                 <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding Settings.EnableProductionWrites, Mode=TwoWay}"/>
+                <Button Content="{Binding WriteGatesButtonText}" Command="{Binding SelectAllWriteGatesCommand}"
+                        HorizontalAlignment="Left"/>
+                <TextBlock Text="安全要求：这四项首次默认关闭；只有完成对应帐套的数据库前检、幂等迁移及独立授权后，才可集中勾选并保存。已确认的设置下次启动会保持勾选。" TextWrapping="Wrap" Opacity="0.8"/>
                 <TextBlock Text="X3 审计用户编码（需经现场批准）"/>
                 <TextBox Text="{Binding Settings.X3AuditUser, Mode=TwoWay}" MaxLength="5" Width="200" HorizontalAlignment="Left"/>
                 <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
@@ -94,12 +98,20 @@
       <TabItem Header="SQLite 日志">
         <DockPanel Margin="16">
           <StackPanel DockPanel.Dock="Top" Spacing="10" Margin="0,0,0,12">
-            <TextBlock Text="运行与访问日志" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="运行与访问日志 · 中文" FontSize="22" FontWeight="SemiBold"/>
             <TextBlock Text="{Binding LogPath}" TextWrapping="Wrap" Opacity="0.65"/>
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <TextBox Width="320" Watermark="搜索级别、模块或消息" Text="{Binding LogSearch, Mode=TwoWay}" />
+              <TextBox Width="320" Watermark="搜索中文级别、模块或消息" Text="{Binding LogSearch, Mode=TwoWay}" />
               <Button Content="刷新日志" Command="{Binding RefreshLogsCommand}" />
             </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="删除早于" VerticalAlignment="Center"/>
+              <ComboBox ItemsSource="{Binding LogCleanupOptions}" SelectedItem="{Binding LogCleanupDays, Mode=TwoWay}"
+                        Width="88"/>
+              <TextBlock Text="天的日志" VerticalAlignment="Center"/>
+              <Button Content="{Binding CleanupButtonText}" Command="{Binding DeleteOldLogsCommand}"/>
+            </StackPanel>
+            <TextBlock Text="只翻译界面显示，SQLite 原始诊断信息不变。搜索当前最近 500 条，最多显示 200 条；API 启动时仍自动清理 30 天前日志。删除前需要再次确认，不会直接删除数据库文件。" TextWrapping="Wrap" Opacity="0.75"/>
           </StackPanel>
           <ScrollViewer>
             <ItemsControl ItemsSource="{Binding LogEntries}">
