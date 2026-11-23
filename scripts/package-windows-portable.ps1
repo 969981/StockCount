@@ -80,21 +80,25 @@ StockCount Windows x64 - Portable build $Version
 1. Extract the *entire* ZIP to a writable folder owned by your Windows user.
 2. Run Start-StockCount.cmd or stockcount-server-console.exe.
 3. Keep StockCount.Api.exe beside stockcount-server-console.exe.
-4. The application creates server-logs.db in this same directory,
-   possibly with -wal and -shm helper files.
-5. SQL Server configuration remains in %LOCALAPPDATA%\StockCount\ServerHost\
-   and secrets remain in Windows Credential Manager (NOT in this ZIP).
-6. Your Windows account must have write access to this folder. Do NOT extract
+4. The application creates server-settings.json and server-logs.db
+   in this SAME directory (plus optional SQLite -wal and -shm files).
+5. First launch migrates legacy %LOCALAPPDATA%\StockCount\ServerHost\
+   server-settings.json ONLY if no local file exists. The legacy original
+   is kept intact. Neither JSON file contains passwords.
+6. SQL Server passwords and PDA device keys stay in Windows Credential
+   Manager and are NOT included in the ZIP or migrated between users.
+7. Your Windows account must have write access to this folder. Do NOT extract
    to Program Files. Never run an unknown public release as administrator.
-7. Windows WebView2 Runtime must be present. If missing, install the runtime
+8. Windows WebView2 Runtime must be present. If missing, install the runtime
    from Microsoft's official website (not an untrusted redistributor).
-8. This is a desktop user-session application; it does not install a service.
-9. For LAN PDA access, set a trusted HTTPS PFX and configure the firewall.
-10. Test/Production X3 writes require independent admin approvals and
+9. This is a desktop user-session application; it does not install a service.
+10. LAN PDA uses HTTP on trusted private networks; configure firewall rules
+    to allow only authorized PDA subnet and NEVER port-forward to Internet.
+11. Test/Production X3 writes require independent admin approvals and
     database verification. The presence of this EXE does not enable writes.
 
-Do not delete server-logs.db or the credential configuration while the API
-is running. Back up the SQLite database before updating or relocating.
+Do not delete server-settings.json, server-logs.db or SQLite WAL/SHM while
+the application is running. Back up these files before moving or updating.
 "@ | Set-Content -LiteralPath (Join-Path $stage "README-PORTABLE.txt") -Encoding UTF8
 
 $zip = Join-Path $out "$folderName.zip"
