@@ -84,7 +84,33 @@ try {
         if ($null -ne $previousKeyPass) { $env:STOCKCOUNT_ANDROID_KEY_PASS = $previousKeyPass }
     }
     if (-not $refused) { throw 'Release signing script incorrectly allowed missing credentials' }
-    Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity.' -ForegroundColor Green
+    # New key generation and release dispatch must support side-effect-free
+    # WhatIf runs even when JDK/GitHub CLI are unavailable on a clean runner.
+    $freshJks = Join-Path $temp 'stockcount-release.jks'
+    & (Join-Path $repo 'scripts/new-android-release-jks.ps1') -OutputPath $freshJks -WhatIf
+    if (Test-Path -LiteralPath $freshJks) { throw 'JKS generator modified files in WhatIf mode.' }
+
+    $rejectedInsideCheckout = $false
+    try {
+        & (Join-Path $repo 'scripts/new-android-release-jks.ps1') -OutputPath (Join-Path $repo 'unsafe-private-key.jks') -WhatIf
+    } catch {
+        $rejectedInsideCheckout = $_.Exception.Message -match 'OUTSIDE'
+    }
+    if (-not $rejectedInsideCheckout) { throw 'JKS generator did not reject in-repo private key location.' }
+
+    $fakeJks = Join-Path $temp 'fake-release-key.jks'
+    [IO.File]::WriteAllBytes($fakeJks, [byte[]]::new(2048))
+    & (Join-Path $repo 'scripts/configure-android-release-secrets.ps1') -KeyStore $fakeJks -WhatIf
+    & (Join-Path $repo 'scripts/publish-stockcount-release.ps1') -Version '0.2.0-preview.3' -WhatIf
+
+    $invalidVersionRejected = $false
+    try {
+        & (Join-Path $repo 'scripts/publish-stockcount-release.ps1') -Version 'bad;version' -WhatIf
+    } catch {
+        $invalidVersionRejected = $true
+    }
+    if (-not $invalidVersionRejected) { throw 'Publisher allowed unsafe release version.' }
+    Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity, JKS dry runs and safe GitHub release dispatch.' -ForegroundColor Green
 }
 finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
