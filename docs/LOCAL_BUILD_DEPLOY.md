@@ -73,6 +73,17 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target All -Version 0.2.0-local
 pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-local
 ```
 
+### Android 同时构建 Debug + 正式签名 Release APK
+
+注意：**Release APK 必须使用项目长期保管的 JKS**。先阅读 [Android Release 签名手册](ANDROID_RELEASE_SIGNING.md)，将 keystore 放在仓库之外，并在当前终端设置签名口令环境变量（不得把密码写在命令行或仓库里）。
+
+```powershell
+pwsh -File .\scripts\build-local.ps1 -Target Android -AndroidVariant Both -Version 0.2.0-local -ReleaseKeyStore D:\StockCountSecrets\stockcount-release.jks -ReleaseKeyAlias stockcount
+```
+
+也可改为 `-AndroidVariant Release` 仅编译 Release；默认仍为 `Debug`。成功后 `dist\local\` 将额外包含 `StockCount-PDA-v0.2.0-local-Android-Release-Signed.apk`，并纳入 SHA256SUMS.txt。新版本 Release 编译去除了 Debug-only 的模拟扫码输入控件。
+
+**注意**：使用另一个签名密钥发布的 APK 无法覆盖旧签名 APK；更换前先核对正在处理的盘点单和待确认 UUID，不要直接卸载。GitHub Actions 签名必须配置四个 Repository Secrets；没有密钥时只验证 Release 代码编译，不会上传伪装成 Release 的调试包。
 ### 只编译 Android PDA APK
 
 ```powershell
