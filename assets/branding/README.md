@@ -39,7 +39,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -c Debug -f net10.0-androi
 pwsh -File .\scripts\build-local.ps1 -Target Windows
 ```
 
-首次生成 Windows 图标需要 Node.js 22+ 和 npm：共用项目已有的 `@tauri-apps/cli`，脚本会在缺失依赖时调用 `npm ci`。生成的 `*.ico`、Android mipmap PNG 由构建产生，不纳入源码 Git 提交；原始 SVG 才是唯一可维护的设计源。
+首次生成 Windows 图标需要 Node.js 22+ 和 npm：共用项目已有的 `@tauri-apps/cli`，脚本会在缺失依赖时调用 `npm install`。生成的 `*.ico`、Android mipmap PNG 由构建产生，不纳入源码 Git 提交；原始 SVG 才是唯一可维护的设计源。
 
 ## 发布验证
 
