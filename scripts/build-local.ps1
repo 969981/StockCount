@@ -6,7 +6,10 @@ param(
   [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version = '0.2.0-local',
   [string]$OutputDirectory = 'dist\local',
   [switch]$SkipTests,
-  [switch]$InstallAndroidWorkload
+  [switch]$InstallAndroidWorkload,
+  [ValidateSet('Debug','Release','Both')][string]$AndroidVariant = 'Debug',
+  [string]$ReleaseKeyStore,
+  [string]$ReleaseKeyAlias
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -88,14 +91,27 @@ if ($Target -in @('All','Android')) {
       throw 'Install MAUI Android workload or rerun with -InstallAndroidWorkload.'
     }
   }
-  Invoke-Checked dotnet @('build','src/StockCount.Pad/StockCount.Pad.csproj','-f','net10.0-android','-c','Debug','-p:AndroidPackageFormat=apk','-p:EmbedAssembliesIntoApk=true') $root
-  $apkDir = Join-Path $root 'src/StockCount.Pad/bin/Debug/net10.0-android'
-  $signed = @(Get-ChildItem -LiteralPath $apkDir -File -Filter '*-Signed.apk')
-  if ($signed.Count -ne 1) { throw "Expected one signed debug APK, found $($signed.Count); do not ship unsigned APK." }
-  $apk = Join-Path $out "StockCount-PDA-v$Version-Android-Debug-Signed.apk"
-  Copy-Item -LiteralPath $signed[0].FullName -Destination $apk -Force
-  Assert-Artifact $apk
-  $artifacts.Add($apk)
+  if ($AndroidVariant -in @('Debug','Both')) {
+    Invoke-Checked dotnet @('build','src/StockCount.Pad/StockCount.Pad.csproj','-f','net10.0-android','-c','Debug','-p:AndroidPackageFormat=apk','-p:EmbedAssembliesIntoApk=true') $root
+    $apkDir = Join-Path $root 'src/StockCount.Pad/bin/Debug/net10.0-android'
+    $signed = @(Get-ChildItem -LiteralPath $apkDir -File -Filter '*-Signed.apk')
+    if ($signed.Count -ne 1) { throw "Expected one signed debug APK, found $($signed.Count); do not ship unsigned APK." }
+    $apk = Join-Path $out "StockCount-PDA-v$Version-Android-Debug-Signed.apk"
+    Copy-Item -LiteralPath $signed[0].FullName -Destination $apk -Force
+    Assert-Artifact $apk
+    $artifacts.Add($apk)
+  }
+
+  if ($AndroidVariant -in @('Release','Both')) {
+    if ([string]::IsNullOrWhiteSpace($ReleaseKeyStore) -or
+        [string]::IsNullOrWhiteSpace($ReleaseKeyAlias)) {
+      throw 'Android Release requires -ReleaseKeyStore, -ReleaseKeyAlias and environment signing passwords.'
+    }
+    & (Join-Path $PSScriptRoot 'build-android-release.ps1') -Version $Version -KeyStore $ReleaseKeyStore -KeyAlias $ReleaseKeyAlias -OutputDirectory $out
+    $releaseApk = Join-Path $out "StockCount-PDA-v$Version-Android-Release-Signed.apk"
+    Assert-Artifact $releaseApk
+    $artifacts.Add($releaseApk)
+  }
 }
 
 $hashLines = @($artifacts | ForEach-Object {
@@ -110,7 +126,7 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
   if ($LASTEXITCODE -ne 0) { $commit = 'unknown' }
 }
 [ordered]@{
-  version=$Version; target=$Target; utc=(Get-Date).ToUniversalTime().ToString('o');
+  version=$Version; target=$Target; androidVariant=$AndroidVariant; utc=(Get-Date).ToUniversalTime().ToString('o');
   sourceCommit=[string]$commit; testsSkipped=[bool]$SkipTests;
   artifacts=@($artifacts | ForEach-Object { [IO.Path]::GetFileName($_) })
 } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $out 'build-manifest.json') -Encoding utf8
