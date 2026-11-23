@@ -27,14 +27,14 @@ tags: [work, StockCount, Tauri2, SQLite, CSharp, API, Server]
 
 1. **服务总览**：状态卡、端口、数据源、启动停止、测试数据库按钮、操作提示和最新问题。
 2. **数据库连接**：SQL Server/实例、库名（预填 `sagex3`）、Windows/SQL 认证、用户名、密码输入、加密与证书校验选项、保存/测试连接。
-3. **API 与设备**：端口、仅本机/HTTPS LAN、证书 PFX 路径与密码、设备接入密钥复制、PDA URL 示例。
+3. **API 与设备**：端口、仅本机/HTTP LAN 模式切换、设备接入密钥复制、PDA 内网 HTTP URL 示例；LAN 不再要求 PFX。
 4. **SQLite 日志**：实时刷新、关键字筛选、时间/级别/模块/消息表格、错误详情、实际 SQLite 文件路径。
 
 ## 行为状态机
 
 `已停止 → 点击启动 → Rust spawn ASP.NET Core Sidecar → 健康检查已就绪 → 运行中 → 点击停止 → 本机受令牌保护的 POST /internal/shutdown → SQLite 日志队列 flush → 停止`；异常时进程终止回退并显示错误。
 
-API 本地端口默认 `5080`，管理接口专用 loopback 端口 `5081`（固定取 API Port + 1）；LAN 对外监听 HTTPS，管理端口始终不会绑定公网。C# API 在独立进程运行，而不是把 Rust 变成新的业务后端。
+API 本地端口默认 `5080`，管理接口专用 loopback 端口 `5081`（固定取 API Port + 1）；LAN 开启时业务端口对外监听 HTTP（不需要 PFX），管理端口始终仅绑定 localhost；需限制防火墙可访问来源且严禁公网映射。C# API 在独立进程运行，而不是把 Rust 变成新的业务后端。
 
 ## 本机配置、密码和 SQLite
 
@@ -51,6 +51,6 @@ API 本地端口默认 `5080`，管理接口专用 loopback 端口 `5081`（固�
 
 ## 验收边界
 
-已提交源文件，但**此轮尚未取得 Windows 实际编译和真实数据库联调成功结果**；不能称已经交付安装包。后续在现场要实测：启动/停止/占用端口、配置重启保存、Windows 凭据读取、SQL 认证与证书、SQLite 记录量/脱敏、PDA TLS 连接，以及正式写入关闭状态。仅数据只读联调，不执行生产 INSERT。
+已提交源文件，但**此轮尚未取得 Windows 实际编译和真实数据库联调成功结果**；不能称已经交付安装包。后续在现场要实测：启动/停止/占用端口、配置重启保存、Windows 凭据读取、SQL 认证与证书、SQLite 记录量/脱敏、PDA 内网 HTTP 连接和设备密钥（明文）传输风险，以及正式写入关闭状态。仅数据只读联调，不执行生产 INSERT。
 
 关联：[[architecture|架构]] · [Markdown](../architecture.md) · [[docs/API_CONTRACT|API 规范]] · [Markdown](API_CONTRACT.md) · [[docs/SECURITY_AND_ENVIRONMENTS|环境保护]] · [Markdown](SECURITY_AND_ENVIRONMENTS.md)。
