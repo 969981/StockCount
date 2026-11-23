@@ -21,8 +21,14 @@ public static class ApiApplication
         configureBuilder?.Invoke(builder);
         builder.Services.AddProblemDetails();
         builder.Services.AddScoped<IInventoryReadRepository>(services =>
-            new SqlInventoryReadRepository(
-                services.GetRequiredService<IConfiguration>().GetConnectionString("SageX3") ?? ""));
+        {
+            var config = services.GetRequiredService<IConfiguration>();
+            return new SqlInventoryReadRepository(
+                config.GetConnectionString("SageX3") ?? "",
+                config.GetValue<bool>("StockCount:EnableTestWrites"),
+                config.GetValue<bool>("StockCount:EnableProductionWrites"),
+                config.GetValue<bool>("StockCount:Write:SchemaReviewed"));
+        });
         builder.Services.AddScoped<IInventoryWriteRepository>(services =>
         {
             var config = services.GetRequiredService<IConfiguration>();
