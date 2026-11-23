@@ -1,7 +1,7 @@
 ---
 title: StockCount · 统一 GitHub Releases 发布与免安装版
 date: 2026-11-23
-status: ci-validated-preview2-security-fix
+status: android-release-workflow-added-awaiting-signing-secrets
 tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
 ---
 
@@ -9,18 +9,19 @@ tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
 
 > CI 配置已加入。是否存在真实 Release 以及文件可用性，以 [Releases](https://github.com/969981/StockCount/releases) 和实际 [Actions](https://github.com/969981/StockCount/actions/workflows/publish-stockcount.yml) 成功记录为准。**没有同时通过 Android + Windows 构建时绝不发布缺少文件的版本。**
 
-**版本说明**：首版 `v0.2.0-preview.1` 的三平台打包已通过，但 Windows NuGet 审计提示旧版原生 SQLite `2.1.11` 有高危公告。此后已将 `Microsoft.Data.Sqlite` 升至 `10.0.14`、`SQLitePCLRaw.bundle_e_sqlite3` 升至 `2.1.14`，并触发 `v0.2.0-preview.2` 的全套重编译发布。**优先使用 Preview 2（以其 Actions 成功和实际 GitHub Release 出现为准）。**
+**版本说明**：`v0.2.0-preview.2` 已采用修复后的 SQLite 依赖并发布 Debug APK 与 Windows Setup/Portable。下一个统一版本 `v0.2.0-preview.3` 新增 **Android Release 签名 APK**。需要先在仓库配置四个 GitHub Actions Secrets，才会生成并上传正式签名版；缺少它时只做 Release 代码编译检查，**不创建不完整的 GitHub Release**。参见 [Android 正式签名指南](ANDROID_RELEASE_SIGNING.md)。
 
 ## 输出资产
 
 | 文件 | 平台 | 内容 |
 | --- | --- | --- |
-| `StockCount-PDA-v0.2.0-preview.2-Android-Debug-Signed.apk` | Android / 海康 PDA | .NET MAUI 10 可安装调试签名包，非企业正式签名 |
-| `StockCount-Server-v0.2.0-preview.1-Windows-x64-Setup.exe` | Windows 10/11 x64 | Tauri 2 + React 管理器、ASP.NET Core 10 Sidecar，NSIS 当前用户安装 |
-| `StockCount-Server-v0.2.0-preview.1-Windows-x64-Portable.zip` | Windows 10/11 x64 | 主程序 `stockcount-server-console.exe`、自包含 `StockCount.Api.exe`、`Start-StockCount.cmd`、说明 |
-| `SHA256SUMS.txt` | 多平台 | 上述3个发布文件的 SHA256 |
+| `StockCount-PDA-v0.2.0-preview.3-Android-Debug-Signed.apk` | Android PDA | Debug 配置、调试证书签名，用于现场联调 |
+| `StockCount-PDA-v0.2.0-preview.3-Android-Release-Signed.apk` | Android PDA | Release 配置、长期专用 keystore 签名；必须先配置 Secrets |
+| `StockCount-Server-v0.2.0-preview.3-Windows-x64-Setup.exe` | Windows x64 | Tauri 2 + React + ASP.NET Core 10 Sidecar 安装版 |
+| `StockCount-Server-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | 程序、Sidecar、启动脚本及说明；解压即用 |
+| `SHA256SUMS.txt` | 多平台 | 以上 **4 个**可执行文件的 SHA256 校验清单 |
 
-**预览版说明**：Android debug 签名会与企业以后采用的 Release 签名不同，未来更换签名可能需要先迁移设备应用数据再卸载调试版。Windows 尚无代码签名，可能出现系统 SmartScreen 警示；不得关闭安全机制或从非官方地址安装。
+**预览版说明**：Debug 签名和正式 Release keystore 签名不同，默认同一 Android 包 ID，互相不能直接覆盖安装；切换前先确认待提交 UUID，妥善迁移或备份数据。Windows 尚无代码签名，可能出现系统 SmartScreen 警示；不得关闭安全机制或从非官方地址安装。
 
 ## Portable 免安装版如何使用
 
@@ -42,11 +43,11 @@ tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
 
 工作流：[publish-stockcount.yml](../.github/workflows/publish-stockcount.yml)。
 
-1. Android Windows Runner：安装 MAUI Android workload，运行 Core 测试，生成 APK，**只选择 `*-Signed.apk`**，将原始未签名 APK 排除在发布资产之外。
+1. Android Windows Runner：安装 MAUI Android workload，运行 Core 测试，生成 Debug APK，同时编译 Release 配置。只有 GitHub Secrets 配齐时，才用长期 JKS 签名并通过 apksigner 验证，上传第二个 Release APK；未签名产物绝不发布。
 2. Windows x64 Runner：编译 ASP.NET Core、发布 self-contained Sidecar、构建 Tauri NSIS Setup，运行 [便携版打包脚本](../scripts/package-windows-portable.ps1)；验证主程序、Sidecar、启动脚本和压缩包内容。
-3. 两个 Job 都成功后，Linux Runner 校验三个完整资产、生成 SHA256SUMS，并将四个文件发布到**同一个** GitHub 预发布版本。
-4. PR 只构建、不发布；`workflow_dispatch` 显式发布，或在 main 的提交消息中包含 `[publish-stockcount]` 且修改触发路径。发布标签 `v0.2.0-preview.1` 存在时禁止静默覆盖。
-5. 后续正式版本需另行建立 Windows 签名证书管理和企业 Android Release keystore 注入，不能把 debug-signed 预览版当生产包。
+3. 两个 Job 都成功后，Linux Runner 必须检查 **两个签名 APK、Setup.exe、Portable.zip 共四个可执行文件**，生成 SHA256SUMS，再将五个文件发布到同一个 GitHub 预发布版本。签名 Secrets 缺失则发布任务失败，不会生成不完整的版本。
+4. PR 只构建、不发布；`workflow_dispatch` 显式发布，或在 main 的提交消息中包含 `[publish-stockcount]` 且修改触发路径。发布标签 `v0.2.0-preview.3` 已存在时禁止静默覆盖。
+5. Android keystore 通过仓库 Secrets 注入，无证书不能发布 Release；Windows 签名证书管理仍需独立完善，不能把未验收的预览版当作生产认证。
 
 ## 与 Sage X3 写入权限的关系
 
