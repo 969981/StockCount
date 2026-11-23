@@ -2,40 +2,134 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.CountListPage"
-             Title="选择盘点单" BackgroundColor="#F6F8FC">
-  <Grid Padding="18" RowDefinitions="Auto,Auto,*,Auto" RowSpacing="12">
-    <HorizontalStackLayout Grid.Row="0" Spacing="12">
-      <Label x:Name="EnvironmentLabel" Text="测试帐套 Test" TextColor="#376BEE" FontAttributes="Bold" FontSize="18"
-             VerticalOptions="Center" HorizontalOptions="FillAndExpand"/>
-      <Button Text="设置" Clicked="OpenSettings_Clicked" />
-    </HorizontalStackLayout>
-    <HorizontalStackLayout Grid.Row="1" Spacing="10">
-      <Entry x:Name="SearchInput" Placeholder="输入盘点单号或名称" HorizontalOptions="FillAndExpand" />
-      <Button Text="刷新" Clicked="Refresh_Clicked" />
-    </HorizontalStackLayout>
-    <CollectionView Grid.Row="2" x:Name="CountList" SelectionMode="Single"
-                    SelectionChanged="CountList_SelectionChanged">
-      <CollectionView.ItemTemplate>
-        <DataTemplate>
-          <Border Background="White" Stroke="#E2E6F0" StrokeThickness="1"
-                  Margin="0,0,0,10" Padding="14">
-            <VerticalStackLayout Spacing="6">
-              <Label Text="{Binding CountNumber}" FontSize="18" FontAttributes="Bold"/>
-              <Label Text="{Binding Description}" FontSize="15" />
-              <HorizontalStackLayout Spacing="10">
-                <Label Text="{Binding SiteCode}" TextColor="#66748B" FontSize="12"/>
-                <Label Text="{Binding WarehouseCode}" TextColor="#66748B" FontSize="12"/>
-                <Label Text="{Binding StatusCode}" TextColor="#66748B" FontSize="12"/>
-              </HorizontalStackLayout>
-            </VerticalStackLayout>
-          </Border>
-        </DataTemplate>
-      </CollectionView.ItemTemplate>
-    </CollectionView>
-    <HorizontalStackLayout Grid.Row="3" Spacing="10">
-      <Button x:Name="MoreButton" Text="加载更多" Clicked="More_Clicked"
-              HorizontalOptions="FillAndExpand"/>
-      <Label x:Name="StatusText" TextColor="#6B768B" FontSize="12" VerticalOptions="Center"/>
-    </HorizontalStackLayout>
+             NavigationPage.HasNavigationBar="False"
+             Title="选择盘点单"
+             BackgroundColor="{StaticResource PageBackground}">
+  <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="0">
+    <!-- Prototype header: compact native PDA title with settings action. -->
+    <Grid Grid.Row="0" BackgroundColor="White" Padding="16,8,12,8"
+          ColumnDefinitions="*,Auto" HeightRequest="62">
+      <Label Text="选择盘点单" Style="{StaticResource PageTitle}"/>
+      <Button Grid.Column="1" Text="⚙" Style="{StaticResource IconButton}"
+              SemanticProperties.Description="连接和设备设置"
+              Clicked="OpenSettings_Clicked"/>
+    </Grid>
+
+    <VerticalStackLayout Grid.Row="1" Padding="14,13,14,8" Spacing="11">
+      <Border x:Name="EnvironmentBanner" BackgroundColor="#EDF3FF"
+              Stroke="#DCE8FF" StrokeThickness="1" Padding="12,10"
+              StrokeShape="RoundRectangle 10">
+        <Grid ColumnDefinitions="*,Auto">
+          <HorizontalStackLayout Spacing="8" VerticalOptions="Center">
+            <Label Text="◇" FontSize="17" TextColor="#305CB6"/>
+            <Label x:Name="EnvironmentLabel" Text="测试 · XTEST"
+                   FontSize="13" FontAttributes="Bold" TextColor="#305CB6"
+                   VerticalOptions="Center"/>
+          </HorizontalStackLayout>
+          <HorizontalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+            <Label Text="●" FontSize="10" TextColor="#13A678"/>
+            <Label x:Name="ConnectionStatusText" Text="正在连接"
+                   FontSize="11" TextColor="#687D9B"/>
+          </HorizontalStackLayout>
+        </Grid>
+      </Border>
+
+      <Border BackgroundColor="White" Stroke="#DCE4EF"
+              StrokeShape="RoundRectangle 10" Padding="8,0">
+        <Grid ColumnDefinitions="Auto,*" HeightRequest="50">
+          <Label Text="⌕" FontSize="25" TextColor="#8A9BB2"
+                 VerticalOptions="Center" Margin="5,0,10,0"/>
+          <Entry Grid.Column="1" x:Name="SearchInput" 
+                 Placeholder="搜索盘点单号 / 名称" FontSize="14"
+                 ClearButtonVisibility="WhileEditing"
+                 ReturnType="Search" BackgroundColor="Transparent"
+                 TextChanged="SearchInput_TextChanged"/>
+        </Grid>
+      </Border>
+    </VerticalStackLayout>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto"
+          Padding="17,10,12,8">
+      <Label Text="当前盘点单" Style="{StaticResource SectionTitle}"/>
+      <Button Grid.Column="1" Text="↻" Style="{StaticResource IconButton}"
+              SemanticProperties.Description="刷新盘点单"
+              Clicked="Refresh_Clicked"/>
+    </Grid>
+
+    <Grid Grid.Row="3" Padding="14,0,14,0">
+      <CollectionView x:Name="CountList" SelectionMode="Single"
+                      SelectionChanged="CountList_SelectionChanged"
+                      VerticalScrollBarVisibility="Always">
+        <CollectionView.ItemTemplate>
+          <DataTemplate>
+            <Border BackgroundColor="White" Stroke="#E3E9F1"
+                    StrokeThickness="1" Padding="15,15"
+                    StrokeShape="RoundRectangle 12" Margin="0,0,0,10">
+              <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="8">
+                <Grid ColumnDefinitions="*,Auto">
+                  <Label Text="{Binding CountNumber}"
+                         FontSize="16" FontAttributes="Bold"
+                         TextColor="#1C2D48" LineBreakMode="MiddleTruncation"/>
+                  <Label Grid.Column="1" Text="可提交"
+                         IsVisible="{Binding CanSubmit}"
+                         BackgroundColor="#E8F6EE" TextColor="#19805B"
+                         FontAttributes="Bold" FontSize="11"
+                         Padding="7,4" VerticalOptions="Center"/>
+                  <Label Grid.Column="1" Text="只读"
+                         BackgroundColor="#F0F1F5" TextColor="#7A899F"
+                         FontAttributes="Bold" FontSize="11"
+                         Padding="7,4" VerticalOptions="Center">
+                    <Label.Triggers>
+                      <DataTrigger TargetType="Label" Binding="{Binding CanSubmit}" Value="True">
+                        <Setter Property="IsVisible" Value="False"/>
+                      </DataTrigger>
+                    </Label.Triggers>
+                  </Label>
+                </Grid>
+                <Label Grid.Row="1" Text="{Binding Description}"
+                       TextColor="#253752" FontSize="14"
+                       FontAttributes="Bold" MaxLines="2"
+                       LineBreakMode="TailTruncation"/>
+                <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                  <HorizontalStackLayout Spacing="5">
+                    <Label Text="{Binding SiteCode}" FontSize="11"
+                           TextColor="#8292AA"/>
+                    <Label Text="/" FontSize="11" TextColor="#AAB7C9"/>
+                    <Label Text="{Binding WarehouseCode}" FontSize="11"
+                           TextColor="#8292AA"/>
+                    <Label Text=" · " FontSize="11" TextColor="#AAB7C9"/>
+                    <Label Text="{Binding CountDate, StringFormat='{0:yyyy-MM-dd}'}"
+                           FontSize="11" TextColor="#8292AA"/>
+                  </HorizontalStackLayout>
+                  <Label Grid.Column="1" Text="›" FontSize="19"
+                         TextColor="#A3B2C7" VerticalOptions="Center"/>
+                </Grid>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </CollectionView.ItemTemplate>
+      </CollectionView>
+      <VerticalStackLayout x:Name="EmptyPanel" IsVisible="False"
+                           VerticalOptions="Center" Spacing="12">
+        <Label Text="▤" FontSize="46" HorizontalOptions="Center" TextColor="#A7B8D0"/>
+        <Label x:Name="EmptyMessage" Text="暂无盘点单"
+               FontSize="15" FontAttributes="Bold"
+               HorizontalTextAlignment="Center" TextColor="#455873"/>
+        <Button Text="重新加载" Style="{StaticResource SecondaryAction}"
+                HorizontalOptions="Center" Clicked="Refresh_Clicked"/>
+      </VerticalStackLayout>
+      <ActivityIndicator x:Name="LoadingIndicator" IsVisible="False" IsRunning="False"
+                         Color="{StaticResource Primary}" HeightRequest="42"
+                         WidthRequest="42" VerticalOptions="Center"/>
+    </Grid>
+
+    <Grid Grid.Row="4" Padding="14,10,14,16"
+          ColumnDefinitions="*,Auto">
+      <Label x:Name="StatusText" Text="点击一张单据进入盘点"
+             TextColor="#8C9CB2" FontSize="11" VerticalOptions="Center"/>
+      <Button x:Name="MoreButton" Grid.Column="1"
+              Text="加载更多" Style="{StaticResource SecondaryAction}"
+              IsVisible="False" Clicked="More_Clicked"/>
+    </Grid>
   </Grid>
 </ContentPage>
