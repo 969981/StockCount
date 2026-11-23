@@ -16,5 +16,6 @@
     <ProjectReference Include="../StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../StockCount.Contracts/StockCount.Contracts.csproj" />
     <MauiIcon Include="Resources/AppIcon/appicon.svg" Color="#376BEE" />
+    <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#376BEE" BaseSize="128,128" />
   </ItemGroup>
 </Project>
