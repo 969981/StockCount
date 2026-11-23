@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="StockCount.Pad.CountingPage"
+             Title="扫码盘点" BackgroundColor="#F6F8FC">
+ <ScrollView>
+  <VerticalStackLayout Padding="16" Spacing="10">
+    <Border Stroke="#E5E9F2" Background="White" Padding="14">
+      <VerticalStackLayout Spacing="5">
+        <Label Text="盘点单号" TextColor="#708099" FontSize="12"/>
+        <Label x:Name="CountNumberText" FontSize="19" FontAttributes="Bold"/>
+        <Label Text="盘点名称" TextColor="#708099" FontSize="12" Margin="0,8,0,0"/>
+        <Label x:Name="CountNameText" FontSize="17" FontAttributes="Bold"/>
+      </VerticalStackLayout>
+    </Border>
+    <Border Stroke="#CCD9FC" Background="#EDF3FF" Padding="14">
+      <VerticalStackLayout>
+        <Label Text="盘点库位（仅扫码，不可手工编辑）" FontSize="13" TextColor="#5268A0"/>
+        <Label x:Name="LocationText" Text="请扫描库位" FontSize="23" FontAttributes="Bold"
+               TextColor="#244EB1"/>
+      </VerticalStackLayout>
+    </Border>
+    <HorizontalStackLayout Spacing="8">
+      <Entry x:Name="ScanInput" Placeholder="扫码模拟输入 / 调试" HorizontalOptions="FillAndExpand"
+             ClearButtonVisibility="WhileEditing"/>
+      <Button Text="模拟扫码" Clicked="Scan_Clicked"/>
+    </HorizontalStackLayout>
+    <Border Stroke="#E5E9F2" Background="White" Padding="14">
+      <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="10">
+        <Label Grid.Row="0" Grid.Column="0" Text="箱码" TextColor="#728098"/>
+        <Label Grid.Row="0" Grid.Column="1" x:Name="BoxNumberText" FontAttributes="Bold"/>
+        <Label Grid.Row="1" Grid.Column="0" Text="产品编码" TextColor="#728098"/>
+        <Label Grid.Row="1" Grid.Column="1" x:Name="ItemCodeText"/>
+        <Label Grid.Row="2" Grid.Column="0" Text="品名" TextColor="#728098"/>
+        <Label Grid.Row="2" Grid.Column="1" x:Name="ItemNameText"/>
+        <Label Grid.Row="3" Grid.Column="0" Text="规格" TextColor="#728098"/>
+        <Label Grid.Row="3" Grid.Column="1" x:Name="SpecificationText"/>
+        <Label Grid.Row="4" Grid.Column="0" Text="批号" TextColor="#728098"/>
+        <Label Grid.Row="4" Grid.Column="1" x:Name="LotText"/>
+        <Label Grid.Row="5" Grid.Column="0" Text="存货单位" TextColor="#728098"/>
+        <Label Grid.Row="5" Grid.Column="1" x:Name="StockUnitText"/>
+      </Grid>
+    </Border>
+    <Label Text="箱内数量 *（人工输入，必填）" FontAttributes="Bold" Margin="0,8,0,0"/>
+    <HorizontalStackLayout>
+      <Entry x:Name="QuantityInput" Placeholder="请输入实际数量"
+             Keyboard="Numeric" HorizontalOptions="FillAndExpand"/>
+      <Label x:Name="QuantityUnitText" Text="STU" VerticalOptions="Center" Margin="10,0"/>
+    </HorizontalStackLayout>
+    <Button x:Name="SubmitButton" Text="提交盘点" BackgroundColor="#376BEE"
+            TextColor="White" FontAttributes="Bold" Clicked="Submit_Clicked"/>
+    <Button x:Name="CheckButton" Text="检查上次未确认的提交结果"
+            IsVisible="False" Clicked="Check_Clicked"/>
+    <Border x:Name="SuccessBanner" IsVisible="False" Background="#E1F7E9" Stroke="#ACEDC6" Padding="12">
+      <Label Text="提交成功！" TextColor="#138253" FontAttributes="Bold" HorizontalOptions="Center"/>
+    </Border>
+    <Label Text="提交成功后仅清空当前箱信息和数量，继续保留盘点单与盘点库位。"
+           TextColor="#728098" FontSize="12"/>
+  </VerticalStackLayout>
+ </ScrollView>
+</ContentPage>
