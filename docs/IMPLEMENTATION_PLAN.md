@@ -15,7 +15,9 @@ up: "[[docs/development/00-研发规范地图]]"
 
 # StockCount 前后端 AI 编程执行计划
 
-> V1 项目拆解，供独立前端/后端 AI Agent 分批实施。**此页列出的任务尚未自动执行。** 2026-11-23。
+> V1 项目拆解，供独立前端/后端 AI Agent 分批实施。**2026-11-23 已提交 API 源码骨架与只读接口、方案及 CI 文件，但尚未完成编译与真实 SQL 联调；T0/T1 均不能标为验收通过。** 2026-11-23。
+>
+> [现有 API 源码](../src/StockCount.Api/Program.cs) · [运行手册](../src/StockCount.Api/RUN.md) · [只读 DB 仓储](../src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)。
 
 ## 1. 研发原则
 
