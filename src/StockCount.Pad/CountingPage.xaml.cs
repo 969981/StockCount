@@ -16,6 +16,10 @@ public partial class CountingPage : ContentPage
         _workflow=new CountScanWorkflow(api,selected.CountNumber,selected.Description);
         CountNumberText.Text=selected.CountNumber;
         CountNameText.Text=selected.Description;
+#if !DEBUG
+        ScanInput.IsVisible=false;
+        SimulateScanButton.IsVisible=false;
+#endif
         RefreshScreen();
     }
 
@@ -48,6 +52,8 @@ public partial class CountingPage : ContentPage
         try
         {
             var result=await _workflow.HandleScanAsync(code);
+            if (result.Kind is "BoxResolved" or "LocationUpdated")
+                QuantityInput.Text="";
             RefreshScreen();
             await ShowFeedbackAsync(result);
         }
