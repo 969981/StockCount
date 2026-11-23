@@ -1,3 +1,18 @@
+---
+title: "项目说明与开发协作指南"
+aliases:
+  - "StockCount · docs / PROJECT_GUIDE"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: development
+tags:
+  - StockCount
+  - development
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # 项目说明与开发协作指南
 
 ## 1. 项目定位
@@ -56,3 +71,11 @@ V1 只有在**无登录启动、环境隔离、全量列单、库位先扫、标
 ## 8. 目前阶段
 
 **仅有架构规范与设计草案**；源代码、APK、API 服务、CI 工作流、正式上线均需后续 AI 开发任务分步实现。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)

@@ -1,3 +1,18 @@
+---
+title: "StockCount 设计决策与待确认项（ADR 汇总）"
+aliases:
+  - "StockCount · docs / DECISIONS"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: development
+tags:
+  - StockCount
+  - development
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # StockCount 设计决策与待确认项（ADR 汇总）
 
 > **2026-11-23 V1 决策基线。** 表内的“已确认”基于用户在历史会话中的明确要求；“设计采用”是为安全与可维护性作出的工程决策；“待确认”不是可擅自实现的授权。
@@ -61,3 +76,11 @@
 用户给出新决定后，先更新本表（含日期和旧决定变化）→ 更新 `requirements.md` → 调整 API、字段映射/测试 → 变更源码。不能只改某份 AI 提示词而留下多个冲突业务版本。
 
 关联：[requirements.md](../requirements.md)、[architecture.md](../architecture.md)、[DATABASE_MAPPING.md](DATABASE_MAPPING.md)。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)

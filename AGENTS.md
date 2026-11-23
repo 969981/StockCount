@@ -1,3 +1,18 @@
+---
+title: "StockCount · 全仓 AI 编程规范"
+aliases:
+  - "StockCount · AGENTS"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: development
+tags:
+  - StockCount
+  - development
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # StockCount · 全仓 AI 编程规范
 
 > 所有自动编程代理（OpenAI Codex / Copilot / Claude Code / Gemini CLI 等）必须在读代码前阅读本文。更新时间：2026-11-23。
@@ -72,3 +87,12 @@
 - 共享 DTO 发生变更时前后端契约、测试与文档必须同步更新。
 
 配合 [OPENAI.md](OPENAI.md) 和 [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) 使用。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](docs/development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- AI 阅读链：[[requirements|需求规范]] · [Markdown](requirements.md) · [[architecture|系统架构]] · [Markdown](architecture.md) · [[docs/DECISIONS|设计决策]] · [Markdown](docs/DECISIONS.md)

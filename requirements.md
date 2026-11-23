@@ -1,3 +1,18 @@
+---
+title: "StockCount — V1 产品需求规格（SRS）"
+aliases:
+  - "StockCount · requirements"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: development
+tags:
+  - StockCount
+  - development
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # StockCount — V1 产品需求规格（SRS）
 
 - **文档状态**：V1 基线；业务上已确定的规则与待验证的实现细节分离
@@ -105,3 +120,12 @@
 正式写入上线阻断项：确认盘点单其它状态权限、**两数量列同值与 PCU/STU 系数约束的兼容性**及 X3 必填列、同单防重复/复盘规则、数量边界、库位码真实协议与仓库一致性、后端写入渠道/事务、无登录场景的服务访问保护及审计。未完成时可以实现 UI、模拟接口和真实**只读**查询，写入只在隔离的 XTEST 受控验证。
 
 详见 [architecture.md](architecture.md)、[docs/DECISIONS.md](docs/DECISIONS.md)、[docs/TEST_PLAN.md](docs/TEST_PLAN.md)。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](docs/development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 业务实现：[[docs/SCANNER_INTEGRATION|扫码交互]] · [Markdown](docs/SCANNER_INTEGRATION.md) · [[docs/DATABASE_MAPPING|数据库字段映射]] · [Markdown](docs/DATABASE_MAPPING.md)

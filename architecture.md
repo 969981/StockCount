@@ -1,3 +1,18 @@
+---
+title: "StockCount — 系统架构"
+aliases:
+  - "StockCount · architecture"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: development
+tags:
+  - StockCount
+  - development
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # StockCount — 系统架构
 
 - **架构版本**：V1；2026-11-23
@@ -149,3 +164,11 @@ POST CountItem
 **待定**：盘点单其他状态可写性、真实库位码完整协议、**两数量列同值对应的系数与单位适配**和所有必填列、同单去重/复盘、认证替代的设备访问控制细节、后端采用 X3 业务服务还是数据库受控写入。
 
 所有 AI 修改必须参照 [AGENTS.md](AGENTS.md)、[docs/DECISIONS.md](docs/DECISIONS.md) 和 [七表结构/中文字段/只读 SQL 索引](docs/database/SCHEMA_INDEX.md)。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](docs/development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)

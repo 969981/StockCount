@@ -1,3 +1,18 @@
+---
+title: "StockCount"
+aliases:
+  - "StockCount · README"
+created: 2026-11-23
+updated: 2026-11-23
+status: reference
+area: home
+tags:
+  - StockCount
+  - home
+  - docs
+up: "[[docs/development/00-研发规范地图]]"
+---
+
 # StockCount
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
@@ -63,3 +78,13 @@ docs/
 本仓库为公开仓库。**严禁提交真实数据库密码、连接字符串、API 凭据、内网 IP/域名、真实箱码明细、敏感现场日志或客户原始业务数据**。示例必须使用占位符/合成数据。仅客户端切换环境**不等于后端写入授权**。开发和联调优先 XTEST，生产默认只读。
 
 > 具体状态解释、PCU/STU 单位系数兼容性、库位码协议、同单防重和 X3 必填列写入策略尚有未决点；详见 [决策表](docs/DECISIONS.md)。
+
+---
+
+## 🧭 知识库导航
+
+- 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](docs/development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
+- Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
+- 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+- 设备：[[docs/pda/00-PDA扫码知识地图|海康 PDA 扫码地图]] · [Markdown](docs/pda/00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- 数据库：[[docs/database/00-数据库知识地图|Sage X3 数据库地图]] · [Markdown](docs/database/00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
