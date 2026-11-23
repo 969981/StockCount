@@ -1,5 +1,5 @@
-name: StockCount Release - APK, Setup, Portable
-# Explicit user-approved publish invocation for v0.2.0-preview.1; all three assets required.
+name: StockCount Release - Android Debug and Release APK, Setup, Portable
+# Both APK variants need separate signing identities. Publish only with a complete signed asset set.
 
 on:
   workflow_dispatch:
@@ -8,16 +8,18 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/build-android-release.ps1'
   pull_request:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/build-android-release.ps1'
 
 permissions:
   contents: read
 
 env:
-  RELEASE_VERSION: 0.2.0-preview.2
+  RELEASE_VERSION: 0.2.0-preview.3
 
 jobs:
   android:
@@ -37,7 +39,7 @@ jobs:
         run: |
           dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debug -p:AndroidPackageFormat=apk -p:EmbedAssembliesIntoApk=true
           if ($LASTEXITCODE -ne 0) { throw "MAUI Android build failed" }
-      - name: Stage only signed APK
+      - name: Stage only signed Debug APK
         shell: pwsh
         run: |
           $path = "src/StockCount.Pad/bin/Debug/net10.0-android"
@@ -48,6 +50,45 @@ jobs:
           Copy-Item -LiteralPath $signed[0].FullName -Destination $dest
           if ((Get-Item $dest).Length -lt 1048576) { throw "APK unexpectedly small" }
           Get-FileHash $dest -Algorithm SHA256 | Format-List
+      - name: Check persistent Android Release signing configuration
+        id: android_signing
+        shell: pwsh
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_KEY_ALIAS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_ALIAS }}
+          STOCKCOUNT_ANDROID_STORE_PASS: ${{ secrets.STOCKCOUNT_ANDROID_STORE_PASS }}
+          STOCKCOUNT_ANDROID_KEY_PASS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_PASS }}
+        run: |
+          $ready = -not [string]::IsNullOrWhiteSpace($env:RELEASE_KEYSTORE_BASE64) -and
+                   -not [string]::IsNullOrWhiteSpace($env:RELEASE_KEY_ALIAS) -and
+                   -not [string]::IsNullOrWhiteSpace($env:STOCKCOUNT_ANDROID_STORE_PASS) -and
+                   -not [string]::IsNullOrWhiteSpace($env:STOCKCOUNT_ANDROID_KEY_PASS)
+          "configured=$($ready.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if (-not $ready) {
+            Write-Warning "Release signing secrets not configured. Compile Release for QA, but do not publish an unsigned APK. Full GitHub Release will be blocked until credentials are configured."
+          }
+      - name: Compile Android Release configuration (non-distributable QA)
+        if: steps.android_signing.outputs.configured != 'true'
+        shell: pwsh
+        run: |
+          dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
+          if ($LASTEXITCODE -ne 0) { throw "Android Release compilation failed" }
+      - name: Build, sign and verify Android Release APK
+        if: steps.android_signing.outputs.configured == 'true'
+        shell: pwsh
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_KEY_ALIAS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_ALIAS }}
+          STOCKCOUNT_ANDROID_STORE_PASS: ${{ secrets.STOCKCOUNT_ANDROID_STORE_PASS }}
+          STOCKCOUNT_ANDROID_KEY_PASS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_PASS }}
+        run: |
+          $keystore = Join-Path $env:RUNNER_TEMP 'stockcount-release.jks'
+          try {
+            [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_BASE64))
+            ./scripts/build-android-release.ps1 -Version $env:RELEASE_VERSION -KeyStore $keystore -KeyAlias $env:RELEASE_KEY_ALIAS -OutputDirectory release-android
+          } finally {
+            Remove-Item -LiteralPath $keystore -Force -ErrorAction SilentlyContinue
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: StockCount-Release-Android
@@ -110,7 +151,7 @@ jobs:
           retention-days: 30
 
   publish:
-    name: Publish all three binaries to GitHub Releases
+    name: Publish both signed APK variants, Windows binaries and SHA256
     needs: [android, windows]
     runs-on: ubuntu-latest
     if: >
@@ -128,7 +169,7 @@ jobs:
         with:
           name: StockCount-Release-Windows
           path: release-windows
-      - name: Validate all three and hash
+      - name: Validate four binaries (two signed APKs) and hash
         shell: bash
         run: |
           set -euo pipefail
@@ -136,11 +177,12 @@ jobs:
           cp release-android/*.apk release-files/
           cp release-windows/*.exe release-windows/*.zip release-files/
           shopt -s nullglob
-          apk=(release-files/*-Android-Debug-Signed.apk)
+          debug_apk=(release-files/*-Android-Debug-Signed.apk)
+          release_apk=(release-files/*-Android-Release-Signed.apk)
           setup=(release-files/*-Windows-x64-Setup.exe)
           portable=(release-files/*-Windows-x64-Portable.zip)
-          if (( ${#apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 )); then
-            echo "Missing assets: APK=${#apk[@]} Setup=${#setup[@]} Portable=${#portable[@]}" >&2
+          if (( ${#debug_apk[@]} != 1 || ${#release_apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 )); then
+            echo "Missing assets (release signing requires four GitHub Secrets): Debug=${#debug_apk[@]} Release=${#release_apk[@]} Setup=${#setup[@]} Portable=${#portable[@]}" >&2
             exit 1
           fi
           cd release-files
@@ -162,13 +204,14 @@ jobs:
           cat > /tmp/stockcount-notes.md <<'NOTES'
           ## StockCount - Android PDA and Windows Server Manager
 
-          - Android Signed.apk: installable DEBUG-signed APK for hardware tests, not a production signing certificate.
+          - Android Debug-Signed.apk: debug-signed APK for PDA debugging, not a production signing certificate.
+          - Android Release-Signed.apk: optimized Release build signed by the persistent StockCount release keystore supplied via GitHub Secrets.
           - Windows Setup.exe: NSIS current-user installer with Tauri 2 manager and self-contained .NET 10 Sidecar.
           - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
           - SHA256SUMS.txt: independent checksums of all three release binaries.
 
           Windows logs (server-logs.db and SQLite WAL companions) are beside the desktop EXE. The portable ZIP keeps application settings in LOCALAPPDATA and passwords in Windows Credential Manager, not within the ZIP. WebView2 runtime is required.
 
-          The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This preview upgrades the SQLite native bundle to a patched line (Microsoft.Data.Sqlite 10.0.14 and SQLitePCLRaw.bundle_e_sqlite3 2.1.14) following a NU1903 advisory detected in the preceding preview. This is a technical prerelease, not production certification; Windows executables are unsigned and the APK is debug signed.
+          The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This preview includes both Android Debug and signed Release APKs and upgrades the SQLite native bundle to a patched line (Microsoft.Data.Sqlite 10.0.14 and SQLitePCLRaw.bundle_e_sqlite3 2.1.14) following a NU1903 advisory detected in the preceding preview. This is a technical prerelease, not production certification; Windows executables are unsigned; the Android Debug APK uses a debug identity, while the Android Release APK requires a separate persistent production signing key. They cannot replace each other in-place.
           NOTES
-          gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - APK / Setup / Portable" --notes-file /tmp/stockcount-notes.md --prerelease
+          gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - Debug + Release APK / Setup / Portable" --notes-file /tmp/stockcount-notes.md --prerelease
