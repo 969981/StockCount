@@ -18,7 +18,7 @@ try {
     $apiStage = Join-Path $root 'publish/avalonia-api-stage'
     dotnet test tests/StockCount.Server.Hosting.Tests/StockCount.Server.Hosting.Tests.csproj -c $Configuration
     if ($LASTEXITCODE -ne 0) { throw 'Hosting tests failed.' }
-    dotnet publish $api -c $Configuration -r win-x64 --self-contained true -o $apiStage
+    dotnet publish $api -c $Configuration -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o $apiStage
     if ($LASTEXITCODE -ne 0) { throw 'API publish failed.' }
     dotnet publish $ui -c $Configuration -r win-x64 --self-contained true -o $OutputDirectory
     if ($LASTEXITCODE -ne 0) { throw 'Avalonia desktop publish failed.' }
