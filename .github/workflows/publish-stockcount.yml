@@ -31,6 +31,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - name: Validate version and reject publishing from non-main branches
         shell: bash
         run: |
@@ -43,7 +44,13 @@ jobs:
             echo "Invalid Release version: $RELEASE_VERSION" >&2
             exit 1
           fi
-          echo "Validated StockCount release version: $RELEASE_VERSION"
+          app_version="$(jq -r '.version' desktop/server-console/src-tauri/tauri.conf.json)"
+          if [[ "$RELEASE_VERSION" != "$app_version" && "$RELEASE_VERSION" != "$app_version"-* ]]; then
+            echo "Release label $RELEASE_VERSION conflicts with actual software version $app_version." >&2
+            echo "First run scripts/set-app-version.ps1 and commit all project metadata." >&2
+            exit 1
+          fi
+          echo "Validated StockCount app version: $app_version; release label: $RELEASE_VERSION"
   android:
     needs: validate
     runs-on: windows-latest
