@@ -10,6 +10,7 @@
     <RootNamespace>StockCount.ServerHost</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
