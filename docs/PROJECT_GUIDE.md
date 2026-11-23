@@ -2,7 +2,7 @@
 
 ## 1. 项目定位
 
-`StockCount` 是面向仓库盘点人员的 **C# / .NET 10 Android 工业 PDA + ASP.NET Core API**，读取既有 Sage X3 盘点单、扫码库位和箱标签，并将人工 STU 实盘数保存为盘点明细。
+`StockCount` 是面向仓库盘点人员的 **C# / .NET 10 Android 工业 PDA + ASP.NET Core API**，读取既有 Sage X3 盘点单、扫码库位和箱标签，并将一次人工输入的 STU 实盘数**同值写入**盘点明细的 `XCOUTD.QTYSTU_0`、`XCOUTD.QTYPCU_0`。
 
 **不是** ERP 库存调整程序、不是盘点单管理后台、不是原 X3 PDA APK 的直接反编译移植，也与外协扫码作业 `OutsourceFlow` 为不同业务项目。
 
