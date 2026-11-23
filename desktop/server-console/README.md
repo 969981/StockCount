@@ -56,7 +56,8 @@ PDA 端的 MAUI 配置页在未来接入：只允许配置 API URL、`Test` / `P
 
 - 正式环境对应 `sagex3.COB`；测试对应 `sagex3.XTEST`。服务器固定白名单，不允许动态 Schema。
 - 现有 API 是只读骨架：不创建/关闭单据，不修改标签状态，所有盘点明细写入（包括 XTEST）依然禁用，直到事务/幂等/单位字段经现场核验。
-- SQLite 默认位置：`%LOCALAPPDATA%\StockCount\ServerHost\logs\server-logs.db`，采用 WAL、后台单写入队列；启动时清理 30 天前记录。不是正式业务数据仓库。
+- SQLite 默认位置：`<桌面管理端 EXE 所在目录>\server-logs.db`，采用 WAL、后台单写入队列；启动时清理 30 天前记录。不是正式业务数据仓库。
+- SQLite 日志与 Tauri EXE 放在同一文件夹，NSIS 固定当前用户安装模式，避免默认放进 Program Files。如果手动改到不可写目录，服务启动会提示权限错误，绝不静默切回 AppData。同目录可能生成 `server-logs.db-wal` 与 `server-logs.db-shm`；更新/卸载前应备份。
 - 本程序是用户会话桌面管理器，**不是 Windows Service**；当前 Tauri 关闭时会终止 Sidecar。未来需要开机自启/无人值守时，应另行实现 Windows Service 和远程管理 UI。
 - 管理端口仅监听 127.0.0.1 / ::1 并要求进程级随机 admin token；不会公开下发到 PDA。
 - 公开 GitHub 中不应提交实际连接凭据、API 设备密钥、证书、内网主机、现场日志、真实箱码。
