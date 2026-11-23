@@ -24,12 +24,11 @@ status: initial-implementation-awaiting-qa
 dotnet restore src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj
 dotnet build src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c Debug
 # 发布 API 可执行文件，复制到桌面 EXE 同目录后启动：
-dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Debug -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/avalonia-api-debug
-Copy-Item publish/avalonia-api-debug/StockCount.Api.exe src/StockCount.Server.Desktop/bin/Debug/net10.0-windows/ -Force
-dotnet run --project src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj --no-build
+# Windows Debug 构建会自动从 API 项目复制 StockCount.Api.exe 及相关依赖到桌面 bin 目录
+dotnet run --project src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj
 ```
 
-若 Visual Studio 的输出目录因 RID 发生变化，请以当前 `StockCount.Server.Desktop.exe` 实际所在目录为准。也可运行 `scripts/build-avalonia-desktop.ps1` 自动生成可移植目录。
+Visual Studio 请在完整 `StockCount.slnx` 中把 `StockCount.Server.Desktop` 设为启动项目；F5 可自动构建并准备 API 依赖，具体见 [统一调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。若 Visual Studio 的输出目录因 RID 发生变化，请以当前 `StockCount.Server.Desktop.exe` 实际所在目录为准。也可运行 `scripts/build-avalonia-desktop.ps1` 自动生成可移植目录。
 
 ## 设置持久化与安全
 
