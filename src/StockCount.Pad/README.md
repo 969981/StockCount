@@ -46,7 +46,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 
 ## 与 API 对接
 
-设备从 Windows 后端 Tauri 管理器获取授权 API HTTPS 地址和设备 Key：
+设备从 Windows Tauri 管理器获取局域网 HTTP 地址（例如 `http://192.168.1.100:5080`）和设备 Key：
 
 - 请求头 `X-StockCount-Environment` 只能使用 `Test` 或 `Production`。
 - 请求头 `X-StockCount-Device-Key` 存储于 MAUI SecureStorage；切换测试/正式环境需重新选择盘点单。
@@ -58,13 +58,13 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 1. 打开 APK「连接与设备设置」→「硬件扫码诊断」，查看当前广播 Action/Extra；默认是 `com.service.scanner.data` / `ScanCode`。
 2. 使用 PDA 的物理扫码键对任意**测试条码**扫描；面板会显示是否收到事件、时间、格式类型和字符长度。**不会打印完整二维码**。
 3. 如果未收到，按海康设备扫描服务设置或原厂文档填写正确的广播 Action、条码字符串 Extra 名称；点击「应用扫码参数」，接收器自动重新注册，再扫描验证。
-4. 进入真实盘点界面，先扫测试库位、再扫箱码。后台 API 必须已连接、两套帐套写入开关须分别核验后开启。**扫描广播可被其他 Android 应用模拟，不能作为服务端授权的凭据**；服务端设备密钥、HTTPS 及业务 SQL 校验仍必需。
+4. 进入真实盘点界面，先扫测试库位、再扫箱码。后台 API 必须已连接、两套帐套写入开关须分别核验后开启。**扫描广播可被其他 Android 应用模拟，不能作为服务端授权的凭据**；服务端设备密钥及业务 SQL 校验仍必需；当前局域网使用 HTTP 明文传输，仅可在可信隔离网络使用。
 5. 如果因设备扫码服务使用键盘模拟而不是广播回传，请在设备扫描服务中切换为广播输出；不能以 Debug 的手输模拟成功作为海康真机扫码验收。
 
 ## APK 构建与工件
 
 - GitHub Actions [StockCount MAUI PDA Android Build](../../.github/workflows/pda-android-build.yml) 现支持手动 `Run workflow`；先运行 Core 单元测试，再构建 APK、验证实际 APK 文件/打印 SHA256，成功后上传 `StockCount-PDA-Android-Debug-APK` 工件（保留 14 天）。
-- 这只是 **Debug 签名的测试版安装包**，不代表 XTEST/COB 真库写入已验收。现场环境的 HTTPS 证书需要被 Android 信任；不要通过关闭证书校验来绕过。
+- 这只是 **Debug 签名的测试版安装包**，不代表 XTEST/COB 真库写入已验收。当前受控内网联调采用 HTTP，不需要 Android 信任 PFX；但设备 Key 和业务数据会在网络中明文传输，切勿暴露至公网。
 - 安装验证示例：`adb install -r <实际生成的apk路径>`，再用 `adb logcat` 排查崩溃和广播事件，但不要将真实二维码或企业密钥原文上传公开 Issues。
 
 ## 待验收和待增强
