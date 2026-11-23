@@ -79,6 +79,19 @@ gh release view v0.2.0-preview.3 -R 969981/StockCount
 **安全与权限注意**：本地只上传密钥到 GitHub Secrets，不会把 JKS 打包进 APK 或源码 ZIP；Actions 正式签名仅在 main 上进行；普通 PR 无法读取签名凭据。操作员需要仓库 Secrets 管理和 Actions 权限，且不能把签名密钥泄露给代码贡献者。正式发布前依然需要海康真机联调与 Sage X3 验收。
 
 相关脚本：[JKS 生成](../scripts/new-android-release-jks.ps1) · [签名 Secrets 配置](../scripts/configure-android-release-secrets.ps1) · [一键触发 GitHub Release](../scripts/publish-stockcount-release.ps1) · [[docs/ANDROID_RELEASE_SIGNING|签名细节]] · [Markdown](ANDROID_RELEASE_SIGNING.md)。
+## 软件实际版本与发布文件名
+
+软件版本以 `desktop/server-console/src-tauri/tauri.conf.json` 的 `version` 为准，配套的 `Cargo.toml`、npm `package.json`、MAUI `ApplicationDisplayVersion` 必须一致。不要只在免安装脚本里填 `-Version 1.0.1`，那只会改变文件名，不会更改 EXE 真实版本。
+
+```powershell
+pwsh -File .\scripts\get-app-version.ps1
+# 修改真实版本；如发布新的 Android APK，记得同步递增 versionCode
+pwsh -File .\scripts\set-app-version.ps1 -Version 1.0.1 -AndroidVersionCode 4
+pwsh -File .\scripts\build-local.ps1 -Target Windows
+```
+
+本地 `build-local.ps1` 与 `package-windows-portable.ps1` 默认自动读取配置版本；显式传入版本时只接受与项目基础版本一致的预览后缀（例如 `0.2.0-preview.3`）。GitHub Releases 的版本校验同样拒绝 `1.0.1` 标签配 `0.2.0` 程序。准备新正式版本时需先提交工程版本变更，再触发 Actions 发布。
+
 ## 输出资产
 
 | 文件 | 平台 | 内容 |
