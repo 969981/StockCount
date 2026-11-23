@@ -1,6 +1,7 @@
 # Sage X3 / SQL Server 数据库字段映射规范
 
 - 版本：V1（2026-11-23）
+- **五表完整结构 / 中文标题 / 可执行只读 SQL**：参见 [数据库五表字段索引](database/SCHEMA_INDEX.md)。目前 XCOUTH16 / XCOUTD19 / XLABELDTL45 / STOLOC41 列实际物理证据齐全；ITMMASTER 已有197条中文**字典代码**，真实 SQL 物理全列尚待从数据库查询。
 - 本文来源：此前经只读 SQL 核实的 `sagex3.COB` 物理列/字典与 `XTEST` 的单据/明细统计；**不是 DDL**，不自动授权任何写库操作。
 - **重要**：生产 `sagex3.COB`、测试 `sagex3.XTEST` 均为 `sagex3` 数据库下的 Schema；`COBTEST2` 曾发现，但不纳入 V1 环境切换。对 XTEST 的具体字段类型需独立核实，不能照抄 COB。
 
@@ -125,7 +126,14 @@ ID.BOX-EXAMPLE-01@@PT.DOC00001@@LN.1000@@MT.ITEM001@@LT.LOT01@@QT.100@@PG.125
 
 JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必有且只一行”的假设。
 
-## 6. 从页面到实际表的端到端映射
+## 6. 库位主数据 STOLOC 的精确关联
+
+- **完整 41 列与 X3 中文标题**：[STOLOC 字段字典](database/schema/STOLOC.md)；库位主键/唯一性不能仅凭列名推断。
+- 2026-11-23 的 XTEST 主数据分析显示，`STOFCY_0 + WRH_0 + LOC_0` 组合不重复，但 `LOC_0` 单独跨仓库复用；因此新 PDA 后端校验须至少使用盘点单站点、仓库与扫码库位联合定位，不得只按 `LOC_0` 查询。
+- `STOLOC.LOKSTA_0`、`CUNLOKFLG_0` 等为原始代码，不能因中文标签直接将数值 1 当作“冻结/正在盘点”为真。
+- [ITMMASTER 197 条 X3 中文字典](database/schema/ITMMASTER.md) 不是物理表全字段；[查询两帐套真实物理列 SQL](../sql/read_only/inspect_five_tables.sql)。
+
+## 7. 从页面到实际表的端到端映射
 
 | UI / API 语义 | 查询来源 | 保存目标 |
 | --- | --- | --- |
@@ -141,7 +149,7 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 | 手填实盘数量 | Pad **仅一次**输入 `decimal` | **`XCOUTD.QTYSTU_0` 与 `XCOUTD.QTYPCU_0`，同时写入相同值** |
 | 原始标签状态 | `XLABELDTL.STA_0` | 供展示/诊断，不做状态准入 |
 
-## 7. 安全防线、证据边界与先决条件
+## 8. 安全防线、证据边界与先决条件
 
 - **长度风险**：标签 PID(50) → 明细 BOXNUM(20)，标签/表头 LOC(20) → 明细 LOC(10)；超过必须提示并拒绝，不得截断。
 - **Schema 差异**：COB 与 XTEST 的 `CUNTYP_0` 有过转换冲突；部署前对每个环境扫描 `INFORMATION_SCHEMA.COLUMNS`、索引、触发器、默认值，写入路径不可假定一致。
@@ -150,7 +158,7 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 - **动态库存**：历史标签当前值变化不能作为历史异常的直接证据；QR QT 是编码原数。
 - **写入阻断**：`ROWID/AUUID_0/UPDTICK_0`、审计字段、**两数量列同值与 `PCUSTUCOE_0`/`PCU_0` 约束**及 X3 核准服务实现全部确认前，禁止自动直接 INSERT 正式 COB。
 
-## 8. 只读核验 SQL（部署前执行，结果不提交到仓库）
+## 9. 只读核验 SQL（部署前执行，结果不提交到仓库）
 
 ```sql
 -- 逐帐套核对表头关键字段（只读）
@@ -158,7 +166,7 @@ SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME,
        DATA_TYPE, CHARACTER_MAXIMUM_LENGTH, NUMERIC_PRECISION, NUMERIC_SCALE
 FROM [sagex3].INFORMATION_SCHEMA.COLUMNS
 WHERE TABLE_SCHEMA IN (N'COB', N'XTEST')
-  AND TABLE_NAME IN (N'XCOUTH', N'XCOUTD', N'XLABELDTL', N'ITMMASTER')
+  AND TABLE_NAME IN (N'XCOUTH', N'XCOUTD', N'XLABELDTL', N'STOLOC', N'ITMMASTER')
 ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION;
 
 -- 跨帐套仅统计表头，不用未显式 CAST 的 UNION ALL 类型推断
@@ -168,3 +176,5 @@ SELECT N'Test', COUNT_BIG(*) FROM [sagex3].[XTEST].[XCOUTH];
 ```
 
 参见 [requirements.md](../requirements.md)、[architecture.md](../architecture.md)、[docs/DECISIONS.md](DECISIONS.md)。
+
+**实际可执行的五表 SQL**：[完整物理结构 + 中文普通/长标题（COB/XTEST）](../sql/read_only/inspect_five_tables.sql) · [五表真实全字段中文别名抽样](../sql/read_only/select_five_tables_chinese_aliases.sql) · [六组常用业务查询](../sql/read_only/business_queries.sql)。
