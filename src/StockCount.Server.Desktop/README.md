@@ -30,6 +30,14 @@ dotnet run --project src/StockCount.Server.Desktop/StockCount.Server.Desktop.csp
 
 Visual Studio 请在完整 `StockCount.slnx` 中把 `StockCount.Server.Desktop` 设为启动项目；F5 可自动构建并准备 API 依赖，具体见 [统一调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。若 Visual Studio 的输出目录因 RID 发生变化，请以当前 `StockCount.Server.Desktop.exe` 实际所在目录为准。也可运行 `scripts/build-avalonia-desktop.ps1` 自动生成可移植目录。
 
+## 启动行为与中文版日志（2026-11-23）
+
+- 默认 `autoStartApi: true`：打开 Avalonia 管理器会尝试启动它自己的 `StockCount.Api.exe`。若 SQL Server 地址尚未填写，不会擅自启动；先保存数据库设置，之后自动启动；启动失败会在顶部显示错误。已通过 UI/JSON 禁用自动启动时，仍可以手动点击“启动 API”。
+- SQLite 日志页把常见 ASP.NET Core 运行消息、日志级别与分类**翻译成中文**，时间按本机时区显示，**数据库内仍保留未修改的原始英文/异常诊断内容**。
+- SQLite 日志页选择 **1、3、7、14、30 天**，首次点击“清理旧日志”显示将永久删除的范围；再次点击确认才执行 SQL `DELETE`。支持 API 正在写入的 WAL 模式，不删除 `server-logs.db`、`-wal`、`-shm` 文件。
+- 现有 API 在进程启动时依然**自动清理超过 30 天的日志**；新按钮是手动追加清理，可选保留时间更短。日志搜索按中文显示内容筛选最近 500 条记录，显示最多 200 条。
+- **重要安全限制**：XTEST/COB 的“已独立验收”与“启用写入”首次仍全部为 `false`，不能未经 DBA 核实就伪装成“默认已验收”。若确实已分别完成核验，操作员可使用按钮两次确认集中勾选四项，输入经批准的 X3 审计用户编码，**手动保存**后生效。已保存且有效的勾选状态下次打开会保留，数据库身份变更仍撤销。
+
 ## 设置持久化与安全
 
 ```text
