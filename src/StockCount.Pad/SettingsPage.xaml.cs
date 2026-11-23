@@ -24,6 +24,8 @@ public partial class SettingsPage : ContentPage
         base.OnAppearing();
         ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
         ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
+        ScannerActionInput.Text = ScanFeed.AndroidBroadcastAction;
+        ScannerExtraInput.Text = ScanFeed.AndroidBarcodeExtra;
         UpdateScannerDiagnostic(ScanFeed.LatestDiagnostic);
         ScanFeed.ScanObserved -= OnScanObserved;
         ScanFeed.ScanObserved += OnScanObserved;
@@ -57,6 +59,23 @@ public partial class SettingsPage : ContentPage
             diagnostic is null ? "#7F91AA" : "#19805B");
         LastScanText.Text = diagnostic is null ? "尚未收到扫码广播"
             : $"{diagnostic.ObservedAt:HH:mm:ss} · {diagnostic.Kind} · {diagnostic.Length} 字符";
+    }
+
+    private async void SaveScanner_Clicked(object sender, EventArgs e)
+    {
+        try
+        {
+            ScanFeed.Configure(ScannerActionInput.Text ?? "", ScannerExtraInput.Text ?? "");
+            ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
+            ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
+            UpdateScannerDiagnostic(null);
+            await DisplayAlertAsync("扫码参数已应用",
+                "已重新注册硬件扫码广播。请在当前页面按 PDA 扫码键，观察下方接收状态。", "OK");
+        }
+        catch (ArgumentException error)
+        {
+            await DisplayAlertAsync("扫码参数无效", error.Message, "OK");
+        }
     }
 
     private async void SelectProduction_Clicked(object sender, EventArgs e)
