@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET" />
-  <application android:usesCleartextTraffic="false" />
+  <!-- Private LAN HTTP for trusted industrial PDA networks; the MAUI API URL policy rejects public HTTP destinations. -->
+  <application android:usesCleartextTraffic="true" />
 </manifest>
