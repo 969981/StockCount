@@ -27,7 +27,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 服务端必须按白名单映射 `Production → COB` / `Test → XTEST`；`environment` 只是选择器，客户端不得上传任意 SQL server/database/schema/连接字符串。
 
-**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；按当前联调要求，LAN 使用 HTTP、设备 Key 和网络 ACL（无需 PFX）。HTTP 不提供加密，也不验证服务器身份，设备 Key 和盘点数据可能被同网段攻击者截获/篡改；仅限隔离可信 PDA 局域网，禁止公网暴露。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于自动开放正式写入；需在 Tauri 中分别核验并打开对应帐套写入开关。
+**Tauri 2 桌面管理端（2026-11-23）**：Windows 管理器 EXE 同目录的 `server-settings.json` 只保存非秘密设置（例如服务器地址、数据库账号名、端口、帐套开关）；SQL Server 密码、遗留 PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。首次启动若同目录配置缺失，会从旧 AppData 路径复制有效配置而非删除旧文件。不要将包含现场网络和 SQL 账号信息的 JSON 提交公开仓库。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；按当前联调要求，LAN 使用 HTTP、设备 Key 和网络 ACL（无需 PFX）。HTTP 不提供加密，也不验证服务器身份，设备 Key 和盘点数据可能被同网段攻击者截获/篡改；仅限隔离可信 PDA 局域网，禁止公网暴露。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于自动开放正式写入；需在 Tauri 中分别核验并打开对应帐套写入开关。
 
 ## 2. 无登录的可接受防护
 
