@@ -38,6 +38,15 @@ npm run build:desktop
 
 CI 定义：[tauri-server-console.yml](../../.github/workflows/tauri-server-console.yml)，在 `windows-latest` 执行 .NET publish、npm install、Rust 构建、Tauri Windows NSIS 打包，并上传安装文件。**仅在工作流真实成功时才可交付可安装 EXE。**
 
+## 免安装 Portable（Windows x64）
+
+- GitHub Releases 同一版本提供 `Setup.exe`（NSIS 当前用户安装）与 `Portable.zip`（免安装）。后者包含 `stockcount-server-console.exe`、`StockCount.Api.exe`、`Start-StockCount.cmd`、`README-PORTABLE.txt`，不是只有一个 EXE。
+- 便携 ZIP 由 [package-windows-portable.ps1](../../scripts/package-windows-portable.ps1) 在已完成同一 Tauri Release 构建之后生成，不重新编译或改动功能。
+- 解压到用户可写目录，例如 `D:\Apps\StockCount-Server\`，双击启动脚本即可；SQLite `server-logs.db` 与主 EXE 同目录，切勿直接从 ZIP 内启动或放进受保护 Program Files。
+- 免安装也需要系统 WebView2 Runtime；.NET 10 Sidecar 是 self-contained，无需另外安装 .NET Runtime。
+- 非敏感设置依旧在 LOCALAPPDATA 下，密码/设备访问密钥仍在 Windows Credential Manager，因此这不是将全部设置与凭据随 ZIP 转移的绿色便携版。
+- [统一发布流程和校验](../../docs/RELEASE_PACKAGING.md) · [GitHub Releases](https://github.com/969981/StockCount/releases)。
+
 ## 操作流程
 
 1. 进入「数据库连接」，填写 SQL Server 地址 / 库名 `sagex3`、认证方式、用户和密码。默认数据库密码为空，由现场人员配置；输入并保存后密码仅存在 Windows Credential Manager。
