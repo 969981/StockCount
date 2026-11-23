@@ -1,4 +1,5 @@
 ---
+aliases: ["StockCount 统一发布", "StockCount Release"]
 title: StockCount · 统一 GitHub Releases 发布与免安装版
 date: 2026-11-23
 status: android-release-workflow-added-awaiting-signing-secrets
