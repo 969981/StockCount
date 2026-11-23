@@ -8,6 +8,9 @@
     <ProjectReference Include="../StockCount.Contracts/StockCount.Contracts.csproj" />
     <ProjectReference Include="../StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <!-- 10.0.0 transitively includes vulnerable SQLitePCLRaw.lib.e_sqlite3 2.1.11.
+         Use the patched .NET 10 provider and a recent native SQLite bundle. -->
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
   </ItemGroup>
 </Project>
