@@ -5,6 +5,11 @@ public sealed record BoxScanData(
     string? Specification, string LotNumber, string StockUnit,
     bool AlreadyRecordedInCount);
 
+public sealed class ScanCommitRejectedException(string code,string message) : Exception(message)
+{
+    public string Code { get; } = code;
+}
+
 public sealed record CountScanFeedback(string Kind, string? Message = null, int AutoDismissMs = 0);
 
 public interface ICountScanGateway
@@ -81,7 +86,12 @@ public sealed class CountScanWorkflow(ICountScanGateway gateway, string countNum
         finally { _scanGate.Release(); }
     }
 
-    public void EnterManualQuantity(decimal? quantity) => ManualQuantity=quantity;
+    public void EnterManualQuantity(decimal? quantity)
+    {
+        if (PendingRequestId.HasValue && ManualQuantity != quantity)
+            throw new InvalidOperationException("上次提交结果尚未确定，不可修改数量后复用原请求ID。");
+        ManualQuantity=quantity;
+    }
 
     public async Task<CountScanFeedback> SubmitAsync(CancellationToken ct=default)
     {
@@ -104,6 +114,14 @@ public sealed class CountScanWorkflow(ICountScanGateway gateway, string countNum
                     CountNumber,PendingRequestId.Value,OriginalQr,Box.BoxNumber,
                     Location,ManualQuantity.Value,ct);
                 if (!committed) return new CountScanFeedback("Error","提交结果不确定，请查询原请求ID。");
+            }
+            catch (ScanCommitRejectedException rejection)
+            {
+                // An explicit business rejection is NOT an ambiguous write result.
+                if (rejection.Code=="BOX_ALREADY_RECORDED")
+                    ClearBox();
+                PendingRequestId=null;
+                return new CountScanFeedback("Error",rejection.Message);
             }
             catch (Exception)
             {
