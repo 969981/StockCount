@@ -4,6 +4,11 @@
 
 **构建核实（2026-11-23）**：[GitHub Actions #46](https://github.com/969981/StockCount/actions/runs/45110321348) **成功**：MAUI Android Debug APK 编译和 APK 生成检查通过、29 项 Core 单测通过。发布到 GitHub Releases 的带版本名 APK 将由 [统一发布流水线](../../.github/workflows/publish-stockcount.yml) 负责，只上传 `*-Signed.apk`，不会发布未签名同名文件。海康真机/SQL Server 现场验收仍待完成。
 
+## 本地编译和海康 PDA ADB 安装
+
+- 使用 [本地 PowerShell 操作手册](../../docs/LOCAL_BUILD_DEPLOY.md) 与 `scripts/build-local.ps1 -Target Android` 编译带 Debug 签名的安装 APK。
+- 使用 `scripts/deploy-local.ps1 -Target Android -PackagePath <APK实际路径> -DeviceSerial <adb序列号>` 安装到已授权的 Android PDA；发生签名不一致时不会自动卸载或删除 SecureStorage。
+- `scripts/package-source.ps1` 打包的是整个仓库源代码而不是已编译 APK，产物在 `dist/source/`。
 ## APK UI 设计与实施
 
 - [工业 PDA UI 与扫码交互设计规范](../../docs/pda/PDA-UI-UX-设计规范与交互状态.md)：页面层级、竖屏线框、视觉 Token、Scan UI 状态、数量/提交反馈以及弱网恢复。
