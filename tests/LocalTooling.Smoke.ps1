@@ -57,6 +57,36 @@ try {
     $archive = [IO.Compression.ZipFile]::OpenRead($sourceZip)
     try {
         $files = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\','/') })
+        # A successful modern source snapshot must be independently buildable:
+        # both solution layouts, Avalonia + Hosting, Android MAUI, Tauri and CI.
+        $mustContain = @(
+            'StockCount.slnx',
+            'StockCount.Backend.slnx',
+            'src/StockCount.Api/StockCount.Api.csproj',
+            'src/StockCount.Api/Properties/launchSettings.json',
+            'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj',
+            'src/StockCount.Server.Desktop/App.axaml',
+            'src/StockCount.Server.Desktop/MainWindow.axaml',
+            'src/StockCount.Server.Desktop/ViewModels/MainViewModel.cs',
+            'src/StockCount.Server.Hosting/StockCount.Server.Hosting.csproj',
+            'src/StockCount.Server.Hosting/ServerSettings.cs',
+            'src/StockCount.Server.Hosting/LogReader.cs',
+            'src/StockCount.Pad/StockCount.Pad.csproj',
+            'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml',
+            'desktop/server-console/src-tauri/Cargo.toml',
+            'scripts/build-local.ps1',
+            'scripts/build-avalonia-desktop.ps1',
+            'scripts/package-source.ps1',
+            '.github/workflows/avalonia-server-desktop.yml',
+            '.github/workflows/pda-android-build.yml'
+        )
+        foreach ($relative in $mustContain) {
+            $entry = "StockCount-Source-v0.2.0-local/$relative"
+            if ($files -notcontains $entry) {
+                throw "Modern source ZIP is missing a required build input: $relative"
+            }
+        }
+
         if ($files -notcontains 'StockCount-Source-v0.2.0-local/scripts/build-local.ps1') {
             throw 'Build script missing from source ZIP'
         }
