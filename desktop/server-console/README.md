@@ -56,7 +56,7 @@ CI 定义：[tauri-server-console.yml](../../.github/workflows/tauri-server-cons
 1. 进入「数据库连接」，填写 SQL Server 地址 / 库名 `sagex3`、认证方式、用户和密码。默认数据库密码为空，由现场人员配置；输入并保存后密码仅存在 Windows Credential Manager。
 2. 点击「测试连接」，通过 .NET API Sidecar 查询 `SELECT 1`（只读），验证连通性。
 3. 进入「API 与设备」，设置监听端口（默认 5080）。默认 HTTP 仅监听 localhost，管理员测试优先保持这个模式。
-4. 如需其他 PDA 通过 Wi-Fi 连接，选择受控 LAN HTTPS 并配置真实可信 PFX 证书及密码；同时设置服务器防火墙只允许可信 PDA 网段。
+4. 如需 PDA 通过 Wi-Fi 连接，在「API 与设备」开启 LAN HTTP（无需 PFX），PDA 使用 `http://<Windows局域网IP>:5080`，同时设置 Windows 防火墙仅允许可信 PDA 网段；不得开放到公网。
 5. 返回「服务总览」，点击「启动服务」。Rust 启动托管 C# API，并通过额外的 **localhost 管理端口（API 端口+1）** 查询 `/health`；界面显示进程状态/健康结果。
 6. 点击「停止服务」，Rust 向 loopback 管理端口发短期随机令牌授权的 `/internal/shutdown` POST，等待 C# 关闭并刷新 SQLite 日志；异常时兜底终止子进程。
 7. 切到「SQLite 日志」按日志等级、分类和内容搜索，查看日期及错误详情。
