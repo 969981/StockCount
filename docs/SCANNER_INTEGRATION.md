@@ -23,6 +23,15 @@ up: "[[docs/pda/00-PDA扫码知识地图]]"
 
 此前另一个工业 PDA 项目记录了海康 MV-IDP5204 / 扫码服务广播路线，该方案可借鉴，但需在 StockCount 实际目标设备上确认。
 
+## 2026-11-23 已实现的广播联调功能
+
+- Android `MainActivity` 前台动态注册 `BroadcastReceiver`，扫码事件通过 `ScanFeed` 交给当前活动的 MAUI 页面（`CountingPage` / `SettingsPage`），不从接收器直接执行 HTTP。
+- APK「设置 → 硬件扫码诊断」能够观察最近一次扫码的**本地时间、码格式、字符长度**；诊断事件中无原始条码内容，关闭页面停止订阅。
+- APK 可输入当前型号使用的广播 **Action** 和内容 **Extra** 名称。点击「应用扫码参数」会校验格式、写入 Android Preferences，并触发 Android 重新注册 Receiver，无需重新打包或重启。
+- 默认 Action `com.service.scanner.data`，Extra `ScanCode`；**现场实际值必须真机核实**，不同海康设备/固件可能不同。
+- 当前接收器运行在前台并设为 Exported，以兼容外部扫码服务广播；因此广播本身**不是可信的授权或提交来源**，不可仅凭扫到码允许 ERP 写入。HTTPS、设备 Key、库位/标签数据库核验、幂等仍由 API 执行。
+- 现有 `CountScanWorkflow` 负责禁止覆盖已输入数量、重复箱提示及提交；尚未建立按 Action/Extra 来源 UID 的原厂签名校验和设备硬件真机验收。
+
 ## 2. 建议接口
 
 ```csharp
@@ -57,7 +66,7 @@ public interface IScannerService
 }
 ```
 
-以上 Action / Extras 是**海康原厂 V1.0.1 手册和旧项目记录的默认协议值**，并非当前 StockCount PDA 已经实测的配置；厂商允许自定义广播名与字段标签。`Charset=UTF8` 沿用厂家协议编码标识而非 .NET Enum。首次联调必须核对型号、Android 版本、扫描服务版本与实际 Extra。默认拒绝未知 Action，不接收非预期来源的敏感广播。
+以上 Action / Extras 是**海康原厂 V1.0.1 手册和旧项目记录的默认协议值**，并非当前 StockCount PDA 已经实测的配置；厂商允许自定义广播名与字段标签。`Charset=UTF8` 沿用厂家协议编码标识而非 .NET Enum。首次联调必须核对型号、Android 版本、扫描服务版本与实际 Extra。Receiver 只监听用户配置的 Action，读取对应 Extra；第三方应用仍可能发送伪造广播，所以此值**不是**任何访问授权，服务端必须再次校验。
 
 ## 4. 条码处理顺序
 
