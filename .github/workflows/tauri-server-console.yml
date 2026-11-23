@@ -55,6 +55,9 @@ jobs:
       - name: Bundle NSIS installer
         working-directory: desktop/server-console
         run: npm run build:desktop
+      - name: Test Rust config migration and local-file precedence
+        working-directory: desktop/server-console/src-tauri
+        run: cargo test --lib --release -- config::tests
       - uses: actions/upload-artifact@v4
         with:
           name: StockCount-Tauri-ServerConsole-Windows
