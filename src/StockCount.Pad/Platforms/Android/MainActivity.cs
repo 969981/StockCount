@@ -9,6 +9,7 @@ namespace StockCount.Pad;
 [Activity(
     Theme = "@style/Maui.SplashTheme",
     MainLauncher = true,
+    Exported = true, // Launcher activity must be explicit for Android 12+.
     ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation |
         ConfigChanges.UiMode | ConfigChanges.ScreenLayout | ConfigChanges.SmallestScreenSize |
         ConfigChanges.Density)]
