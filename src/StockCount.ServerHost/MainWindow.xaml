@@ -1,0 +1,235 @@
+<Window x:Class="StockCount.ServerHost.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="StockCount · 服务管理器" Width="1080" Height="760"
+        MinWidth="900" MinHeight="620" WindowStartupLocation="CenterScreen"
+        Closing="Window_Closing" Background="#F5F7FC" FontFamily="Microsoft YaHei UI">
+  <Window.Resources>
+    <Style x:Key="Card" TargetType="Border">
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="CornerRadius" Value="14"/>
+      <Setter Property="Padding" Value="22"/>
+      <Setter Property="BorderBrush" Value="#E4E8F1"/>
+      <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style x:Key="FieldLabel" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+      <Setter Property="Foreground" Value="#2B3444"/>
+      <Setter Property="Margin" Value="0,12,0,6"/>
+    </Style>
+    <Style x:Key="Hint" TargetType="TextBlock">
+      <Setter Property="Foreground" Value="#697586"/>
+      <Setter Property="FontSize" Value="12"/>
+      <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button">
+      <Setter Property="Background" Value="#376BEE"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+  </Window.Resources>
+
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="0,0,0,18">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <StackPanel>
+        <TextBlock Text="StockCount" FontSize="28" FontWeight="Bold" Foreground="#18243D"/>
+        <TextBlock Text="Sage X3 · PDA 盘点 API 服务管理器" Foreground="#6B7788" FontSize="13"/>
+      </StackPanel>
+      <Border x:Name="StatusBadge" Grid.Column="1" Background="#EAEFF7"
+              CornerRadius="16" Padding="14,8" VerticalAlignment="Center">
+        <TextBlock x:Name="StatusBadgeText" Text="● 未启动" FontWeight="SemiBold" Foreground="#526173"/>
+      </Border>
+    </Grid>
+
+    <TabControl Grid.Row="1" x:Name="Tabs" BorderBrush="#E2E7F0"
+                Background="White" Padding="10,8">
+      <TabItem Header="服务总览">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel Margin="18">
+            <Border Style="{StaticResource Card}" Margin="0,4,0,16">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                  <TextBlock Text="API 服务状态" Style="{StaticResource FieldLabel}" Margin="0"/>
+                  <TextBlock x:Name="ServiceStateText" Text="未启动" FontSize="26"
+                             FontWeight="Bold" Foreground="#18243D" Margin="0,8,0,6"/>
+                  <TextBlock x:Name="ApiAddressText" Text="http://127.0.0.1:5080"
+                             Foreground="#51627A" FontSize="14"/>
+                  <TextBlock x:Name="SqlSummaryText" Text="数据库尚未配置"
+                             Margin="0,8,0,0" Foreground="#758194" FontSize="12"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button x:Name="StartButton" Style="{StaticResource PrimaryButton}"
+                          Content="▶ 启动服务" Click="StartButton_Click" MinWidth="120"/>
+                  <Button x:Name="StopButton" Content="■ 停止服务"
+                          Click="StopButton_Click" MinWidth="110" IsEnabled="False"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+              <StackPanel>
+                <TextBlock Text="快捷操作" FontWeight="Bold" FontSize="16" Margin="0,0,0,14"/>
+                <WrapPanel>
+                  <Button Content="测试数据库连接" Click="TestDatabase_Click"/>
+                  <Button Content="打开日志目录" Click="OpenLogFolder_Click"/>
+                  <Button Content="刷新日志" Click="RefreshLog_Click"/>
+                </WrapPanel>
+                <TextBlock x:Name="LastOperationText" Text="尚未执行连接测试"
+                           Margin="0,12,0,0" Style="{StaticResource Hint}"/>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}">
+              <StackPanel>
+                <TextBlock Text="运行说明" FontSize="16" FontWeight="Bold"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,7"
+                           Text="① 前往“数据库连接”填写现场 SQL Server 信息。保存后可测试连接；没有填写也可以先运行 localhost API，数据库接口会显示未就绪。"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
+                           Text="② 点击“启动服务”后，API 与当前桌面程序在同一个进程运行；关闭程序将停止服务。"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,7"
+                           Text="③ 默认仅本机 HTTP 调试；要让 PDA 从局域网访问，必须配置可信 HTTPS 证书、设备接入密钥及防火墙访问控制。"/>
+                <TextBlock Style="{StaticResource Hint}"
+                           Text="④ Sage X3 正式写入与测试写入目前均禁用。扫码查询只读；尚未实现明细 INSERT/事务/幂等时不会返回虚假的保存成功。"/>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem x:Name="DatabaseTab" Header="数据库连接">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <Border Style="{StaticResource Card}" Margin="18">
+            <StackPanel>
+              <TextBlock Text="SQL Server 连接配置" FontSize="18" FontWeight="Bold"/>
+              <TextBlock Text="由现场工作人员在本机填写并保存。不会写入 GitHub，也不会下发数据库密码给 PDA。"
+                         Style="{StaticResource Hint}" Margin="0,8,0,8"/>
+              <TextBlock Text="数据库服务器 / 实例" Style="{StaticResource FieldLabel}"/>
+              <TextBox x:Name="SqlServerText" ToolTip="例如：SQL主机名 或 主机名\实例名。请填写现场值。"/>
+              <TextBlock Text="数据库名" Style="{StaticResource FieldLabel}"/>
+              <TextBox x:Name="SqlDatabaseText" Text="sagex3"/>
+              <CheckBox x:Name="IntegratedSecurityCheck" Content="使用 Windows 集成认证"
+                        Margin="0,16,0,4" Checked="SqlAuth_Changed" Unchecked="SqlAuth_Changed"/>
+              <TextBlock Text="SQL 用户名" Style="{StaticResource FieldLabel}"/>
+              <TextBox x:Name="SqlUserText" ToolTip="请使用只读或最小权限账号"/>
+              <TextBlock Text="SQL 密码" Style="{StaticResource FieldLabel}"/>
+              <PasswordBox x:Name="SqlPasswordInput" ToolTip="本地使用 Windows DPAPI 加密保存"/>
+              <StackPanel Orientation="Horizontal" Margin="0,18,0,12">
+                <CheckBox x:Name="EncryptSqlCheck" Content="加密连接" IsChecked="True"
+                          Margin="0,0,24,0"/>
+                <CheckBox x:Name="TrustSqlCertCheck" Content="信任服务器证书（仅受控测试）"
+                          IsChecked="False"/>
+              </StackPanel>
+              <WrapPanel>
+                <Button Style="{StaticResource PrimaryButton}" Content="保存数据库配置"
+                        Click="SaveSettings_Click"/>
+                <Button Content="测试连接 (SELECT 1)" Click="TestDatabase_Click"/>
+              </WrapPanel>
+              <TextBlock Text="环境映射固定：Production → COB；Test → XTEST。只改连接参数，不允许在 UI 中输入任意 Schema。"
+                         Style="{StaticResource Hint}" Margin="0,16,0,0"/>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem x:Name="ServerSettingsTab" Header="API 与设备接入">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <Border Style="{StaticResource Card}" Margin="18">
+            <StackPanel>
+              <TextBlock Text="API 服务监听配置" FontSize="18" FontWeight="Bold"/>
+              <TextBlock Text="默认只在 localhost 上运行，局域网模式必须提供 PFX 证书以启用 HTTPS。"
+                         Style="{StaticResource Hint}" Margin="0,8,0,8"/>
+              <TextBlock Text="监听端口" Style="{StaticResource FieldLabel}"/>
+              <TextBox x:Name="PortText" Text="5080" MaxWidth="180" HorizontalAlignment="Left"/>
+              <CheckBox x:Name="AllowLanCheck" Content="允许受控局域网 PDA 访问（HTTPS）"
+                        Margin="0,18,0,4"/>
+              <TextBlock Text="HTTPS PFX 证书文件路径（仅局域网）" Style="{StaticResource FieldLabel}"/>
+              <TextBox x:Name="CertPathText"/>
+              <TextBlock Text="PFX 证书密码（仅局域网）" Style="{StaticResource FieldLabel}"/>
+              <PasswordBox x:Name="CertPasswordInput"/>
+              <StackPanel Orientation="Horizontal" Margin="0,18,0,8">
+                <Button Style="{StaticResource PrimaryButton}" Content="保存 API 配置"
+                        Click="SaveSettings_Click"/>
+                <Button Content="复制 PDA 设备接入密钥" Click="CopyDeviceKey_Click"/>
+              </StackPanel>
+              <TextBlock Text="密钥由本程序在首次运行时自动生成并加密保存。仅通过可信渠道配置到被授权 PDA 的 SecureStorage 中；不要贴到仓库或日志。"
+                         Style="{StaticResource Hint}" Margin="0,8,0,0"/>
+              <TextBlock Text="提示：PDA 可自行配置 API HTTPS 地址及设备密钥，但永远无法读取数据库账号和密码。"
+                         Style="{StaticResource Hint}" Margin="0,10,0,0"/>
+            </StackPanel>
+          </Border>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Header="SQLite 运行日志">
+        <Grid Margin="18">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="120"/>
+          </Grid.RowDefinitions>
+          <Grid Grid.Row="0" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="LogFilterText" ToolTip="搜索日志等级、分类、消息"
+                     TextChanged="LogFilter_Changed"/>
+            <Button Grid.Column="1" Margin="12,0,0,0" Content="刷新"
+                    Click="RefreshLog_Click"/>
+          </Grid>
+          <DataGrid x:Name="LogGrid" Grid.Row="1" AutoGenerateColumns="False"
+                    IsReadOnly="True" SelectionMode="Single" HeadersVisibility="Column"
+                    RowHeight="34" GridLinesVisibility="Horizontal"
+                    SelectionChanged="LogGrid_SelectionChanged"
+                    BorderBrush="#DCE3EE" Background="White">
+            <DataGrid.Columns>
+              <DataGridTextColumn Header="UTC 时间" Binding="{Binding TimestampUtc}" Width="195"/>
+              <DataGridTextColumn Header="等级" Binding="{Binding Level}" Width="105"/>
+              <DataGridTextColumn Header="分类" Binding="{Binding Category}" Width="210"/>
+              <DataGridTextColumn Header="消息" Binding="{Binding Message}" Width="*"/>
+            </DataGrid.Columns>
+          </DataGrid>
+          <Grid Grid.Row="2" Margin="0,8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="LogDbPathText" Style="{StaticResource Hint}"
+                       TextTrimming="CharacterEllipsis"/>
+            <TextBlock x:Name="LogErrorText" Grid.Column="1" Foreground="#B91C1C"
+                       FontSize="12" Margin="12,0,0,0"/>
+          </Grid>
+          <TextBox x:Name="LogDetailsText" Grid.Row="3" IsReadOnly="True"
+                   TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                   Background="#F9FAFC" Margin="0,0,0,0"/>
+        </Grid>
+      </TabItem>
+    </TabControl>
+
+    <Grid Grid.Row="2" Margin="3,12,3,0">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="FooterText" Text="配置保存在本机 AppData，日志保存在 SQLite。"
+                 Foreground="#718096" FontSize="12"/>
+      <TextBlock Grid.Column="1" Text="StockCount · .NET 10 · SQLite"
+                 Foreground="#8A96A8" FontSize="12"/>
+    </Grid>
+  </Grid>
+</Window>
