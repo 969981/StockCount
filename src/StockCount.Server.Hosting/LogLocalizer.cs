@@ -16,7 +16,7 @@ public static class LogLocalizer
     public static ServerLog ToChinese(ServerLog raw)
     {
         var time = DateTimeOffset.TryParse(raw.TimestampUtc, CultureInfo.InvariantCulture,
-                DateTimeStyles.RoundtripKind, out var parsed)
+                DateTimeStyles.None, out var parsed)
             ? parsed.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.CurrentCulture)
             : raw.TimestampUtc;
 
