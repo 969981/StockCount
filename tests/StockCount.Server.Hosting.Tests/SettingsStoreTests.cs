@@ -25,6 +25,17 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void DefaultsToApiAutostartButNeverToUnreviewedErpWrites()
+    {
+        var settings = new ServerSettings();
+        Assert.True(settings.AutoStartApi);
+        Assert.False(settings.SchemaReviewed);
+        Assert.False(settings.EnableTestWrites);
+        Assert.False(settings.ProductionSchemaReviewed);
+        Assert.False(settings.EnableProductionWrites);
+    }
+
+    [Fact]
     public void SchemaApprovalIsNotInheritedAfterDatabaseIdentityChange()
     {
         var previous = new ServerSettings { SqlServer = "SERVER-A", SchemaReviewed = true, ProductionSchemaReviewed = true };
