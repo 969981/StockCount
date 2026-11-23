@@ -27,11 +27,11 @@ up: "[[docs/development/00-研发规范地图]]"
 
 服务端必须按白名单映射 `Production → COB` / `Test → XTEST`；`environment` 只是选择器，客户端不得上传任意 SQL server/database/schema/连接字符串。
 
-**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；LAN 必须可信 HTTPS 证书、设备 Key 和网络 ACL。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于自动开放正式写入；需在 Tauri 中分别核验并打开对应帐套写入开关。
+**Tauri 2 桌面管理端（2026-11-23）**：Windows 本机 JSON 只保存非秘密设置；SQL Server 密码、PFX 密码、设备接入 Key 使用 Windows Credential Manager，Rust 启动 C# Sidecar 时通过进程环境传递。PDA 前端自行配置 API URL/环境/设备 Key，不提供 SQL 凭据读取接口。公网禁止匿名开放；按当前联调要求，LAN 使用 HTTP、设备 Key 和网络 ACL（无需 PFX）。HTTP 不提供加密，也不验证服务器身份，设备 Key 和盘点数据可能被同网段攻击者截获/篡改；仅限隔离可信 PDA 局域网，禁止公网暴露。Sidecar 的管理端口只监听 loopback，并另验一次性 AdminToken；启动服务不等于自动开放正式写入；需在 Tauri 中分别核验并打开对应帐套写入开关。
 
 ## 2. 无登录的可接受防护
 
-不使用用户密码/登录页，并不意味着 API 对公网匿名开放。建议：受控工厂内网或 VPN / 专用设备网络、服务器防火墙源地址限制、HTTPS、设备准入/反向代理层鉴别、与环境分离的最小数据库凭据、所有写操作结构化审计。具体访问控制可以由部署环境承担，**不能把硬编码在 APK 里的共享密钥误认为足够强的身份验证**。
+不使用用户密码/登录页，并不意味着 API 对公网匿名开放。建议：受控工厂内网或 VPN / 专用设备网络、服务器防火墙源地址限制、隔离 PDA VLAN、设备准入/反向代理层鉴别、与环境分离的最小数据库凭据、所有写操作结构化审计。具体访问控制可以由部署环境承担，**不能把硬编码在 APK 里的共享密钥误认为足够强的身份验证**。
 
 如果没有可落实的网络/设备级身份约束，正式写入不可启用；缺乏应用内账号也需考虑如何审计由哪个 PDA/作业班次提交，不能伪造真实 X3 用户姓名。
 
