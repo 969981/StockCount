@@ -35,6 +35,8 @@ up: "[[docs/development/00-研发规范地图]]"
 
 **D-012（2026-11-23）**：Windows 后端管理界面选用 **Tauri 2 + React/TypeScript + Rust + .NET 10 API Sidecar**，不使用 WPF。现场人员可从桌面 UI 读取/编辑 SQL Server 配置，DB/证书密码及设备密钥保存到 Windows Credential Manager；日志用 SQLite。PDA 自身可配置 API 地址/环境/设备密钥，但不可读取数据库账号/密码。此决策不代表 API 业务写入已经验收。
 
+**D-013（2026-11-23，最新需求）**：**测试帐套 `XTEST` 和正式帐套 `COB` 的盘点 API 均允许写入 `XCOUTD`**，共用 POST 提交与 GET 幂等结果接口。Tauri 后端管理器提供两套分别可编辑的 `EnableTestWrites`/`EnableProductionWrites`，以及独立的 Test/Production Schema 核验开关；各自默认关闭，不互相继承确认结果。此决策替代“正式帐套永久禁止写入”的旧阶段约束，并不豁免现场 SQL 权限、ERP 触发器/ROWID/单位核对及生产审计要求。2026-11-23 本轮未连接现场 XTEST/COB 执行 INSERT，因此上线状态仍需验证。
+
 ## 2. 工程已采用的安全决策（非自动通过的业务规则）
 
 | ID | 工程决策 | 原因 |
