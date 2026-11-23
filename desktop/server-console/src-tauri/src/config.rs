@@ -16,6 +16,9 @@ pub struct Settings {
     pub sql_user: String,
     pub encrypt_sql: bool,
     pub trust_server_certificate: bool,
+    pub enable_test_writes: bool,
+    pub schema_reviewed: bool,
+    pub x3_audit_user: String,
 }
 
 impl Default for Settings {
@@ -30,6 +33,9 @@ impl Default for Settings {
             sql_user: String::new(),
             encrypt_sql: true,
             trust_server_certificate: false,
+            enable_test_writes: false,
+            schema_reviewed: false,
+            x3_audit_user: String::new(),
         }
     }
 }
@@ -90,6 +96,15 @@ pub fn save_settings(settings: &Settings) -> Result<(), String> {
     }
     if settings.sql_database.trim().is_empty() {
         return Err("数据库名称不可为空。".into());
+    }
+    if settings.enable_test_writes {
+        if !settings.schema_reviewed {
+            return Err("请先现场核对 XTEST 的 XCOUTD 字段与事务，并勾选结构已验收。".into());
+        }
+        let code = settings.x3_audit_user.trim();
+        if code.is_empty() || code.chars().count() > 5 {
+            return Err("启用测试写入前需提供1-5字符的 X3 审计用户代码。".into());
+        }
     }
     if settings.allow_lan && settings.cert_path.trim().is_empty() {
         return Err("允许 PDA 局域网接入前必须配置 HTTPS PFX 证书。".into());
