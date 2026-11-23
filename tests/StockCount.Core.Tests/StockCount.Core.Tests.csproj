@@ -12,5 +12,6 @@
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <ProjectReference Include="../../src/StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../../src/StockCount.Contracts/StockCount.Contracts.csproj" />
+    <ProjectReference Include="../../src/StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
   </ItemGroup>
 </Project>
