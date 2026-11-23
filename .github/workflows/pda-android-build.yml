@@ -1,4 +1,4 @@
-name: StockCount MAUI PDA Android Build
+name: StockCount MAUI PDA Android Debug + Release Build
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'src/StockCount.Pad/**'
+      - 'scripts/build-android-release.ps1'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
       - 'tests/StockCount.Core.Tests/**'
@@ -50,6 +51,51 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: StockCount-PDA-Android-Debug-APK
-          path: src/StockCount.Pad/bin/Debug/net10.0-android/**/*.apk
+          path: src/StockCount.Pad/bin/Debug/net10.0-android/**/*-Signed.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Detect Android Release signing secrets
+        id: release_signing
+        shell: pwsh
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_ALIAS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_ALIAS }}
+          STOCKCOUNT_ANDROID_STORE_PASS: ${{ secrets.STOCKCOUNT_ANDROID_STORE_PASS }}
+          STOCKCOUNT_ANDROID_KEY_PASS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_PASS }}
+        run: |
+          $ready = -not [string]::IsNullOrWhiteSpace($env:RELEASE_KEYSTORE_B64) -and
+                   -not [string]::IsNullOrWhiteSpace($env:RELEASE_ALIAS) -and
+                   -not [string]::IsNullOrWhiteSpace($env:STOCKCOUNT_ANDROID_STORE_PASS) -and
+                   -not [string]::IsNullOrWhiteSpace($env:STOCKCOUNT_ANDROID_KEY_PASS)
+          "configured=$($ready.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          if (-not $ready) { Write-Warning "No persistent release keystore configured: Release code is compiled, but a signed Release APK cannot be uploaded." }
+      - name: Compile Android Release configuration (without distribution signing)
+        if: steps.release_signing.outputs.configured != 'true'
+        shell: pwsh
+        run: |
+          dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
+          if ($LASTEXITCODE -ne 0) { throw "Android Release compilation failed" }
+      - name: Publish and verify signed Android Release APK
+        if: steps.release_signing.outputs.configured == 'true'
+        shell: pwsh
+        env:
+          RELEASE_KEYSTORE_B64: ${{ secrets.STOCKCOUNT_ANDROID_KEYSTORE_BASE64 }}
+          RELEASE_ALIAS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_ALIAS }}
+          STOCKCOUNT_ANDROID_STORE_PASS: ${{ secrets.STOCKCOUNT_ANDROID_STORE_PASS }}
+          STOCKCOUNT_ANDROID_KEY_PASS: ${{ secrets.STOCKCOUNT_ANDROID_KEY_PASS }}
+        run: |
+          $keystore = Join-Path $env:RUNNER_TEMP 'stockcount-release.jks'
+          try {
+            [IO.File]::WriteAllBytes($keystore, [Convert]::FromBase64String($env:RELEASE_KEYSTORE_B64))
+            ./scripts/build-android-release.ps1 -Version 0.2.0-preview.3 -KeyStore $keystore -KeyAlias $env:RELEASE_ALIAS -OutputDirectory release-android
+          } finally {
+            Remove-Item -LiteralPath $keystore -Force -ErrorAction SilentlyContinue
+          }
+      - name: Upload signed Release APK
+        if: steps.release_signing.outputs.configured == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: StockCount-PDA-Android-Release-Signed-APK
+          path: release-android/*-Android-Release-Signed.apk
           if-no-files-found: error
           retention-days: 14
