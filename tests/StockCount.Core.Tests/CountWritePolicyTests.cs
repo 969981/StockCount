@@ -5,10 +5,10 @@ namespace StockCount.Core.Tests;
 
 public class CountWritePolicyTests
 {
-    private const string Count = "1712474746529";
-    private const string Qr = "ID.1794814541901|1@@PT.PTHG01260700005@@LN.1000@@MT.A10000087@@LT.L26070146@@QT.100@@PG.100";
-    private const string Box = "1794814541901|1";
-    private const string Location = "0700Q0001";
+    private const string Count = "COUNT-DEMO-001";
+    private const string Qr = "ID.BOX-DEMO-001@@PT.DOC-DEMO-001@@LN.1000@@MT.ITM-DEMO-01@@LT.LOT-01@@QT.100@@PG.100";
+    private const string Box = "BOX-DEMO-001";
+    private const string Location = "LOC-DEMO01";
 
     [Fact]
     public void ManualCount99IsValidEvenWhenQrHasQt100() =>
