@@ -25,7 +25,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 - C# ASP.NET Core 保留既有业务 API、Sage X3 读库、环境白名单、后续经批准的盘点明细写入；Rust 不重复实现 ERP 服务。
 - 桌面表单允许现场人员配置 SQL Server 地址、数据库名、认证模式、端口和 HTTPS；密码/设备 Key 放在 Windows Credential Manager，不进入 JSON/仓库或 PDA。
-- C# `ILogger` 用 SQLite WAL 写服务日志，Tauri Rust 用只读 SQLite 查询供 React 展示；SQLite 不保存 Sage X3 盘点业务事实。
+- C# `ILogger` 用 SQLite WAL 写服务日志至 Tauri EXE 同目录的 `server-logs.db`，Rust 只读 SQLite 供 React 展示；配置与凭据依旧在用户配置目录，SQLite 不保存 Sage X3 业务事实。
 - 正式/测试仍是 `sagex3.COB` 与 `sagex3.XTEST`，生产写入默认关闭；无应用内账号不等于无需受控设备和 TLS。
 - 当前为用户会话启动/停止的 Sidecar，不具备 Windows Service 无人值守自启。构建/联库验收仍待完成。
 
