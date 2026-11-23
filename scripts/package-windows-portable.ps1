@@ -29,7 +29,7 @@ if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?
     throw "Invalid package version: $Version"
 }
 if ($Version -ne $configuredVersion -and
-    -not $Version.StartsWith("$configuredVersion-", [StringComparison]::Ordinal)) {
+    -not $Version.StartsWith(($configuredVersion + '-'), [StringComparison]::Ordinal)) {
     throw "Package version $Version does not match software version $configuredVersion. First run: pwsh -File .\scripts\set-app-version.ps1 -Version $Version (and increase Android versionCode for APK updates)."
 }
 
