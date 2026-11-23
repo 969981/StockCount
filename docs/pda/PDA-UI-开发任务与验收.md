@@ -2,7 +2,7 @@
 title: "StockCount PDA APK UI 交互实施任务与验收清单"
 created: 2026-11-23
 updated: 2026-11-23
-status: proposed
+status: implemented-unverified
 type: implementation-backlog
 area: pda
 tags: [StockCount, MAUI, PDA, tasks, UX, QA]
@@ -11,7 +11,22 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 
 # PDA UI 开发任务 · V1
 
-> 所有任务是待开发/待验收，**不代表已完成**。设计主文件：[[docs/pda/PDA-UI-UX-设计规范与交互状态|UI/交互规范]] · [Markdown](PDA-UI-UX-设计规范与交互状态.md)。
+> **2026-11-23 实施进度**：已提交确认的 HTML 原型对应四页 XAML、扫码核心状态机、持久待确认 UUID、真实已盘接口和 Android CI 上传 APK 工件的源码。列表、扫码、设置、历史页面已编码；MVVM 彻底重构、海康硬件适配、编译及真实 ERP 端到端测试仍待验证。下列任务含已编码但未验收项目，**不得将源码提交视为测试通过**。设计主文件：[[docs/pda/PDA-UI-UX-设计规范与交互状态|UI/交互规范]] · [Markdown](PDA-UI-UX-设计规范与交互状态.md)。
+
+## 本轮源码提交进度（静态核对，非运行验收）
+
+| 状态 | 交付内容 | 入口 |
+| --- | --- | --- |
+| 已编码 | 列表卡片、搜索、分页、帐套标识、加载空态 | `CountListPage.xaml(.cs)` |
+| 已编码 | 扫码页三段布局、固定底部数量/提交、只读箱字段 | `CountingPage.xaml(.cs)` |
+| 已编码 | 扫码队列和忙碌提示、重复箱弹窗、草稿覆盖确认 | `CountingPage.xaml.cs` + `CountScanWorkflow.cs` |
+| 已编码 | 成功蒙层1000ms **之后**才清箱、不清库位 | `CountScanWorkflow.AcknowledgeSuccessAsync` |
+| 已编码 | UUID/原始二维码/数量加密持久化与重启恢复 | `SecurePendingSubmissionStore.cs` + 列表恢复入口 |
+| 已编码 | 已盘记录真实 GET 分页 | `HistoryPage.xaml(.cs)` |
+| 已编码 | 帐套/HTTPS API/设备 Key 设置、切环境保护 | `SettingsPage.xaml(.cs)` |
+| 已编码 | Core 扫码与持久化业务单测、新 APK CI 工件上传 | `CountScanWorkflowTests.cs` + `pda-android-build.yml` |
+| 待验收 | MAUI/Android 真正构建、运行截图、海康扫码广播、连续扫码和 API/DB 联调 | Windows CI + 海康 PDA + XTEST/COB |
+| 后续增强 | 完整 MVVM 化、未提交普通草稿的安全暂存、网络断连视觉与蜂鸣 | P1/技术债 |
 
 ## P0：稳定可用的扫码盘点闭环
 
@@ -62,7 +77,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 
 建议依次交付：**01/03 视觉基础** → **04/05/06 扫码状态正确性** → **07/08 弱网与硬件** → **02/09/10 可用性** → **11 编译+真机+测试**。UI 实现与后端表结构写入规则必须解耦，不能用前端绕过 API 的错误码。
 
-项目现有部分 Core 单测，但**尚未针对新 UI 所需的草稿确认、1000ms 后清空、断电重启恢复实现与运行新测试**。这些用例是新需求，不应该标为通过。
+Core 已新增草稿确认、成功显示后清箱、重启模拟恢复同 UUID 等测试**源码**，但未取得真实 dotnet test 执行通过结果；Android 真机断电/杀进程复现同样待进行。
 
 ## AI 编程任务交接模板
 
