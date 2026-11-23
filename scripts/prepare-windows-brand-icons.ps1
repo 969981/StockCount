@@ -27,8 +27,8 @@ if ($needsGenerate) {
   try {
     $cli = Join-Path $desktop 'node_modules/.bin/tauri.cmd'
     if (!(Test-Path -LiteralPath $cli)) {
-      & npm ci --no-audit --no-fund
-      if ($LASTEXITCODE -ne 0) { throw 'npm ci failed while preparing icon generator.' }
+      & npm install --no-audit --no-fund
+      if ($LASTEXITCODE -ne 0) { throw 'npm install failed while preparing icon generator.' }
     }
     & npm run tauri -- icon './assets/app-icon.svg'
     if ($LASTEXITCODE -ne 0) { throw 'Tauri SVG icon generation failed.' }
