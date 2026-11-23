@@ -42,6 +42,11 @@ public sealed class CountScanWorkflowTests
         Assert.Equal("Submitted",result.Kind);
         Assert.Equal("提交成功！",result.Message);
         Assert.Equal(1000,result.AutoDismissMs);
+        // The approved UI waits for its 1000 ms success display before clearing.
+        Assert.True(workflow.IsSuccessAwaitingDismiss);
+        Assert.NotNull(workflow.Box);
+        Assert.Equal(99m, workflow.ManualQuantity);
+        await workflow.AcknowledgeSuccessAsync();
         Assert.Null(workflow.Box);
         Assert.Null(workflow.ManualQuantity);
         Assert.Null(workflow.PendingRequestId);
@@ -96,6 +101,86 @@ public sealed class CountScanWorkflowTests
         Assert.Equal("LOC-DEMO02",workflow.Location);
         Assert.Null(workflow.Box);
         Assert.Equal("COUNT-DEMO-001",workflow.CountNumber);
+    }
+
+    [Fact]
+    public async Task ScanningAnotherBoxWithEnteredQuantityMustNotDiscardDraft()
+    {
+        var workflow = new CountScanWorkflow(new FakeGateway(), "COUNT-DEMO-001", "测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        workflow.EnterManualQuantity(99m);
+
+        var response = await workflow.HandleScanAsync("LOC-DEMO02");
+        Assert.Equal("DraftNeedsConfirmation", response.Kind);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+        Assert.Equal("BOX-DEMO-001", workflow.Box?.BoxNumber);
+        Assert.Equal(99m, workflow.ManualQuantity);
+
+        Assert.True(workflow.DiscardUnsubmittedDraft());
+        var switched = await workflow.HandleScanAsync("LOC-DEMO02");
+        Assert.Equal("LocationUpdated", switched.Kind);
+        Assert.Equal("LOC-DEMO02", workflow.Location);
+    }
+
+    [Fact]
+    public async Task NetworkUnknownPreservesEncryptedStorePayloadForAppRestart()
+    {
+        var memory = new MemoryStore();
+        var fake = new FakeGateway { ThrowDuringSubmit = true };
+        var first = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试","Test",memory);
+        await first.HandleScanAsync("LOC-DEMO01");
+        await first.HandleScanAsync(Qr);
+        first.EnterManualQuantity(99m);
+        Assert.Equal("Unknown",(await first.SubmitAsync()).Kind);
+
+        var uuid = first.PendingRequestId;
+        Assert.NotNull(uuid);
+        Assert.Equal(uuid, memory.Draft?.RequestId);
+
+        var resumed = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试","Test",memory);
+        Assert.True(await resumed.RestorePendingAsync());
+        Assert.Equal(uuid,resumed.PendingRequestId);
+        Assert.Equal(99m,resumed.ManualQuantity);
+        Assert.Equal("LOC-DEMO01",resumed.Location);
+        Assert.False(resumed.DiscardUnsubmittedDraft());
+
+        // The server processed the request although the original reply was lost.
+        Assert.Equal("Submitted",(await resumed.CheckPendingAsync()).Kind);
+        Assert.NotNull(memory.Draft); // Keep until success display has completed.
+        await resumed.AcknowledgeSuccessAsync();
+        Assert.Null(memory.Draft);
+        Assert.Null(resumed.Box);
+        Assert.Equal("LOC-DEMO01",resumed.Location);
+    }
+
+    [Fact]
+    public async Task MissingQuantityCannotSubmitOrGenerateRequestId()
+    {
+        var fake = new FakeGateway();
+        var workflow = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        var result=await workflow.SubmitAsync();
+        Assert.Equal("箱内数量为必填项！",result.Message);
+        Assert.Null(workflow.PendingRequestId);
+    }
+
+    private sealed class MemoryStore : IPendingSubmissionStore
+    {
+        public PendingSubmissionDraft? Draft { get; private set; }
+        public Task SaveAsync(PendingSubmissionDraft draft,CancellationToken ct)
+        {
+            Draft=draft;
+            return Task.CompletedTask;
+        }
+        public Task<PendingSubmissionDraft?> LoadAsync(CancellationToken ct) =>
+            Task.FromResult(Draft);
+        public Task ClearAsync(CancellationToken ct)
+        {
+            Draft=null;
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FakeGateway : ICountScanGateway
