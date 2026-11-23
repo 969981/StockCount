@@ -100,3 +100,82 @@ BEGIN
     EXEC sys.sp_executesql @sql, N'@SourceSchema sysname', @SourceSchema=@schema;
     SET @i += 1;
 END;
+
+/*
+补充结构核验：索引、唯一约束、默认值、外键、触发器与检查约束。
+下面所有语句都是 SELECT，仍只读取系统元数据。
+*/
+-- 2. 主键/唯一索引/普通索引及所包含的字段；一行表示索引中的一个字段
+SELECT
+    S.name AS [Schema], T.name AS [表名],
+    I.name AS [索引名称],
+    I.type_desc AS [索引类型],
+    I.is_primary_key AS [主键_1是],
+    I.is_unique AS [唯一_1是],
+    I.is_unique_constraint AS [唯一约束_1是],
+    I.is_disabled AS [禁用_1是],
+    I.filter_definition AS [过滤条件],
+    IC.key_ordinal AS [键顺序],
+    IC.is_included_column AS [Include列_1是],
+    C.name AS [字段名]
+FROM sys.tables AS T
+JOIN sys.schemas AS S ON S.schema_id=T.schema_id
+JOIN sys.indexes AS I ON I.object_id=T.object_id AND I.index_id>0
+LEFT JOIN sys.index_columns AS IC ON IC.object_id=I.object_id AND IC.index_id=I.index_id
+LEFT JOIN sys.columns AS C ON C.object_id=IC.object_id AND C.column_id=IC.column_id
+WHERE S.name IN (N'COB',N'XTEST')
+  AND T.name IN (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER')
+ORDER BY S.name,T.name,I.name,IC.key_ordinal,IC.index_column_id;
+
+-- 3. 默认值与计算字段定义；不代表 X3 业务服务的实际赋值规则
+SELECT
+    S.name AS [Schema],T.name AS [表名],C.name AS [字段],
+    D.name AS [默认约束名],D.definition AS [默认值定义],
+    CC.definition AS [计算列定义]
+FROM sys.tables AS T
+JOIN sys.schemas AS S ON S.schema_id=T.schema_id
+JOIN sys.columns AS C ON C.object_id=T.object_id
+LEFT JOIN sys.default_constraints AS D ON D.object_id=C.default_object_id
+LEFT JOIN sys.computed_columns AS CC ON CC.object_id=C.object_id AND CC.column_id=C.column_id
+WHERE S.name IN (N'COB',N'XTEST')
+  AND T.name IN (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER')
+  AND (D.object_id IS NOT NULL OR CC.column_id IS NOT NULL)
+ORDER BY S.name,T.name,C.column_id;
+
+-- 4. 物理外键（逻辑业务关联不一定在 DB 中有外键）
+SELECT
+    PS.name AS [来源Schema],PT.name AS [来源表],
+    FK.name AS [外键名],PC.name AS [来源字段],
+    RS.name AS [目标Schema],RT.name AS [目标表],RC.name AS [目标字段],
+    FK.is_disabled AS [禁用_1是]
+FROM sys.foreign_key_columns AS FKC
+JOIN sys.foreign_keys AS FK ON FK.object_id=FKC.constraint_object_id
+JOIN sys.tables AS PT ON PT.object_id=FKC.parent_object_id
+JOIN sys.schemas AS PS ON PS.schema_id=PT.schema_id
+JOIN sys.columns AS PC ON PC.object_id=PT.object_id AND PC.column_id=FKC.parent_column_id
+JOIN sys.tables AS RT ON RT.object_id=FKC.referenced_object_id
+JOIN sys.schemas AS RS ON RS.schema_id=RT.schema_id
+JOIN sys.columns AS RC ON RC.object_id=RT.object_id AND RC.column_id=FKC.referenced_column_id
+WHERE PS.name IN (N'COB',N'XTEST')
+  AND PT.name IN (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER')
+ORDER BY PS.name,PT.name,FK.name,FKC.constraint_column_id;
+
+-- 5. 触发器、检查约束：仅返回元数据/定义，不执行触发器
+SELECT S.name AS [Schema],T.name AS [表名],
+       TR.name AS [触发器],TR.is_disabled AS [禁用_1是],
+       TR.is_instead_of_trigger AS [替代触发器_1是]
+FROM sys.triggers AS TR
+JOIN sys.tables AS T ON T.object_id=TR.parent_id
+JOIN sys.schemas AS S ON S.schema_id=T.schema_id
+WHERE S.name IN (N'COB',N'XTEST')
+  AND T.name IN (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER')
+ORDER BY S.name,T.name,TR.name;
+
+SELECT S.name AS [Schema],T.name AS [表名],CK.name AS [检查约束名],
+       CK.definition AS [检查条件],CK.is_disabled AS [禁用_1是]
+FROM sys.check_constraints AS CK
+JOIN sys.tables AS T ON T.object_id=CK.parent_object_id
+JOIN sys.schemas AS S ON S.schema_id=T.schema_id
+WHERE S.name IN (N'COB',N'XTEST')
+  AND T.name IN (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER')
+ORDER BY S.name,T.name,CK.name;
