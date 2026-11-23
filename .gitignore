@@ -41,3 +41,6 @@ publish/
 **/server-logs.db-shm
 *.db-journal
 *.p12
+
+# Local build, deployment and reproducible source archives
+/dist/
