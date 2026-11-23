@@ -21,7 +21,7 @@ public class MainActivity : MauiAppCompatActivity
         base.OnResume();
         if (_receiver is not null) return;
         _receiver = new BarcodeReceiver();
-        var filter = new IntentFilter("com.service.scanner.data");
+        var filter = new IntentFilter(ScanFeed.AndroidBroadcastAction);
         if (Build.VERSION.SdkInt >= BuildVersionCodes.Tiramisu)
             RegisterReceiver(_receiver, filter, ReceiverFlags.Exported);
         else
@@ -43,8 +43,8 @@ public class MainActivity : MauiAppCompatActivity
     {
         public override void OnReceive(Context? context, Intent? intent)
         {
-            if (intent?.Action != "com.service.scanner.data") return;
-            var text = intent.GetStringExtra("ScanCode");
+            if (intent?.Action != ScanFeed.AndroidBroadcastAction) return;
+            var text = intent.GetStringExtra(ScanFeed.AndroidBarcodeExtra);
             if (!string.IsNullOrEmpty(text))
                 Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() => ScanFeed.OnScan(text));
         }
