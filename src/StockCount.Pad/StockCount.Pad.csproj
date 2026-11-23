@@ -7,7 +7,7 @@
     <ApplicationTitle>StockCount</ApplicationTitle>
     <ApplicationId>com.dreamer.stockcount.pad</ApplicationId>
     <ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
-    <ApplicationVersion>2</ApplicationVersion>
+    <ApplicationVersion>3</ApplicationVersion>
     <SupportedOSPlatformVersion>26</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
