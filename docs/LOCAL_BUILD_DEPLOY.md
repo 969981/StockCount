@@ -17,8 +17,29 @@ tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Obsidian]
 | [build-local.ps1](../scripts/build-local.ps1) | 编译 + 自动打包 | APK + Setup.exe + Portable.zip + SHA256SUMS.txt |
 | [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB 安装、Windows NSIS 安装向导、免安装目录更新 |
 | [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | Source.zip、SourceInfo.txt、单独 SHA256 文件 |
+| [new-android-release-jks.ps1](../scripts/new-android-release-jks.ps1) | 首次生成长期 JKS | 私有 keystore，不覆盖已有文件 |
+| [configure-android-release-secrets.ps1](../scripts/configure-android-release-secrets.ps1) | 交互上传四个 Secrets | GitHub Actions 签名凭据 |
+| [publish-stockcount-release.ps1](../scripts/publish-stockcount-release.ps1) | 版本号参数化并触发 GitHub Release | Actions 任务，不直接创建未验收 Release |
 
 原有 [build-tauri-sidecar.ps1](../scripts/build-tauri-sidecar.ps1) 和 [package-windows-portable.ps1](../scripts/package-windows-portable.ps1) 仍复用，不复制或重写已有后端打包逻辑。
+
+## JKS 一次性生成与 GitHub Release 一键发布
+
+如果需要把 **Debug APK、正式签名 Release APK、Windows Setup、Portable ZIP** 同时发布到 GitHub Releases，可以直接使用三份专用脚本，不需要手动更改 Actions 中的版本号。
+
+```powershell
+# 1. 首次创建长期 JKS，密码由 keytool 交互输入；已存在的 JKS 不要重建
+pwsh -File .\scripts\new-android-release-jks.ps1 -OutputPath D:\StockCountSecrets\stockcount-release.jks
+
+# 2. 首次配置签名凭据到 GitHub Secrets（需要 gh auth login）
+pwsh -File .\scripts\configure-android-release-secrets.ps1 -KeyStore D:\StockCountSecrets\stockcount-release.jks -KeyAlias stockcount
+
+# 3. 发布之前先 -WhatIf 预演，再真正触发工作流
+pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3 -WhatIf
+pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
+```
+
+上述发布命令**仅触发 CI**；必须确认构建和签名均成功、Releases 页面已有完整资产，才算发布成功。密钥保存于仓库之外，不能上传到公开 GitHub 代码或写入文档。只有第一次需要生成 JKS，后续发布必须沿用同一签名密钥。详细安全配置：[Android Release 签名指南](ANDROID_RELEASE_SIGNING.md) · [发布完整手册](RELEASE_PACKAGING.md)。
 
 ## 二、本地环境准备（Windows 10/11 x64）
 
