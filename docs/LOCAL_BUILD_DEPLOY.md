@@ -185,9 +185,9 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target WindowsPortable -Packag
 
 先在软件内点击“停止服务”，然后**完全退出 Tauri 管理器和 StockCount.Api 子进程**，再执行同一条命令。脚本会检查进程仍在运行则拒绝更新，以免损坏 SQLite WAL。
 
-脚本仅覆盖四个程序文件，保留部署目录中的 `server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 及其它文件。若有旧版程序文件，将在目标目录保存 `backup-binaries-时间戳`；升级复制失败会尽可能从此备份恢复原二进制。
+脚本仅覆盖四个程序文件，保留部署目录中的 **`server-settings.json`、`server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm`** 及其它文件。若有旧版程序文件，将在目标目录保存 `backup-binaries-时间戳`；升级复制失败会尽可能从此备份恢复原二进制。
 
-**注意**：日志始终放在主程序 EXE 同目录，便携目录必须由当前用户拥有写入权限；不要把免安装版部署到受保护的 Program Files 文件夹。非敏感设置在 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，数据库密码、HTTPS PFX 密码、设备密钥在 Windows Credential Manager，不随 ZIP 跨电脑迁移。
+**注意**：非敏感设置 `server-settings.json` 与日志 `server-logs.db` 都在主程序 EXE 同目录。便携目录必须由当前用户拥有写入权限；不要部署到受保护的 Program Files 文件夹。第一次运行时，如同目录配置缺失，会尝试从旧路径 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json` 校验并复制，旧文件保留。若已有同目录配置则优先使用，不覆盖。数据库密码和设备密钥仍在 Windows Credential Manager，跨电脑/Windows 用户不会自动转移。
 
 ### Windows Setup 正常安装
 
@@ -263,7 +263,7 @@ Get-FileHash .\dist\source\StockCount-Source-v0.2.0-local.zip -Algorithm SHA256
 | 缺少 maui-android | dotnet workload install maui-android；检查 Android SDK/JDK |
 | Rust/MSVC 链接失败 | 检查 `rustc -vV` 的 host 是否为 x86_64-pc-windows-msvc，安装 Visual Studio C++ Build Tools 与 Windows SDK |
 | npm 或 Tauri 找不到命令 | 安装 Node.js 22+、Rust，先 npm install，再运行构建 |
-| Portable 无法启动 API | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录、目录可写、WebView2 已安装 |
+| Portable 无法启动 API 或保存设置 | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录，`server-settings.json` 和 `server-logs.db` 均可在当前用户可写的目录中创建、WebView2 已安装 |
 | SQLite 文件锁或 Windows 文件被占用 | 停止 API 并退出管理器，再运行 deploy-local；不要手工删 WAL/SHM |
 | ADB 无设备或 unauthorized | 检查数据线、USB 调试、手机授权弹框；多设备用 -DeviceSerial |
 | APK 签名不兼容 | 不自动卸载；先处理应用中可能存在的未知提交原 UUID 与数据备份 |
