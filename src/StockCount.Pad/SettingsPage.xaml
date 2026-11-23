@@ -75,6 +75,37 @@
           </VerticalStackLayout>
         </Border>
 
+        <!-- Live PDA diagnostic: never render or store the decoded QR contents. -->
+        <Border BackgroundColor="White" Stroke="#E3E9F1"
+                StrokeShape="RoundRectangle 12" Padding="15">
+          <VerticalStackLayout Spacing="10">
+            <Grid ColumnDefinitions="*,Auto">
+              <Label Text="▣  硬件扫码诊断" Style="{StaticResource SectionTitle}"/>
+              <Label Grid.Column="1" x:Name="ScannerStatusText"
+                     Text="等待硬件扫描" FontSize="11" TextColor="#7F91AA"
+                     VerticalOptions="Center"/>
+            </Grid>
+            <Label x:Name="ScannerActionText" Text="广播：com.service.scanner.data"
+                   FontSize="12" TextColor="#61738D"
+                   LineBreakMode="CharacterWrap"/>
+            <Label x:Name="ScannerExtraText" Text="字段：ScanCode"
+                   FontSize="12" TextColor="#61738D"/>
+            <Border BackgroundColor="#F5F8FE" Stroke="#E2EAF7"
+                    StrokeShape="RoundRectangle 9" Padding="12,11">
+              <VerticalStackLayout Spacing="5">
+                <Label Text="最近一次扫码接收情况"
+                       TextColor="#637793" FontSize="11"/>
+                <Label x:Name="LastScanText" Text="尚未收到扫码广播"
+                       FontSize="13" FontAttributes="Bold" TextColor="#324969"
+                       LineBreakMode="WordWrap"/>
+              </VerticalStackLayout>
+            </Border>
+            <Label Text="在此页面按 PDA 的实体扫码键，观察接收状态。此诊断仅显示时间、类型和长度；不显示、不上传、不记录箱码原文。广播 Action/字段仍需按具体海康设备核验。"
+                   FontSize="11" TextColor="#72829C"
+                   LineBreakMode="WordWrap"/>
+          </VerticalStackLayout>
+        </Border>
+
         <Border BackgroundColor="#EEF3FB" Stroke="#E1E9F6"
                 StrokeShape="RoundRectangle 10" Padding="13">
           <VerticalStackLayout Spacing="7">
