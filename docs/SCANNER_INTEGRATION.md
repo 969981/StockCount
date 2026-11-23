@@ -33,15 +33,16 @@ public interface IScannerService
 {
   "Scanner": {
     "Mode": "Broadcast",
-    "BroadcastAction": "<DEVICE_VERIFIED_ACTION>",
-    "BarcodeExtraKey": "<DEVICE_VERIFIED_EXTRA_KEY>",
-    "Charset": "UTF-8",
+    "BroadcastAction": "com.service.scanner.data",
+    "BarcodeExtraKey": "ScanCode",
+    "CodeTypeExtraKey": "ScanCodeType",
+    "Charset": "UTF8",
     "DuplicateSuppressMilliseconds": 800
   }
 }
 ```
 
-这些值只是**可配置键名与参考节流参数**，不是已在当前设备验证的协议。先获取 PDA 型号、Android 版本、扫描服务版本与真机 adb/logcat，再根据厂商文档核对 Action 和 Extra Key。默认拒绝未知 Action，不接收非预期来源的敏感广播。
+以上 Action / Extras 是**海康原厂 V1.0.1 手册和旧项目记录的默认协议值**，并非当前 StockCount PDA 已经实测的配置；厂商允许自定义广播名与字段标签。`Charset=UTF8` 沿用厂家协议编码标识而非 .NET Enum。首次联调必须核对型号、Android 版本、扫描服务版本与实际 Extra。默认拒绝未知 Action，不接收非预期来源的敏感广播。
 
 ## 4. 条码处理顺序
 
@@ -76,3 +77,13 @@ public interface IScannerService
 | 异常编码/超长码 | 用户可见错误，数据不截断 |
 
 关联：[架构](../architecture.md) · [接口](API_CONTRACT.md) · [测试](TEST_PLAN.md)。
+
+## 7. 海康 PDA 专项技术文档与知识地图
+
+- [[docs/pda/00-PDA扫码知识地图|PDA 扫码知识地图]] · [Markdown](pda/00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+- [[docs/pda/海康PDA-广播协议与接入总览|海康原厂广播协议]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-%E5%B9%BF%E6%92%AD%E5%8D%8F%E8%AE%AE%E4%B8%8E%E6%8E%A5%E5%85%A5%E6%80%BB%E8%A7%88.md)
+- [[docs/pda/海康PDA-MAUI实现与示例|Android MAUI C# 接入]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-MAUI%E5%AE%9E%E7%8E%B0%E4%B8%8E%E7%A4%BA%E4%BE%8B.md)
+- [[docs/pda/海康PDA-调试排障与验收|ADB 真机调试与验收]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)
+- [[docs/pda/海康PDA-资料与核验清单|协议来源与证据等级]] · [Markdown](pda/%E6%B5%B7%E5%BA%B7PDA-%E8%B5%84%E6%96%99%E4%B8%8E%E6%A0%B8%E9%AA%8C%E6%B8%85%E5%8D%95.md)
+
+这些示例不能替代真机验证；`start` 是启动扫描服务，**不是**模拟一次扫码。

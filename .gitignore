@@ -1,0 +1,26 @@
+# Build outputs
+**/bin/
+**/obj/
+.vs/
+*.user
+*.suo
+
+# Secrets and environment-specific settings
+.env
+.env.*
+!.env.example
+**/appsettings.Production.json
+**/appsettings.Development.local.json
+*.pfx
+*.keystore
+*.jks
+*.mobileprovision
+
+# Obsidian per-device ephemeral state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+.obsidian/plugins/**/data.json
+.trash/
+.DS_Store
+Thumbs.db
