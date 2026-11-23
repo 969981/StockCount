@@ -1,3 +1,10 @@
+---
+title: "StockCount Avalonia 服务端管理器"
+aliases: ["Avalonia Server Manager", "StockCount Avalonia"]
+tags: [StockCount, Avalonia, Desktop, Windows, DotNet]
+status: initial-implementation-awaiting-qa
+---
+
 # StockCount Server Desktop · Avalonia UI P0/P1
 
 > 2026-11-23：与现有 Tauri 2 版本并行的 Windows 原生管理器初版。**源码已提交，Windows CI 编译/真机 SQL 联调通过前不得替代生产 Tauri 版本。** 原 PDA MAUI 和 C# ASP.NET Core API 不变。
@@ -17,7 +24,7 @@
 dotnet restore src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj
 dotnet build src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c Debug
 # 发布 API 可执行文件，复制到桌面 EXE 同目录后启动：
-dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Debug -r win-x64 --self-contained true -o publish/avalonia-api-debug
+dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Debug -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish/avalonia-api-debug
 Copy-Item publish/avalonia-api-debug/StockCount.Api.exe src/StockCount.Server.Desktop/bin/Debug/net10.0-windows/ -Force
 dotnet run --project src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj --no-build
 ```
