@@ -7,7 +7,7 @@
 1. [requirements.md](requirements.md) — **最新业务要求**。
 2. [architecture.md](architecture.md) — 分层、环境隔离与事务。
 3. [docs/DECISIONS.md](docs/DECISIONS.md) — 已决 / 未决及上线阻断。
-4. 数据库集成**必须同时阅读** [docs/DATABASE_MAPPING.md](docs/DATABASE_MAPPING.md) 和 [docs/database/SCHEMA_INDEX.md](docs/database/SCHEMA_INDEX.md)（五表结构与中文标题）；接口读 [docs/API_CONTRACT.md](docs/API_CONTRACT.md)，扫码读 [docs/SCANNER_INTEGRATION.md](docs/SCANNER_INTEGRATION.md)。
+4. 数据库集成**必须同时阅读** [docs/DATABASE_MAPPING.md](docs/DATABASE_MAPPING.md) 和 [docs/database/SCHEMA_INDEX.md](docs/database/SCHEMA_INDEX.md)（**七表结构：五张业务表 + ATABZON / ATEXTE**）；接口读 [docs/API_CONTRACT.md](docs/API_CONTRACT.md)，扫码读 [docs/SCANNER_INTEGRATION.md](docs/SCANNER_INTEGRATION.md)。
 5. 检查真实源码与测试，**不得将文档规划当作已实现代码**。
 
 ## 1. 产品硬性约束
@@ -46,6 +46,7 @@
 - 未经单独批准禁止执行生产数据库 `INSERT/UPDATE/DELETE/ALTER` 或添加唯一索引。
 - 旧 X3 APK 的有副作用 GET 接口绝不可当健康检查。
 - **STOLOC 库位查找必须结合站点、仓库和库位复合定位**，不能仅凭 `LOC_0` 推定全局唯一；ITMMASTER 现有197条是 X3 字典、不是已核实197列物理表结构。
+- **元数据查询必须区分字典与物理列**：`ATABZON` 与 `ATEXTE` 本身完整结构未返回前，不得臆造它们的全部 SQL 字段、类型、索引；`NOABREG_0` 是短标题编号，`NOLIB_0` 是本地菜单号，不能混淆。读 `docs/database/schema/ATABZON.md` 和 `ATEXTE.md`。
 - 不静默截断 `PID_0`、`LOC_0`；**两数量列必须完全相等**，`PCUSTUCOE_0`/`PCU_0` 与 X3 写入适配方式、ROWID/AUUID 的生成规则必须先核实。不得用未确认的换算系数改写人工数。
 - 同单箱码去重是推荐方案、尚待最终业务确认；历史有同单重复，不可自行删改。
 - `RequestId` 用于服务端幂等，网络超时/未知结果必须保留原请求 ID 和输入。
