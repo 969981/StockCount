@@ -23,12 +23,11 @@ public sealed class StockCountApiClient : ICountScanGateway
 
     public async Task ConfigureAsync(string baseUrl,string environment,string deviceKey)
     {
-        if (!Uri.TryCreate(baseUrl,UriKind.Absolute,out var uri) ||
-            !ApiEndpointPolicy.IsAllowed(uri))
+        if (!ApiEndpointPolicy.TryNormalize(baseUrl, out var normalized))
             throw new InvalidOperationException("API 地址须为 http://192.168.x.x:5080 等内网 IP，或 HTTPS 地址；HTTP 不允许公网域名/IP。");
         if (environment is not ("Test" or "Production"))
             throw new InvalidOperationException("环境必须为 Test 或 Production。");
-        Preferences.Default.Set("StockCountApiUrl",baseUrl.TrimEnd('/'));
+        Preferences.Default.Set("StockCountApiUrl",normalized);
         Preferences.Default.Set("StockCountEnvironment",environment);
         if (!string.IsNullOrWhiteSpace(deviceKey))
             await SecureStorage.Default.SetAsync("StockCountDeviceKey",deviceKey);
