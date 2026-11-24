@@ -46,6 +46,28 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string serviceState = "未启动";
     [ObservableProperty] private string databaseState = "未测试";
     [ObservableProperty] private string credentialState = "未检查";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SqlPasswordWatermark))]
+    private bool hasSavedSqlPassword;
+
+    // Display only a fixed placeholder, never the stored credential or its length.
+    public string SqlPasswordWatermark => HasSavedSqlPassword ? "••••••••" : "请输入 SQL Server 密码";
+
+    private void RefreshSqlCredentialState()
+    {
+        try
+        {
+            HasSavedSqlPassword = !string.IsNullOrEmpty(_vault.Read("sql-password"));
+            CredentialState = HasSavedSqlPassword
+                ? "SQL 密码已保存 · 输入新密码可替换，留空保留原密码"
+                : "未保存 SQL 密码";
+        }
+        catch (Exception ex)
+        {
+            HasSavedSqlPassword = false;
+            CredentialState = "凭据读取失败：" + ex.Message;
+        }
+    }
     [ObservableProperty] private string apiUrl = "http://127.0.0.1:5080";
     [ObservableProperty] private ObservableCollection<ServerLog> logEntries = new();
 
@@ -68,8 +90,7 @@ public partial class MainViewModel : ObservableObject
         }
         WriteDraft = Settings.CreateWriteDraft();
         ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
-        try { CredentialState = _vault.Read("sql-password") is null ? "未保存 SQL 密码" : "SQL 密码已保存"; }
-        catch (Exception ex) { CredentialState = "凭据读取失败：" + ex.Message; }
+        RefreshSqlCredentialState();
     }
 
     /// <summary>Called only after the window has opened; keeps start failures visible in UI.</summary>
@@ -158,7 +179,7 @@ public partial class MainViewModel : ObservableObject
             ConfirmAllWriteGatesPending = false;
             SqlPasswordInput = "";
             CertPasswordInput = "";
-            CredentialState = _vault.Read("sql-password") is null ? "未保存 SQL 密码" : "SQL 密码已保存";
+            RefreshSqlCredentialState();
             var savedMessage = saveWriteApprovals ? "写入授权已保存。" :
                 identityChanged ? "连接已保存；数据库身份变化，旧写入授权已撤销。" :
                 "连接已保存；未保存的写入授权草稿不影响连接。";
