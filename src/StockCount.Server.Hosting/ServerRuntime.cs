@@ -43,7 +43,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         Put("STOCKCOUNT_ENABLE_PRODUCTION_WRITES", settings.EnableProductionWrites.ToString());
         Put("STOCKCOUNT_XTEST_SCHEMA_REVIEWED", settings.SchemaReviewed.ToString());
         Put("STOCKCOUNT_COB_SCHEMA_REVIEWED", settings.ProductionSchemaReviewed.ToString());
-        Put("STOCKCOUNT_X3_AUDIT_USER", settings.X3AuditUser);
+        Put("STOCKCOUNT_X3_AUDIT_USER", settings.EffectiveX3AuditUser);
         Put("STOCKCOUNT_API_PORT", settings.ApiPort.ToString());
         Put("STOCKCOUNT_ALLOW_LAN", settings.AllowLan.ToString());
         Put("STOCKCOUNT_CERT_PATH", settings.CertPath);
