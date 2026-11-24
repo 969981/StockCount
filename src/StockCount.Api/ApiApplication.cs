@@ -231,8 +231,7 @@ public static class ApiApplication
                 request.CountNumber.Any(char.IsControl))
                 return Error(400, "LOCATION_REQUEST_INVALID", "盘点单号无效，请重新选择盘点单。", environment.Name);
 
-            var locationCode = LocationScanPolicy.Normalize(request.RawCode);
-            if (!LocationScanPolicy.IsValidFormat(locationCode))
+            if (!LocationScanPolicy.TryParse(request.RawCode, out var locationCode))
                 return Error(422, "LOCATION_FORMAT_INVALID",
                     LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"), environment.Name);
 
