@@ -20,6 +20,7 @@ public static class ApiApplication
         var builder = WebApplication.CreateBuilder(args);
         configureBuilder?.Invoke(builder);
         builder.Services.AddProblemDetails();
+        builder.Services.AddStockCountDocumentation();
         builder.Services.AddScoped<IInventoryReadRepository>(services =>
         {
             var config = services.GetRequiredService<IConfiguration>();
@@ -44,6 +45,7 @@ public static class ApiApplication
         
         var app = builder.Build();
         app.UseExceptionHandler();
+        app.UseStockCountDocumentation();
 
         // Persist structured HTTP access records through the configured ILogger provider.
         // Request bodies (including scanned QR data) and Authorization/DeviceKey headers are never logged.
@@ -166,7 +168,7 @@ public static class ApiApplication
                 return Task.CompletedTask;
             });
             return Results.Accepted();
-        });
+        }).ExcludeFromDescription();
 
         // Liveness only: does not imply that SQL Server is reachable.
         app.MapGet("/health", () => Results.Ok(new
