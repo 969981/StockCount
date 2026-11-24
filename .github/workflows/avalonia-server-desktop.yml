@@ -36,9 +36,25 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
+      - name: Build Avalonia Debug from a clean source ZIP (no Git or npm needed)
+        shell: pwsh
+        run: |
+          ./scripts/package-source.ps1 -OutputDirectory "$env:RUNNER_TEMP/stockcount-source-test"
+          $short = (& git rev-parse --short=7 HEAD).Trim()
+          $name = "StockCount-Source-$short"
+          $zip = "$env:RUNNER_TEMP/stockcount-source-test/$name.zip"
+          $extract = "$env:RUNNER_TEMP/stockcount-extracted"
+          Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+          $source = Join-Path $extract $name
+          if (Test-Path (Join-Path $source '.git')) { throw 'Source archive unexpectedly includes Git metadata' }
+          if (!(Test-Path (Join-Path $source 'src/StockCount.Server.Desktop/Assets/server.ico'))) {
+            throw 'Source ZIP lacks the tracked native icon'
+          }
+          dotnet build (Join-Path $source 'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj') -c Debug
+          if ($LASTEXITCODE -ne 0) { throw 'Extracted source ZIP Avalonia Debug build failed' }
+          if (!(Test-Path (Join-Path $source 'src/StockCount.Server.Desktop/bin/Debug/net10.0-windows/StockCount.Api.exe'))) {
+            throw 'Extracted Debug build did not stage the API'
+          }
       - name: Compile, test and stage standalone Avalonia desktop plus API
         shell: pwsh
         run: ./scripts/build-avalonia-desktop.ps1 -Configuration Release
