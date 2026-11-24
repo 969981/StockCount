@@ -7,7 +7,7 @@ namespace StockCount.Core;
 /// Allows HTTPS endpoints and HTTP only for local development or private
 /// IPv4 LAN addresses. Cleartext device credentials are NEVER allowed to
 /// arbitrary public hosts by the PDA client. The server still needs a
-/// trusted, isolated LAN, firewall and device access key.
+/// trusted, isolated LAN and firewall; device key is optional only in explicit LAN mode.
 /// </summary>
 public static class ApiEndpointPolicy
 {
