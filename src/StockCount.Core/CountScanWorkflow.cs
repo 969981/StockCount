@@ -112,10 +112,10 @@ public sealed class CountScanWorkflow(
 
             if (!LooksLikeBoxQr(raw))
             {
-                var code = LocationScanPolicy.Normalize(raw);
-                if (!LocationScanPolicy.IsValidFormat(code))
+                if (!LocationScanPolicy.TryParse(raw, out _))
                     return new CountScanFeedback("Error", LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"));
-                var result = await gateway.ResolveLocationAsync(CountNumber, code, ct);
+                // Preserve the original scan so the server independently validates the protocol.
+                var result = await gateway.ResolveLocationAsync(CountNumber, raw, ct);
                 var location = result.Location;
                 if (!string.IsNullOrWhiteSpace(location))
                 {
