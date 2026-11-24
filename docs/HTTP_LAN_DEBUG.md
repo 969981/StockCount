@@ -18,12 +18,12 @@ tags: [StockCount, Android, PDA, Windows, HTTP, LAN, Debug]
   │ http://<Windows-局域网-IP>:5080
   │ X-StockCount-Device-Key + X-StockCount-Environment
   ▼
-Windows Tauri 2 管理器 → ASP.NET Core 10 Sidecar → SQL Server
+Windows Avalonia / Tauri 2 管理器 → ASP.NET Core 10 Sidecar → SQL Server
                        ├─ 5080 HTTP：仅启用 allowLan 时监听 0.0.0.0
                        └─ 5081 HTTP：始终仅监听 localhost，内部管理用途
 ```
 
-默认仍为 `allowLan=false`，只有 Windows 本机可连。开启「允许通过受控局域网向 PDA 提供 HTTP API」后才开放 5080；后端仍要求非空的设备密钥，且 `/api/v1` 与 `/ready` 仍要进行设备鉴权。XTEST 和 COB 写入**默认均关闭**，变更传输协议不等于获得数据库写权限。
+默认仍为 `allowLan=false`，只有 Windows 本机可连。开启「允许通过受控局域网向 PDA 提供 HTTP API」后才开放 5080；Avalonia 可明确启用可信局域网免密模式，此时 `/api/v1` 与 `/ready` 仅允许直接内网 IPv4 或回环来源；旧版密钥模式仍要求设备鉴权。XTEST 和 COB 写入**默认均关闭**，变更传输协议不等于获得数据库写权限。
 
 Android Manifest 已启用 `android:usesCleartextTraffic="true"`。StockCount 客户端校验 API 地址：仅允许 `http://10.x.x.x`、`http://172.16~31.x.x`、`http://192.168.x.x`、localhost/loopback，或 HTTPS；拒绝通过 HTTP 连接公网 IP/域名。建议直接填写电脑的 RFC1918 局域网 IPv4 地址。
 
@@ -83,9 +83,17 @@ $apk = Get-ChildItem .\dist\local\*-Android-Debug-Signed.apk | Sort-Object LastW
 adb install -r -t $apk.FullName
 ```
 
-在 PDA 设置中填 `http://<Windows-局域网-IP>:5080`，选择 `Test / XTEST`，输入 Windows 管理器中的设备访问密钥，先「保存」，再「测试连接」。**不要把 `http://127.0.0.1:5080` 填到真机上**；那指向的是 PDA 自己，而不是 Windows 电脑。
+在 PDA 设置中填 `http://<Windows-局域网-IP>:5080`（也可直接填写 IP:端口），选择 `Test / XTEST`。Avalonia 免密模式不需要设备密钥；旧版密钥模式才需输入。可先「测试连接」再保存，测试不改变已保存地址、帐套或密钥。**不要把 `http://127.0.0.1:5080` 填到真机上**；那指向的是 PDA 自己，而不是 Windows 电脑。
 
 还可从 PDA 的浏览器打开 `http://<Windows-局域网-IP>:5080/health` 做最基础的网络连通检查。`/health` 正常仅表示 API 进程可达，`/ready` 用于检验数据库，但需要设备密钥等请求头；建议直接用 PDA 设置页的「测试连接」功能检查。
+
+### 4.1 分层连接诊断与后台日志
+
+PDA 逐项显示目标地址、帐套、TCP 连接耗时、API 身份、HTTP 状态和数据库 SELECT 1 结果。TCP 失败时补做 ICMP Ping；没有 Ping 响应可能是设备不支持、目标禁止 ICMP 或网络故障，不能仅凭此判定 IP 不通。连接被拒绝、超时、网络不可达、域名解析失败和 HTTPS 握手失败有不同中文提示。
+
+TCP 成功不代表 StockCount API 可用；只有 /health 返回 StockCount 服务标识才继续 /ready。401 表示设备未授权，403 表示来源或策略拒绝，503 表示数据库未就绪。测试不进行 ERP 写入。
+
+Avalonia 的 SQLite 日志显示「PDA 连接诊断」分类：收到 /health 或 /ready 连接请求时记录来源 IP、监听端口、帐套、诊断编号，完成时记录结果、HTTP 状态及耗时。与 PDA 显示的编号对应查询；本机无标记健康轮询不记录，设备密钥、数据库密码、扫码内容不进入诊断日志。若 PDA 仅有 TCP/Ping 失败、尚未发送 HTTP 请求，后台不会凭空产生请求日志。
 
 ## 5. 海康扫码与业务验收
 
