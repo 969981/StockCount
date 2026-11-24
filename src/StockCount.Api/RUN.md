@@ -110,3 +110,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
+
+## API 请求与响应明细日志
+
+业务 API 的每次请求完成后，写入一条 `StockCount.Api.Logging.ApiExchangeLogging` SQLite 日志：来源 IP/端口、HTTP 方法及路由、帐套、路径/查询入参、允许清单内的 JSON 入参和响应、HTTP 状态、请求耗时及关联编号。正文每侧限 8192 字节，超限或非 JSON 不记录原文；敏感请求头、未知 JSON 字段不写入。已接收的拒绝请求仍记录状态，未经读取的请求正文显示未读取。记录不改变请求/响应字节，不在公网暴露日志接口。旧日志与清理规则不变。真实业务日志必须按企业权限管理，不得上传公开仓库。

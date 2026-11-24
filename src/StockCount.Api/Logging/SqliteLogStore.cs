@@ -64,7 +64,8 @@ public sealed class SqliteLogStore : ILoggerProvider, IAsyncDisposable
     public void Add(string level, string category, string message, Exception? error = null)
     {
         var record = new LogRow(0, DateTimeOffset.UtcNow.ToString("O"),
-            level, Clean(category), Clean(message), error is null ? null : Clean(error.ToString()));
+            level, Clean(category), Clean(message, category == "StockCount.Api.Logging.ApiExchangeLogging" ? 16000 : 4000),
+            error is null ? null : Clean(error.ToString()));
         if (!_channel.Writer.TryWrite(record))
             Interlocked.Increment(ref _dropped);
     }
@@ -138,9 +139,9 @@ public sealed class SqliteLogStore : ILoggerProvider, IAsyncDisposable
     }
 
     // Simple defense in depth: logs must never echo obvious credential assignments.
-    private static string Clean(string value)
+    private static string Clean(string value, int maxLength = 4000)
     {
-        var limited = value.Length > 4000 ? value[..4000] : value;
+        var limited = value.Length > maxLength ? value[..maxLength] + "…（日志已截断）" : value;
         return Regex.Replace(limited,
             @"(?i)\b(password|pwd|device-key|access-key|apikey|api_key)\s*[:=]\s*[^;\s,]+",
             "$1=[REDACTED]");
