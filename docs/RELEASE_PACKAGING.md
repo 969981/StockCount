@@ -10,7 +10,7 @@ tags: [StockCount, GitHubActions, APK, Tauri, Avalonia, Windows, Portable, Relea
 
 > CI 配置已加入。是否存在真实 Release 以及文件可用性，以 [Releases](https://github.com/969981/StockCount/releases) 和实际 [Actions](https://github.com/969981/StockCount/actions/workflows/publish-stockcount.yml) 成功记录为准。**没有同时通过 Android + Windows 构建时绝不发布缺少文件的版本。**
 
-**版本说明**：历史 `v0.2.0-preview.2` 已采用修复后的 SQLite 依赖并发布 Debug APK 与 Tauri Windows Setup/Portable。**下一个统一版本 `v0.2.0-preview.3` 新增 **Android Release 签名 APK**。需要先在仓库配置四个 GitHub Actions Secrets，才会生成并上传正式签名版；缺少它时只做 Release 代码编译检查，**不创建不完整的 GitHub Release**。参见 [Android 正式签名指南](ANDROID_RELEASE_SIGNING.md)。
+**版本说明**：历史 `v0.2.0-preview.2` 已采用修复后的 SQLite 依赖并发布 Debug APK 与 Tauri Windows Setup/Portable。下一个统一版本 `v0.2.0-preview.3` 新增 **Android Release 签名 APK**。需要先在仓库配置四个 GitHub Actions Secrets，才会生成并上传正式签名版；缺少它时只做 Release 代码编译检查，**不创建不完整的 GitHub Release**。参见 [Android 正式签名指南](ANDROID_RELEASE_SIGNING.md)。
 
 ## 本地 PowerShell 一键创建签名与发布 GitHub Release
 
@@ -69,11 +69,11 @@ pwsh -NoProfile -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-pr
 # 查看编译是否成功；触发成功不等于 Release 已发布
 gh run list -R 969981/StockCount --workflow publish-stockcount.yml --limit 5
 
-# 只有 Actions 全部成功，且四个程序文件与 SHA256SUMS 均存在，才算发布成功
+# 只有 Actions 全部成功，且五个程序文件与 SHA256SUMS 均存在，才算发布成功
 gh release view v0.2.0-preview.3 -R 969981/StockCount
 ```
 
-发布流程使用 [publish-stockcount.yml](../.github/workflows/publish-stockcount.yml) 的 `workflow_dispatch.inputs.version`，由 GitHub Actions 在 main 上编译 **Android Debug Signed APK、Android Release Signed APK、Windows Setup.exe、Windows Portable.zip**，再生成 `SHA256SUMS.txt`，**六份资产（五份程序 + SHA256）同时发布到一个预发布版本**。任一构建、签名或完整性校验失败，不创建 Release，也不把 unsigned APK 冒充正式安装包。标签已存在时拒绝覆盖。
+发布流程使用 [publish-stockcount.yml](../.github/workflows/publish-stockcount.yml) 的 `workflow_dispatch.inputs.version`，由 GitHub Actions 在 main 上编译 **Android Debug Signed APK、Android Release Signed APK、Tauri Windows Setup.exe、Tauri Windows Portable.zip、Avalonia Windows Portable.zip**，再生成 `SHA256SUMS.txt`，**六份资产（五份程序 + SHA256）同时发布到一个预发布版本**。任一构建、签名或完整性校验失败，不创建 Release，也不把 unsigned APK 冒充正式安装包。标签已存在时拒绝覆盖。
 
 **版本注意**：`-Version` 负责 Release 标签和产物文件名，**不自动提升安卓 `ApplicationVersion`（versionCode）或 Windows 产品版本**。每次准备新版本时，需先修改提交相应元数据，且 Android versionCode 必须比设备上已安装的版本高；否则即使签名相同也可能无法覆盖升级。要发布其它版本请将示例版本号替换为相应 SemVer。
 
@@ -112,7 +112,7 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 2. 直接执行 `Start-StockCount.cmd` 或 `stockcount-server-console.exe`。与 Setup 使用相同的桌面UI和 C# API。
 3. 保持 `StockCount.Api.exe` 与 Tauri exe **处于同一目录**。这是运行时 Sidecar 依赖，不是可丢弃的临时安装程序。
 4. 本机日志文件为 `<exe目录>\server-logs.db`，可能生成 WAL/SHM 文件。不要放进受写保护的 `Program Files`，也不应直接从压缩包内部启动。
-5. **免安装仅指免 Setup，不代表彻底免依赖**：Windows WebView2 Runtime 必须存在。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
+5. **免安装仅指免 Setup，不代表彻底免依赖**：此处 Tauri 版本需要 Windows WebView2 Runtime；Avalonia 版本不需要。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
 6. 非敏感设置文件 `server-settings.json` 与 `server-logs.db` 一样，保存在 **Tauri 主程序 EXE 同目录**；便携版 ZIP 不预置现场配置。仅当同目录配置不存在时，首次运行会校验并复制旧 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，保留旧文件且不覆盖已有同目录配置。SQL 密码/设备密钥仍在 **Windows Credential Manager**，因此便携版跨机器或 Windows 账户移动后需要重新设置密钥。程序请解压到当前用户可写目录，不要放在受保护的 `Program Files`。
 7. 关闭 Tauri 管理器会停止该用户会话的 API Sidecar。日志/密钥备份以及更新时需先停止服务。
 
