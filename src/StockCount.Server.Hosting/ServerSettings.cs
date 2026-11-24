@@ -10,6 +10,8 @@ public sealed class ServerSettings
     public bool AutoStartApi { get; set; } = true;
     public int ApiPort { get; set; } = 5080;
     public bool AllowLan { get; set; }
+    // Existing JSON without this opt-in retains the old keyed policy.
+    public bool AllowKeylessLan { get; set; }
     public string CertPath { get; set; } = "";
     public string SqlServer { get; set; } = "";
     public string SqlDatabase { get; set; } = "sagex3";
@@ -34,7 +36,7 @@ public sealed class ServerSettings
         if (EnableProductionWrites && !ProductionSchemaReviewed)
             throw new InvalidOperationException("COB 未完成独立核验，不允许开启写入。");
         if ((EnableTestWrites || EnableProductionWrites) &&
-            (string.IsNullOrWhiteSpace(X3AuditUser) || X3AuditUser.Length > 5))
+            (string.IsNullOrWhiteSpace(X3AuditUser) || X3AuditUser.Length > 5 || X3AuditUser.Any(char.IsControl)))
             throw new InvalidOperationException("开启写入前必须填写 1–5 字符的已批准 X3 审计用户编码。");
     }
 
