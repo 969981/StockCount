@@ -58,7 +58,7 @@ public static class ApiApplication
             var loopback = remote is not null && IPAddress.IsLoopback(remote);
             var marked = context.Request.Headers["X-StockCount-Connection-Test"].ToString() == "1";
             var diagnostic = (health || ready) && (marked || !loopback);
-            var probeId = Guid.TryParse(context.Request.Headers["X-StockCount-Diagnostic-Id"], out var id)
+            var probeId = Guid.TryParse(context.Request.Headers["X-StockCount-Diagnostic-Id"].ToString(), out var id)
                 ? id.ToString("D") : "-";
             var environment = context.Request.Headers["X-StockCount-Environment"].ToString() switch
             {
