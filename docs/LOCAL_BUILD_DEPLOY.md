@@ -249,7 +249,7 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\
 
 本次增强的打包校验不仅检查项目文件存在，还会逐项核对 **ZIP 内所有已提交源码**和两个 `.slnx` 的全部项目引用；如果任意 Avalonia、MAUI、Hosting 工程或其它已提交文件缺失，则报错而非输出貌似完整的源码包。旧版 Tag 不包含 Avalonia 时仍按该历史版本原有布局打包，不强加新项目要求。
 
-**注意区分源码打包与二进制构建：** `package-source.ps1` 不编译，不生成 EXE / APK；`build-local.ps1` 仍构建 Tauri Setup/Portable 和 Android APK；Avalonia 自包含 Windows 测试版使用 `build-avalonia-desktop.ps1`。源码 ZIP 只是供接收方重新构建的完整快照，不含 NuGet/npm/Cargo 已下载依赖或本地密钥。
+**注意区分源码打包与二进制构建：** `package-source.ps1` 不编译，不生成 EXE / APK；`build-local.ps1` 的 `All` 目标构建 Tauri Setup/Portable、Avalonia Portable 与 Android APK；Avalonia 也可独立运行 `build-avalonia-desktop.ps1` + `package-avalonia-portable.ps1`。源码 ZIP 只是供接收方重新构建的完整快照，不含 NuGet/npm/Cargo 已下载依赖或本地密钥。
 
 
 
