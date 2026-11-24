@@ -12,10 +12,7 @@ status: initial-implementation-awaiting-qa
 ## 程序图标
 
 Windows 窗口和 EXE 使用 [server.svg](../../assets/branding/server.svg)，与 Tauri 管理器保持统一。
-Avalonia Windows Debug、Release 和 Publish 的 MSBuild 会自动调用
-`scripts/prepare-windows-brand-icons.ps1`，用项目已有 Tauri 2 CLI
-从 SVG 生成 `Assets/server.ico`（图标为构建产物，不纳入 Git）。
-初次生成需要 Node.js 22+、npm 和 PowerShell 7。
+Avalonia 的 `Assets/server.ico` 是已提交的多尺寸原生资源（16、32、48、256 像素），随源码 ZIP 分发。Visual Studio Debug、Release 和 Publish 不再生成图标，也不依赖 Node.js/npm。仅当修改品牌 SVG 时，手动运行 `pwsh -File .\scripts\prepare-windows-brand-icons.ps1 -Force` 并提交更新后的 ICO。
 
 图标完整设计与多尺寸 SVG：[[assets/branding/README|StockCount 图标指南]] ·
 [Markdown 说明](../../assets/branding/README.md)。
