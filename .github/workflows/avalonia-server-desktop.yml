@@ -54,7 +54,7 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/package-avalonia-portable.ps1 -OutputDirectory 'dist/avalonia-qa'
-          if ($LASTEXITCODE -ne 0) { throw "Avalonia ZIP packaging failed" }
+          if (-not $?) { throw "Avalonia ZIP packaging failed" }
           $zip = @(Get-ChildItem dist/avalonia-qa -Filter '*-Windows-x64-Portable.zip' -File)
           if ($zip.Count -ne 1) { throw "Expected one Avalonia ZIP" }
           Write-Host "Avalonia Portable QA: $($zip[0].Name)"
