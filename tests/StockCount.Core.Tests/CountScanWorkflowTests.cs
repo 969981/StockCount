@@ -21,6 +21,11 @@ public sealed class CountScanWorkflowTests
 
     [Theory]
     [InlineData("01234567890")]
+    [InlineData("LC.01234567890")]
+    [InlineData("LC.")]
+    [InlineData("LC.LC.DEMO")]
+    [InlineData("LC.A@@MT.B")]
+    [InlineData("MT.DEMO")]
     [InlineData("LOC\t001")]
     public async Task InvalidLocationFormatDoesNotQueryDatabase(string raw)
     {
@@ -55,6 +60,22 @@ public sealed class CountScanWorkflowTests
         Assert.Contains(expected, later.Message);
         Assert.Equal("LOC-DEMO01", workflow.Location);
         Assert.NotNull(workflow.Box);
+    }
+
+    [Fact]
+    public async Task LcBarcodeDisplaysAndSubmitsOnlyResolvedLocation()
+    {
+        var fake = new FakeGateway();
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        Assert.Equal("LocationUpdated", (await workflow.HandleScanAsync("LC.LOC-DEMO01")).Kind);
+        Assert.Equal("LC.LOC-DEMO01", fake.LastRawLocation);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+        Assert.Equal("BoxResolved", (await workflow.HandleScanAsync(Qr)).Kind);
+        workflow.EnterManualQuantity(9m);
+        Assert.Equal("Submitted", (await workflow.SubmitAsync()).Kind);
+        Assert.Equal("LOC-DEMO01", fake.LastSubmittedLocation);
+        await workflow.AcknowledgeSuccessAsync();
+        Assert.Equal("LOC-DEMO01", workflow.Location);
     }
 
     [Fact]
@@ -248,14 +269,17 @@ public sealed class CountScanWorkflowTests
         public bool ThrowDuringSubmit { get; set; }
         public int LabelRequests { get; private set; }
         public int LocationRequests { get; private set; }
+        public string? LastRawLocation { get; private set; }
+        public string? LastSubmittedLocation { get; private set; }
         public string LocationError { get; set; } = "LOCATION_NOT_FOUND";
         public decimal? LastSubmittedQuantity { get; private set; }
         public Guid? LastRequestId { get; private set; }
         public Task<LocationScanResult> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
         {
             LocationRequests++;
-            return Task.FromResult(rawCode is "LOC-DEMO01" or "LOC-DEMO02"
-                ? new LocationScanResult(rawCode)
+            LastRawLocation = rawCode;
+            return Task.FromResult(LocationScanPolicy.TryParse(rawCode, out var location) && location is ("LOC-DEMO01" or "LOC-DEMO02")
+                ? new LocationScanResult(location)
                 : new LocationScanResult(null, LocationError));
         }
         public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct)
@@ -269,6 +293,7 @@ public sealed class CountScanWorkflowTests
             string boxNumber,string location,decimal qty,CancellationToken ct)
         {
             LastRequestId=requestId;
+            LastSubmittedLocation=location;
             if (RejectDuplicateAtCommit)
                 throw new ScanCommitRejectedException("BOX_ALREADY_RECORDED","该箱号已扫描！");
             if (ThrowDuringSubmit) throw new IOException("Simulated dropped connection");
