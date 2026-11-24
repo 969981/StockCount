@@ -59,7 +59,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 
 ## 与 API 对接
 
-设备从 Windows 管理器获取局域网地址（例如 `192.168.1.100:5080`，自动补全 HTTP）。Avalonia 开启局域网免密时无需 Key；旧版 Tauri 或密钥模式可展开可选密钥设置：
+新安装默认 API 地址 `http://192.168.1.1:5080`；现有已保存地址保持不变。设备也可从 Windows 管理器获取其他局域网地址（输入 IP:端口自动补全 HTTP）。Avalonia 开启局域网免密时无需 Key；旧版 Tauri 或密钥模式可展开可选密钥设置：
 
 完整步骤：[Windows + PDA 局域网 HTTP 联调指南](../../docs/HTTP_LAN_DEBUG.md)。Android 允许内网 HTTP 明文传输，但客户端拒绝向公网地址发起 HTTP 请求；请不要暴露 5080 到公网。
 
