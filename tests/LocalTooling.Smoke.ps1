@@ -49,6 +49,58 @@ try {
         throw 'Previous API binary backup is invalid'
     }
 
+    # Simulate a fully self-contained Avalonia portable (large fake EXEs and
+    # an extra dependency) without requiring a real .NET compilation.
+    $avaloniaFake = Join-Path $temp 'avalonia-publish'
+    $avaloniaDest = Join-Path $temp 'deployed-Avalonia'
+    $avaloniaPackages = Join-Path $temp 'avalonia-zips'
+    New-Item -ItemType Directory -Force -Path $avaloniaFake | Out-Null
+    $bytes = New-Object byte[] 1048577
+    [Array]::Fill($bytes, [byte]65)
+    [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Server.Desktop.exe'), $bytes)
+    [Array]::Fill($bytes, [byte]66)
+    [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Api.exe'), $bytes)
+    New-Item -ItemType Directory -Force -Path (Join-Path $avaloniaFake 'runtimes/win-x64/native') | Out-Null
+    'managed-dependency-v1' | Set-Content (Join-Path $avaloniaFake 'runtimes/win-x64/native/host.dll')
+    $version = '0.2.0-local'
+    & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
+    $avaloniaZip = Join-Path $avaloniaPackages "StockCount-Avalonia-v$version-Windows-x64-Portable.zip"
+    if (!(Test-Path $avaloniaZip)) { throw 'Avalonia Portable ZIP missing from packager' }
+
+    & (Join-Path $repo 'scripts/deploy-local.ps1') -Target AvaloniaPortable -PackagePath $avaloniaZip -Destination $avaloniaDest
+    'important API config' | Set-Content (Join-Path $avaloniaDest 'server-settings.json')
+    'sqlite history' | Set-Content (Join-Path $avaloniaDest 'server-logs.db')
+    'wal preserved' | Set-Content (Join-Path $avaloniaDest 'server-logs.db-wal')
+    'shm preserved' | Set-Content (Join-Path $avaloniaDest 'server-logs.db-shm')
+    [Array]::Fill($bytes, [byte]67)
+    [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Api.exe'), $bytes)
+    'managed-dependency-v2' | Set-Content (Join-Path $avaloniaFake 'runtimes/win-x64/native/host.dll')
+    & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
+    & (Join-Path $repo 'scripts/deploy-local.ps1') -Target AvaloniaPortable -PackagePath $avaloniaZip -Destination $avaloniaDest
+    if ((Get-Content (Join-Path $avaloniaDest 'runtimes/win-x64/native/host.dll') -Raw) -notmatch 'v2') {
+      throw 'Avalonia upgrade lost one of the nested .NET runtime dependencies'
+    }
+    foreach ($name in @('server-settings.json','server-logs.db','server-logs.db-wal','server-logs.db-shm')) {
+      if (!(Test-Path (Join-Path $avaloniaDest $name))) { throw "Avalonia upgrade deleted $name" }
+    }
+    if ((Get-Content (Join-Path $avaloniaDest 'server-settings.json') -Raw) -notmatch 'important API config') {
+      throw 'Avalonia upgrade overwrote settings'
+    }
+    $backupsAvalonia = @(Get-ChildItem -LiteralPath $avaloniaDest -Directory -Filter 'backup-binaries-*')
+    if ($backupsAvalonia.Count -ne 1) { throw 'Avalonia upgrade did not back up previous executable files' }
+    if (!(Test-Path (Join-Path $backupsAvalonia[0].FullName 'runtimes/win-x64/native/host.dll'))) {
+      throw 'Avalonia backup missing nested runtime dependency'
+    }
+    'must-not-ship' | Set-Content (Join-Path $avaloniaFake 'server-settings.json')
+    $rejectedSensitive = $false
+    try {
+      & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
+    } catch {
+      $rejectedSensitive = $_.Exception.Message -match 'user data / signing material'
+    }
+    Remove-Item (Join-Path $avaloniaFake 'server-settings.json') -Force
+    if (-not $rejectedSensitive) { throw 'Avalonia ZIP packager accepted live user settings' }
+
     $sourceOut = Join-Path $repo 'dist\ci-source-test'
     & (Join-Path $repo 'scripts/package-source.ps1') -Version '0.2.0-local' -Ref HEAD -OutputDirectory $sourceOut
     $sourceZip = Join-Path $sourceOut 'StockCount-Source-v0.2.0-local.zip'
@@ -76,6 +128,8 @@ try {
             'desktop/server-console/src-tauri/Cargo.toml',
             'scripts/build-local.ps1',
             'scripts/build-avalonia-desktop.ps1',
+            'scripts/package-avalonia-portable.ps1',
+            'scripts/deploy-avalonia-portable.ps1',
             'scripts/package-source.ps1',
             '.github/workflows/avalonia-server-desktop.yml',
             '.github/workflows/pda-android-build.yml'
@@ -193,7 +247,7 @@ try {
       }
       if (-not $helpfulMissingExe) { throw 'Missing-Tauri-exe error must show correct build command' }
     }
-    Write-Host 'SUCCESS: portable upgrade preserves SQLite, previous binaries backup and Git source ZIP integrity, JKS dry runs and safe GitHub release dispatch, and app-version synchronization.' -ForegroundColor Green
+    Write-Host 'SUCCESS: Tauri and Avalonia portable upgrades preserve SQLite, previous binaries backup and Git source ZIP integrity, JKS dry runs and safe GitHub release dispatch, and app-version synchronization.' -ForegroundColor Green
 }
 finally {
     Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue

@@ -14,6 +14,10 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/build-local.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
       - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
@@ -23,6 +27,10 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/build-local.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
       - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
@@ -181,6 +189,16 @@ jobs:
           if (-not (Test-Path -LiteralPath $zip)) { throw "Portable ZIP missing" }
           Get-FileHash $dest -Algorithm SHA256 | Format-List
           Get-FileHash $zip -Algorithm SHA256 | Format-List
+      - name: Build and package branded Avalonia Windows Portable
+        shell: pwsh
+        run: |
+          ./scripts/build-avalonia-desktop.ps1 -Configuration Release
+          if (-not $?) { throw "Avalonia Windows build failed" }
+          ./scripts/package-avalonia-portable.ps1 -Version $env:RELEASE_VERSION -OutputDirectory 'release-windows'
+          if (-not $?) { throw "Avalonia Portable packager failed" }
+          $zip = "release-windows/StockCount-Avalonia-v$env:RELEASE_VERSION-Windows-x64-Portable.zip"
+          if (!(Test-Path -LiteralPath $zip)) { throw "Avalonia Portable ZIP missing" }
+          Get-FileHash -LiteralPath $zip -Algorithm SHA256 | Format-List
       - uses: actions/upload-artifact@v4
         with:
           name: StockCount-Release-Windows
@@ -191,7 +209,7 @@ jobs:
           retention-days: 30
 
   publish:
-    name: Publish both signed APK variants, Windows binaries and SHA256
+    name: Publish both signed APK variants, Windows binaries (including Avalonia) and SHA256
     needs: [validate, android, windows]
     runs-on: ubuntu-latest
     if: >
@@ -209,7 +227,7 @@ jobs:
         with:
           name: StockCount-Release-Windows
           path: release-windows
-      - name: Validate four binaries (two signed APKs) and hash
+      - name: Validate five binaries (two signed APKs) and hash
         shell: bash
         run: |
           set -euo pipefail
@@ -220,9 +238,10 @@ jobs:
           debug_apk=(release-files/*-Android-Debug-Signed.apk)
           release_apk=(release-files/*-Android-Release-Signed.apk)
           setup=(release-files/*-Windows-x64-Setup.exe)
-          portable=(release-files/*-Windows-x64-Portable.zip)
-          if (( ${#debug_apk[@]} != 1 || ${#release_apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 )); then
-            echo "Missing assets (release signing requires four GitHub Secrets): Debug=${#debug_apk[@]} Release=${#release_apk[@]} Setup=${#setup[@]} Portable=${#portable[@]}" >&2
+          portable=(release-files/StockCount-Server-v*-Windows-x64-Portable.zip)
+          avalonia=(release-files/*-Avalonia-*-Windows-x64-Portable.zip)
+          if (( ${#debug_apk[@]} != 1 || ${#release_apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 || ${#avalonia[@]} != 1 )); then
+            echo "Missing assets (release signing requires four GitHub Secrets): Debug=${#debug_apk[@]} Release=${#release_apk[@]} Setup=${#setup[@]} Portable=${#portable[@]} Avalonia=${#avalonia[@]}" >&2
             exit 1
           fi
           cd release-files
@@ -248,10 +267,11 @@ jobs:
           - Android Release-Signed.apk: optimized Release build signed by the persistent StockCount release keystore supplied via GitHub Secrets.
           - Windows Setup.exe: NSIS current-user installer with Tauri 2 manager and self-contained .NET 10 Sidecar.
           - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
-          - SHA256SUMS.txt: independent checksums of all four release binaries (two APK variants, Setup and Portable).
+          - Windows Avalonia Portable.zip: self-contained .NET native manager plus API; run Start-StockCount-Avalonia.cmd; upgrades via scripts/deploy-local.ps1 -Target AvaloniaPortable.
+          - SHA256SUMS.txt: independent checksums of all five release binaries (two APK variants, Tauri Setup/Portable and Avalonia Portable).
 
-          Windows non-secret settings (server-settings.json), logs (server-logs.db and SQLite WAL companions) live beside the desktop EXE, not in LOCALAPPDATA. The portable ZIP does not include user settings; if no colocated JSON exists, the first launch copies valid legacy AppData settings while leaving the old file untouched. SQL passwords and PDA device keys remain in Windows Credential Manager and do not migrate between user accounts or machines. Install/extract into a user-writable folder. WebView2 runtime is required.
+          Windows non-secret settings (server-settings.json), logs (server-logs.db and SQLite WAL companions) live beside the desktop EXE, not in LOCALAPPDATA. The portable ZIP does not include user settings; if no colocated JSON exists, the first launch copies valid legacy AppData settings while leaving the old file untouched. SQL passwords and PDA device keys remain in Windows Credential Manager and do not migrate between user accounts or machines. Install/extract into a user-writable folder. Tauri requires WebView2 runtime; Avalonia does not.
 
           The XTEST and COB APIs both support controlled writes, but each write switch starts disabled until the administrator validates the ERP schema. This preview includes both Android Debug and signed Release APKs and upgrades the SQLite native bundle to a patched line (Microsoft.Data.Sqlite 10.0.14 and SQLitePCLRaw.bundle_e_sqlite3 2.1.14) following a NU1903 advisory detected in the preceding preview. This is a technical prerelease, not production certification; Windows executables are unsigned; the Android Debug APK uses a debug identity, while the Android Release APK requires a separate persistent production signing key. They cannot replace each other in-place.
           NOTES
-          gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - Debug + Release APK / Setup / Portable" --notes-file /tmp/stockcount-notes.md --prerelease
+          gh release create "$tag" release-files/*.apk release-files/*.exe release-files/*.zip release-files/SHA256SUMS.txt --repo "$GH_REPO" --target "$GIT_SHA" --title "StockCount v${RELEASE_VERSION} - Debug + Release APK / Setup / Tauri + Avalonia Portable" --notes-file /tmp/stockcount-notes.md --prerelease

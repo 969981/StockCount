@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：Android MAUI Debug APK 已在 GitHub Actions #46 编译成功，29 项 Core 测试通过；Tauri Windows Setup/Portable 正在 CI 验证。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
+**当前阶段：Android MAUI Debug APK、Tauri Windows Setup/Portable、Avalonia Windows QA 均有成功的 CI 构建记录；新版 Avalonia Portable 部署脚本须以最新 Actions 回归为准。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
 
 ## 一键生成 JKS 与发布 GitHub Release
 
@@ -35,6 +35,20 @@ pwsh -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-preview.3
 
 [PowerShell 发布全流程](docs/RELEASE_PACKAGING.md) · [JKS/Secrets 安全指南](docs/ANDROID_RELEASE_SIGNING.md)。缺少正式签名凭据时不能发布 Release APK；触发工作流并不意味着文件已经发布。
 
+## 2026-11-24 · 三端图标与部署更新
+
+- 图标 SVG 主文件、64/128/256/512/1024 预设： [图标与品牌资源](assets/branding/README.md)，Android MAUI Launcher、Windows Tauri NSIS 和 Windows Avalonia EXE/窗口均使用新图标。
+- [统一构建脚本](scripts/build-local.ps1) 支持 `-Target All|Windows|Android|Avalonia`；`Windows` 仍构建 Tauri Setup/Portable，`Avalonia` 构建 .NET 原生 Portable，`All` 还包含 Android APK。
+- [Avalonia Portable 打包脚本](scripts/package-avalonia-portable.ps1) 和 [统一部署脚本](scripts/deploy-local.ps1)（`-Target AvaloniaPortable`）负责打包完整 .NET 依赖，安全升级并保留同目录 JSON/SQLite/WAL/SHM；严禁包含现场密钥。
+- [统一发布流程](.github/workflows/publish-stockcount.yml) 同时验证两个 Android APK、Tauri Windows Setup/Portable 和 Avalonia Windows Portable；**缺少 Android 正式签名密钥时只产生 CI QA 构建产物，不代表 Release 已发布**。
+- Obsidian/Markdown 目录链接失败已在 [PR #13](https://github.com/969981/StockCount/pull/13) 修复；文档校验可运行 `python scripts/check_obsidian_links.py`。
+
+```powershell
+pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
+pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
+  -PackagePath .\dist\local\StockCount-Avalonia-v0.2.0-local-Windows-x64-Portable.zip `
+  -Destination D:\Apps\StockCount-Avalonia -Launch
+```
 ## Android Debug / Release 双版本 APK
 
 - [Release 编译与签名专用指南](docs/ANDROID_RELEASE_SIGNING.md)：保留长期 Android JKS 签名密钥，通过 GitHub Actions Secrets 发布 Release APK。

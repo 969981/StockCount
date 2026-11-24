@@ -2,22 +2,24 @@
 aliases: ["StockCount 本地构建与部署", "Build and Deploy"]
 title: StockCount · Windows 本地编译、部署和源码归档
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-24
 status: implementation-guide
-tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Obsidian]
+tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Avalonia, Obsidian]
 ---
 
 # StockCount · 本地编译、部署与源码打包手册
 
-> 对应当前仓库的真实工程：MAUI Android PDA、ASP.NET Core 10 API 与 Tauri 2 + React Windows 服务管理器。本手册的脚本已提交，但**在本对话环境中没有 Windows/.NET/Android 工具链，最终执行以本机结果或 Windows GitHub Actions 为准**。
+> 对应当前仓库的真实工程：MAUI Android PDA、ASP.NET Core 10 API、Tauri 2 和 Avalonia Windows 服务管理器。本手册的脚本已提交，但**在本对话环境中没有 Windows/.NET/Android 工具链，最终执行以本机结果或 Windows GitHub Actions 为准**。
 
-## 一、三个脚本
+## 一、统一脚本入口与平台
 
 | 文件 | 用途 | 默认结果 |
 | --- | --- | --- |
-| [build-local.ps1](../scripts/build-local.ps1) | 编译 + 自动打包 | APK + Setup.exe + Portable.zip + SHA256SUMS.txt |
-| [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB 安装、Windows NSIS 安装向导、免安装目录更新 |
+| [build-local.ps1](../scripts/build-local.ps1) | 统一构建 + 自动打包 | Android APK、Tauri Setup/Portable、Avalonia Portable 与 SHA256 |
+| [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB、Tauri NSIS/Portable、Avalonia Portable 安全升级 |
 | [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | Source.zip、SourceInfo.txt、单独 SHA256 文件 |
+| [package-avalonia-portable.ps1](../scripts/package-avalonia-portable.ps1) | 打包完整 .NET 自包含发布目录 | 含依赖的 StockCount-Avalonia-Portable.zip，拒绝现场配置 |
+| [deploy-avalonia-portable.ps1](../scripts/deploy-avalonia-portable.ps1) | Avalonia 更新执行器 | 逐文件校验、备份、失败尽力恢复 |
 | [new-android-release-jks.ps1](../scripts/new-android-release-jks.ps1) | 首次生成长期 JKS | 私有 keystore，不覆盖已有文件 |
 | [configure-android-release-secrets.ps1](../scripts/configure-android-release-secrets.ps1) | 交互上传四个 Secrets | GitHub Actions 签名凭据 |
 | [publish-stockcount-release.ps1](../scripts/publish-stockcount-release.ps1) | 版本号参数化并触发 GitHub Release | Actions 任务，不直接创建未验收 Release |
@@ -26,7 +28,7 @@ tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Obsidian]
 
 ## JKS 一次性生成与 GitHub Release 一键发布
 
-如果需要把 **Debug APK、正式签名 Release APK、Windows Setup、Portable ZIP** 同时发布到 GitHub Releases，可以直接使用三份专用脚本，不需要手动更改 Actions 中的版本号。
+如果需要把 **Debug APK、正式签名 Release APK、Tauri Windows Setup/Portable、Avalonia Portable** 同时发布到 GitHub Releases，可以直接使用三份专用脚本，不需要手动更改 Actions 中的版本号。
 
 ```powershell
 # 1. 首次创建长期 JKS，密码由 keytool 交互输入；已存在的 JKS 不要重建
@@ -121,18 +123,30 @@ dotnet workload install maui-android
 
 ## 三、一键本地编译
 
-### 全部编译：APK + Setup + Portable
+### 全部编译：Android APK + Tauri Setup/Portable + Avalonia Portable
 
 ```powershell
 pwsh -NoProfile -File .\scripts\build-local.ps1 -Target All -Version 0.2.0-local
 ```
 
-### 只编译 Windows（同时生成 Setup 与免安装 ZIP）
+### 只编译 Tauri Windows（同时生成 Setup 与免安装 ZIP）
 
 ```powershell
 pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-local
 ```
 
+### 只编译 Avalonia Windows 原生管理器及 Portable ZIP
+
+```powershell
+# .NET 10 + Node.js 22+，不需要 Rust 或 WebView2
+pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
+
+# 或者独立编译、打包
+pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release
+pwsh -File .\scripts\package-avalonia-portable.ps1 -Version 0.2.0-local
+```
+
+Avalonia 的 Portable ZIP 含 `StockCount.Api.exe`、.NET DLL 与原生依赖，不能只复制两份 EXE。`server.svg` 经 MSBuild 生成 ICO，注入 Windows EXE 与窗口图标。
 ### Android 同时构建 Debug + 正式签名 Release APK
 
 注意：**Release APK 必须使用项目长期保管的 JKS**。先阅读 [Android Release 签名手册](ANDROID_RELEASE_SIGNING.md)，将 keystore 放在仓库之外，并在当前终端设置签名口令环境变量（不得把密码写在命令行或仓库里）。
@@ -164,11 +178,12 @@ dist/
     StockCount-PDA-v0.2.0-local-Android-Debug-Signed.apk
     StockCount-Server-v0.2.0-local-Windows-x64-Setup.exe
     StockCount-Server-v0.2.0-local-Windows-x64-Portable.zip
+    StockCount-Avalonia-v0.2.0-local-Windows-x64-Portable.zip
     SHA256SUMS.txt
     build-manifest.json
 ```
 
-**说明**：如果仅选择 Windows 或 Android，清单仅包含本次目标成功构建的文件；旧版本或其它目标可能仍留在输出目录。请依据清单和本次版本号选取文件，不要将旧文件混合发布。构建任何一步失败都会抛出异常且不生成“成功清单”；请勿发布失败输出。
+**说明**：如果仅选择 Windows、Android 或 Avalonia，清单仅包含本次目标成功构建的文件；旧版本或其它目标可能仍留在输出目录。请依据清单和本次版本号选取文件，不要将旧文件混合发布。构建任何一步失败都会抛出异常且不生成“成功清单”；请勿发布失败输出。
 
 Windows Setup 使用 Tauri 2 NSIS 的当前用户安装模式；便携 ZIP 包含 `stockcount-server-console.exe`、`StockCount.Api.exe`、`Start-StockCount.cmd` 和说明；API Sidecar 采用 .NET 10 自包含发布。APK 当前为 **Debug 签名测试版本**，并非企业生产签名。
 
@@ -190,6 +205,17 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target WindowsPortable -Packag
 
 **注意**：非敏感设置 `server-settings.json` 与日志 `server-logs.db` 都在主程序 EXE 同目录。便携目录必须由当前用户拥有写入权限；不要部署到受保护的 Program Files 文件夹。第一次运行时，如同目录配置缺失，会尝试从旧路径 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json` 校验并复制，旧文件保留。若已有同目录配置则优先使用，不覆盖。数据库密码和设备密钥仍在 Windows Credential Manager，跨电脑/Windows 用户不会自动转移。
 
+### Avalonia Portable 首次部署与升级
+
+```powershell
+pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
+  -PackagePath .\dist\local\StockCount-Avalonia-v0.2.0-local-Windows-x64-Portable.zip `
+  -Destination D:\Apps\StockCount-Avalonia -Launch
+```
+
+Avalonia Portable 使用独立目录，避免与 Tauri 混用 EXE/配置；启动前检查 API 端口，不能同时启动两个后台。升级前必须退出两个管理器与 API。脚本校验 ZIP 条目、完整复制 .NET 依赖、逐文件核对 SHA256，并备份被替换的旧文件，失败时尽力回滚。
+
+**现场数据不由升级程序覆盖**：`server-settings.json`、`server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 保持原位；Credential Manager 凭据保持不变。若发布目录混入这些数据或 JKS/PFX/密钥，打包脚本会拒绝创建 ZIP。Avalonia 当前为自包含 Portable，Windows NSIS Setup 仍为 Tauri。两套 ERP 写入门禁保持独立且默认禁止。
 ### Windows Setup 正常安装
 
 ```powershell
@@ -223,7 +249,7 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\
 
 本次增强的打包校验不仅检查项目文件存在，还会逐项核对 **ZIP 内所有已提交源码**和两个 `.slnx` 的全部项目引用；如果任意 Avalonia、MAUI、Hosting 工程或其它已提交文件缺失，则报错而非输出貌似完整的源码包。旧版 Tag 不包含 Avalonia 时仍按该历史版本原有布局打包，不强加新项目要求。
 
-**注意区分源码打包与二进制构建：** `package-source.ps1` 不编译，不生成 EXE / APK；`build-local.ps1` 仍构建 Tauri Setup/Portable 和 Android APK；Avalonia 自包含 Windows 测试版使用 `build-avalonia-desktop.ps1`。源码 ZIP 只是供接收方重新构建的完整快照，不含 NuGet/npm/Cargo 已下载依赖或本地密钥。
+**注意区分源码打包与二进制构建：** `package-source.ps1` 不编译，不生成 EXE / APK；`build-local.ps1` 的 `All` 目标构建 Tauri Setup/Portable、Avalonia Portable 与 Android APK；Avalonia 也可独立运行 `build-avalonia-desktop.ps1` + `package-avalonia-portable.ps1`。源码 ZIP 只是供接收方重新构建的完整快照，不含 NuGet/npm/Cargo 已下载依赖或本地密钥。
 
 
 
@@ -273,6 +299,9 @@ Get-FileHash .\dist\source\StockCount-Source-v0.2.0-local.zip -Algorithm SHA256
 | Rust/MSVC 链接失败 | 检查 `rustc -vV` 的 host 是否为 x86_64-pc-windows-msvc，安装 Visual Studio C++ Build Tools 与 Windows SDK |
 | npm 或 Tauri 找不到命令 | 安装 Node.js 22+、Rust，先 npm install，再运行构建 |
 | Portable 无法启动 API 或保存设置 | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录，`server-settings.json` 和 `server-logs.db` 均可在当前用户可写的目录中创建、WebView2 已安装 |
+| Avalonia Portable 缺少依赖 | 使用 package-avalonia-portable.ps1 打包完整 publish 目录；Avalonia 无需 WebView2，Tauri 则需要 |
+| Avalonia 升级被拒绝 | 先关闭 StockCount.Server.Desktop、Tauri 和 StockCount.Api，确认 ZIP 不含现场设置、SQLite 或签名私钥 |
+| Obsidian / Markdown 检查失败 | 执行 `python scripts/check_obsidian_links.py`，目录不能使用 `variants/` 这类相对链接，应链接具体文件或 GitHub 目录 URL |
 | SQLite 文件锁或 Windows 文件被占用 | 停止 API 并退出管理器，再运行 deploy-local；不要手工删 WAL/SHM |
 | ADB 无设备或 unauthorized | 检查数据线、USB 调试、手机授权弹框；多设备用 -DeviceSerial |
 | APK 签名不兼容 | 不自动卸载；先处理应用中可能存在的未知提交原 UUID 与数据备份 |

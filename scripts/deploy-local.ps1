@@ -14,7 +14,7 @@
 #>
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory)][ValidateSet('Android','WindowsSetup','WindowsPortable')]
+  [Parameter(Mandatory)][ValidateSet('Android','WindowsSetup','WindowsPortable','AvaloniaPortable')]
   [string]$Target,
   [Parameter(Mandatory)][string]$PackagePath,
   [string]$Destination,
@@ -30,6 +30,10 @@ if (-not (Test-Path -LiteralPath $package -PathType Leaf)) {
 }
 
 switch ($Target) {
+  'AvaloniaPortable' {
+    & (Join-Path $PSScriptRoot 'deploy-avalonia-portable.ps1') -PackagePath $package -Destination $Destination -Launch:$Launch
+    if (-not $?) { throw 'Avalonia Portable upgrade failed.' }
+  }
   'WindowsSetup' {
     if ([IO.Path]::GetExtension($package) -ne '.exe') { throw 'Setup must be an .exe file.' }
     Write-Host "Starting the NSIS installer: $package" -ForegroundColor Cyan
@@ -81,7 +85,7 @@ switch ($Target) {
     # The sidecar writes SQLite logs adjacent to the desktop EXE. Never swap
     # binaries while a live API holds a .db-wal or .db-shm database open.
     $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-      $_.ProcessName -in @('stockcount-server-console','StockCount.Api')
+      $_.ProcessName -in @('stockcount-server-console','StockCount.Server.Desktop','StockCount.Api')
     })
     if ($running.Count -gt 0) {
       throw 'StockCount desktop/API is still running. Stop the service, close the manager, and rerun before updating. SQLite logs must not be touched while running.'

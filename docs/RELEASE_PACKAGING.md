@@ -3,14 +3,14 @@ aliases: ["StockCount 统一发布", "StockCount Release"]
 title: StockCount · 统一 GitHub Releases 发布与免安装版
 date: 2026-11-23
 status: android-release-workflow-added-awaiting-signing-secrets
-tags: [StockCount, GitHubActions, APK, Tauri, Windows, Portable, Release]
+tags: [StockCount, GitHubActions, APK, Tauri, Avalonia, Windows, Portable, Release]
 ---
 
 # 统一发布：APK + Setup + Portable
 
 > CI 配置已加入。是否存在真实 Release 以及文件可用性，以 [Releases](https://github.com/969981/StockCount/releases) 和实际 [Actions](https://github.com/969981/StockCount/actions/workflows/publish-stockcount.yml) 成功记录为准。**没有同时通过 Android + Windows 构建时绝不发布缺少文件的版本。**
 
-**版本说明**：`v0.2.0-preview.2` 已采用修复后的 SQLite 依赖并发布 Debug APK 与 Windows Setup/Portable。下一个统一版本 `v0.2.0-preview.3` 新增 **Android Release 签名 APK**。需要先在仓库配置四个 GitHub Actions Secrets，才会生成并上传正式签名版；缺少它时只做 Release 代码编译检查，**不创建不完整的 GitHub Release**。参见 [Android 正式签名指南](ANDROID_RELEASE_SIGNING.md)。
+**版本说明**：历史 `v0.2.0-preview.2` 已采用修复后的 SQLite 依赖并发布 Debug APK 与 Tauri Windows Setup/Portable。下一个统一版本 `v0.2.0-preview.3` 新增 **Android Release 签名 APK**。需要先在仓库配置四个 GitHub Actions Secrets，才会生成并上传正式签名版；缺少它时只做 Release 代码编译检查，**不创建不完整的 GitHub Release**。参见 [Android 正式签名指南](ANDROID_RELEASE_SIGNING.md)。
 
 ## 本地 PowerShell 一键创建签名与发布 GitHub Release
 
@@ -69,11 +69,11 @@ pwsh -NoProfile -File .\scripts\publish-stockcount-release.ps1 -Version 0.2.0-pr
 # 查看编译是否成功；触发成功不等于 Release 已发布
 gh run list -R 969981/StockCount --workflow publish-stockcount.yml --limit 5
 
-# 只有 Actions 全部成功，且四个程序文件与 SHA256SUMS 均存在，才算发布成功
+# 只有 Actions 全部成功，且五个程序文件与 SHA256SUMS 均存在，才算发布成功
 gh release view v0.2.0-preview.3 -R 969981/StockCount
 ```
 
-发布流程使用 [publish-stockcount.yml](../.github/workflows/publish-stockcount.yml) 的 `workflow_dispatch.inputs.version`，由 GitHub Actions 在 main 上编译 **Android Debug Signed APK、Android Release Signed APK、Windows Setup.exe、Windows Portable.zip**，再生成 `SHA256SUMS.txt`，**五份资产同时发布到一个预发布版本**。任一构建、签名或完整性校验失败，不创建 Release，也不把 unsigned APK 冒充正式安装包。标签已存在时拒绝覆盖。
+发布流程使用 [publish-stockcount.yml](../.github/workflows/publish-stockcount.yml) 的 `workflow_dispatch.inputs.version`，由 GitHub Actions 在 main 上编译 **Android Debug Signed APK、Android Release Signed APK、Tauri Windows Setup.exe、Tauri Windows Portable.zip、Avalonia Windows Portable.zip**，再生成 `SHA256SUMS.txt`，**六份资产（五份程序 + SHA256）同时发布到一个预发布版本**。任一构建、签名或完整性校验失败，不创建 Release，也不把 unsigned APK 冒充正式安装包。标签已存在时拒绝覆盖。
 
 **版本注意**：`-Version` 负责 Release 标签和产物文件名，**不自动提升安卓 `ApplicationVersion`（versionCode）或 Windows 产品版本**。每次准备新版本时，需先修改提交相应元数据，且 Android versionCode 必须比设备上已安装的版本高；否则即使签名相同也可能无法覆盖升级。要发布其它版本请将示例版本号替换为相应 SemVer。
 
@@ -93,15 +93,16 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 
 本地 `build-local.ps1` 与 `package-windows-portable.ps1` 默认自动读取配置版本；显式传入版本时只接受与项目基础版本一致的预览后缀（例如 `0.2.0-preview.3`）。GitHub Releases 的版本校验同样拒绝 `1.0.1` 标签配 `0.2.0` 程序。准备新正式版本时需先提交工程版本变更，再触发 Actions 发布。
 
-## 输出资产
+## 输出资产（两份 Android APK + 三份 Windows 程序）
 
 | 文件 | 平台 | 内容 |
 | --- | --- | --- |
 | `StockCount-PDA-v0.2.0-preview.3-Android-Debug-Signed.apk` | Android PDA | Debug 配置、调试证书签名，用于现场联调 |
 | `StockCount-PDA-v0.2.0-preview.3-Android-Release-Signed.apk` | Android PDA | Release 配置、长期专用 keystore 签名；必须先配置 Secrets |
 | `StockCount-Server-v0.2.0-preview.3-Windows-x64-Setup.exe` | Windows x64 | Tauri 2 + React + ASP.NET Core 10 Sidecar 安装版 |
-| `StockCount-Server-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | 程序、Sidecar、启动脚本及说明；解压即用 |
-| `SHA256SUMS.txt` | 多平台 | 以上 **4 个**可执行文件的 SHA256 校验清单 |
+| `StockCount-Server-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | Tauri 程序、Sidecar、启动脚本及说明；解压即用 |
+| `StockCount-Avalonia-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | Avalonia .NET 自包含桌面管理器、完整运行时依赖、API 与启动脚本 |
+| `SHA256SUMS.txt` | 多平台 | 以上 **5 个**可执行文件的 SHA256 校验清单 |
 
 **预览版说明**：Debug 签名和正式 Release keystore 签名不同，默认同一 Android 包 ID，互相不能直接覆盖安装；切换前先确认待提交 UUID，妥善迁移或备份数据。Windows 尚无代码签名，可能出现系统 SmartScreen 警示；不得关闭安全机制或从非官方地址安装。
 
@@ -111,10 +112,24 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 2. 直接执行 `Start-StockCount.cmd` 或 `stockcount-server-console.exe`。与 Setup 使用相同的桌面UI和 C# API。
 3. 保持 `StockCount.Api.exe` 与 Tauri exe **处于同一目录**。这是运行时 Sidecar 依赖，不是可丢弃的临时安装程序。
 4. 本机日志文件为 `<exe目录>\server-logs.db`，可能生成 WAL/SHM 文件。不要放进受写保护的 `Program Files`，也不应直接从压缩包内部启动。
-5. **免安装仅指免 Setup，不代表彻底免依赖**：Windows WebView2 Runtime 必须存在。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
+5. **免安装仅指免 Setup，不代表彻底免依赖**：此处 Tauri 版本需要 Windows WebView2 Runtime；Avalonia 版本不需要。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
 6. 非敏感设置文件 `server-settings.json` 与 `server-logs.db` 一样，保存在 **Tauri 主程序 EXE 同目录**；便携版 ZIP 不预置现场配置。仅当同目录配置不存在时，首次运行会校验并复制旧 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，保留旧文件且不覆盖已有同目录配置。SQL 密码/设备密钥仍在 **Windows Credential Manager**，因此便携版跨机器或 Windows 账户移动后需要重新设置密钥。程序请解压到当前用户可写目录，不要放在受保护的 `Program Files`。
 7. 关闭 Tauri 管理器会停止该用户会话的 API Sidecar。日志/密钥备份以及更新时需先停止服务。
 
+## Avalonia 原生 Windows Portable（独立于 Tauri）
+
+- 使用 `StockCount-Avalonia-v*-Windows-x64-Portable.zip`，解压到当前 Windows 用户拥有写入权限的目录；启动 `Start-StockCount-Avalonia.cmd` 或 `StockCount.Server.Desktop.exe`。
+- 该 ZIP 包含 .NET 10 自包含桌面和 API 的全部运行文件，不需要 WebView2，也不能只提取两份 EXE。
+- 升级使用 [deploy-local.ps1](../scripts/deploy-local.ps1) 的 `-Target AvaloniaPortable`；脚本处理完整依赖、备份程序文件、SHA256 校验、出错尽力恢复。
+- 安装包内不得包含 `server-settings.json`、`server-logs.db`、`-wal`/`-shm` 或证书密钥；升级不修改这些文件，Credential Manager 仍由当前 Windows 账户维护。
+- 与 Tauri 请使用不同的安装目录，不要并发启动两个管理器的 API；写入门禁仍需要 XTEST/COB 独立核验。
+
+```powershell
+pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
+pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
+  -PackagePath .\dist\local\StockCount-Avalonia-v0.2.0-local-Windows-x64-Portable.zip `
+  -Destination D:\Apps\StockCount-Avalonia -Launch
+```
 ## Setup 安装版
 
 - 默认 NSIS `currentUser` 模式，减少管理员权限要求，选择当前用户可写的安装路径。
@@ -126,8 +141,8 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 工作流：[publish-stockcount.yml](../.github/workflows/publish-stockcount.yml)。
 
 1. Android Windows Runner：安装 MAUI Android workload，运行 Core 测试，生成 Debug APK，同时编译 Release 配置。只有 GitHub Secrets 配齐时，才用长期 JKS 签名并通过 apksigner 验证，上传第二个 Release APK；未签名产物绝不发布。
-2. Windows x64 Runner：编译 ASP.NET Core、发布 self-contained Sidecar、构建 Tauri NSIS Setup，运行 [便携版打包脚本](../scripts/package-windows-portable.ps1)；验证主程序、Sidecar、启动脚本和压缩包内容。
-3. 两个 Job 都成功后，Linux Runner 必须检查 **两个签名 APK、Setup.exe、Portable.zip 共四个可执行文件**，生成 SHA256SUMS，再将五个文件发布到同一个 GitHub 预发布版本。签名 Secrets 缺失则发布任务失败，不会生成不完整的版本。
+2. Windows x64 Runner：编译 ASP.NET Core、发布 self-contained Sidecar、构建 Tauri NSIS Setup/Portable，另运行 [Avalonia 发布脚本](../scripts/build-avalonia-desktop.ps1) 和 [Avalonia Portable 打包脚本](../scripts/package-avalonia-portable.ps1)，验证两个 Windows UI 的各自安装包、API、图标和运行依赖。
+3. 两个 Job 都成功后，Linux Runner 必须检查 **两个签名 APK、Tauri Setup.exe/Portable.zip、Avalonia Portable.zip 共五个程序资产**，生成 SHA256SUMS，再将五份程序资产及 SHA256SUMS.txt（共六份资产）发布到同一个 GitHub 预发布版本。签名 Secrets 缺失则发布任务失败，不会生成不完整的版本。
 4. PR 只构建、不发布；`workflow_dispatch` 显式发布，或在 main 的提交消息中包含 `[publish-stockcount]` 且修改触发路径。发布标签 `v0.2.0-preview.3` 已存在时禁止静默覆盖。
 5. Android keystore 通过仓库 Secrets 注入，无证书不能发布 Release；Windows 签名证书管理仍需独立完善，不能把未验收的预览版当作生产认证。
 

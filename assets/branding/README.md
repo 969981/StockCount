@@ -41,6 +41,18 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 
 首次生成 Windows 图标需要 Node.js 22+ 和 npm：共用项目已有的 `@tauri-apps/cli`，脚本会在缺失依赖时调用 `npm install`。生成的 `*.ico`、Android mipmap PNG 由构建产生，不纳入源码 Git 提交；原始 SVG 才是唯一可维护的设计源。
 
+## Windows Avalonia Portable 图标随软件部署
+
+新的服务器图标会在 Windows Avalonia 构建时生成 ICO 并写入 EXE 资源，因此 Portable ZIP **无需另外复制 SVG/ICO 到运行目录**。请使用完整发布目录打包，避免缺失 .NET 原生依赖：
+
+```powershell
+pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
+pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
+  -PackagePath .\dist\local\StockCount-Avalonia-v0.2.0-local-Windows-x64-Portable.zip `
+  -Destination D:\Apps\StockCount-Avalonia -Launch
+```
+
+正式统一发布流程还会将 Avalonia Portable ZIP 作为独立的第五份程序资产上传，和 Android Debug/Release APK、Tauri Setup/Portable 并列。提交 `main` 只会触发 CI 构建与 QA 产物，不会绕过 Android JKS 签名门禁自动创建 Release。完整部署说明：[本地部署手册](../../docs/LOCAL_BUILD_DEPLOY.md) · [发布指南](../../docs/RELEASE_PACKAGING.md)。
 ## 发布验证
 
 - GitHub Actions 的 Avalonia 构建检查真实 `server.ico` 和 Windows EXE。
