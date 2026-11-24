@@ -11,7 +11,7 @@ public interface IInventoryReadRepository
         CancellationToken cancellationToken);
     Task<InventoryCountDto?> GetCountAsync(
         SelectedEnvironment environment, string countNumber, CancellationToken cancellationToken);
-    Task<LocationRecord?> FindLocationAsync(
+    Task<LocationLookup> InspectLocationAsync(
         SelectedEnvironment environment, string siteCode, string warehouseCode,
         string locationCode, CancellationToken cancellationToken);
     Task<LabelRecord?> FindLabelAsync(
@@ -22,11 +22,11 @@ public interface IInventoryReadRepository
         CancellationToken cancellationToken);
 }
 
-public sealed class LocationRecord
+public sealed class LocationLookup
 {
-    public string LocationCode { get; set; } = string.Empty;
-    public string SiteCode { get; set; } = string.Empty;
-    public string WarehouseCode { get; set; } = string.Empty;
+    public long TotalMatches { get; set; }
+    public long ScopedMatches { get; set; }
+    public string? LocationCode { get; set; }
 }
 public sealed class LabelRecord
 {

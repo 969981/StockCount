@@ -79,11 +79,11 @@ up: "[[docs/development/00-研发规范地图]]"
 ```json
 {
   "countNumber": "COUNT-DEMO-001",
-  "rawCode": "LC.LOC-DEMO-01"
+  "rawCode": "LC.DEMO-01"
 }
 ```
 
-返回 `locationCode`、`siteCode`、`warehouseCode`、`isValid`、`message`。示例形式不意味着所有真实地点码都带 `LC.`；解析协议通过真机和主数据核验。若超出 `XCOUTD.LOC_0` 10 字符，明确报错，不截断。
+返回 `locationCode`、`siteCode`、`warehouseCode`、`isValid`、`message`。现场需求确认（2026-11-24）：识别 `LC.` 前缀并提取库位值，兼容直接传纯库位编码。长度约束针对提取值，最多 10 字符，不截断。返回 locationCode 为数据库库位值（不含协议前缀），最终写入 XCOUTD.LOC_0 同样使用该值。错误码：LOCATION_FORMAT_INVALID（422）、LOCATION_NOT_FOUND（404）、LOCATION_OUTSIDE_WAREHOUSE（422）、LOCATION_AMBIGUOUS（409）、LOCATION_LOOKUP_UNAVAILABLE（503）。
 
 ### 3.3 扫描标签
 

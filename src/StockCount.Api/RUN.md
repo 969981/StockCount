@@ -59,7 +59,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/v1/inventory-counts?pageSize=20" -H
 - `/health` 返回 Running 只证明进程活着（没有连接数据库）；`/ready` 返回数据库 Reachable 才代表从本进程能执行 SELECT 1。
 - 分页请求使用 `pageSize=1..100`、`cursor` 为 `nextCursor` 返回的**数值偏移量字符串**，不会按 `CUNSTA_0` 状态预过滤；这种 OFFSET 分页在实时新增/修改单据时可能出现页边界变化。
 - `countType` 在 SQL 中明确 CAST 成 nvarchar，以兼容 XTEST/COB 的类型差异。
-- POST 库位校验当前**只支持扫码文本恰好为 STOLOC.LOC_0**，且使用表头站点+仓库+库位复合定位；`LC.` 等现场协议仍需在 PDA 真机验证后加入解析器，不能擅自截掉前缀。
+- POST 库位校验支持现场确认的 `LC.` + 库位值协议（例如 `LC.DEMO-01`），兼容纯库位值。先去掉一次 LC 前缀，再校验 1–10 字符，按当前帐套 STOLOC.LOC_0 与盘点表头站点、仓库匹配。返回数据库库位值，不含 LC 前缀；区分格式错误、不存在、仓库不匹配、重复记录与查询失败。
 - POST 标签解析按完整 `XLABELDTL.QRCOD_0` 过滤，并关联 ITMMASTER 品名/规格，**不按 `STA_0` 过滤**；标签原数量仅作参考，不是实盘输入。
 - 如无正确连接串或 SQL 不可达，`/ready` 返回 503；读接口的异常会由 ASP.NET Core 异常处理中间件转换为服务器错误，不能当成正常业务数据。
 
