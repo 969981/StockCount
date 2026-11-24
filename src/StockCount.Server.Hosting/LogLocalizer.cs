@@ -37,6 +37,7 @@ public static class LogLocalizer
             "Microsoft.Hosting.Lifetime" => "服务生命周期",
             "Microsoft.AspNetCore.Server.Kestrel.Core.KestrelServer" => "HTTP 服务器",
             "StockCount.Api.Http" => "接口访问",
+            "StockCount.Api.Connection" => "PDA 连接诊断",
             _ => raw.Category.StartsWith("StockCount.", StringComparison.Ordinal)
                 ? "盘点服务 · " + raw.Category
                 : raw.Category
