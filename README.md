@@ -91,12 +91,12 @@ HTTP 不加密设备密钥或盘点数据，因此必须使用隔离可信 PDA W
 - [完整 PowerShell 7 使用手册](docs/LOCAL_BUILD_DEPLOY.md)：环境准备、编译 Android APK/Windows Setup/Portable、ADB 安装、Windows 免安装升级和源码归档。
 - [一键本地编译](scripts/build-local.ps1)：`-Target All|Windows|Android`，失败即停止，输出 `dist/local/` 与 SHA256。
 - [部署到本机或海康 PDA](scripts/deploy-local.ps1)：Windows Setup 向导、Portable 保留 SQLite 日志并备份旧程序、Android `adb install -r -t`。
-- [打包完整 Git 源码](scripts/package-source.ps1)：从指定 Commit/Tag 导出 `dist/source/StockCount-Source-v*.zip`，不包含 `.git`、本地密钥或编译文件。
+- [打包完整 Git 源码](scripts/package-source.ps1)：从指定 Commit/Tag 导出 `dist/source/StockCount-Source-短CommitHash.zip`，自动按实际提交的至少 7 位短哈希命名，不包含 `.git`、本地密钥或编译文件。
 - [Windows 脚本回归测试](.github/workflows/local-build-tooling-check.yml)：检查 PowerShell 语法、免安装升级和源码 ZIP 完整性。
 
 ```powershell
 pwsh -File .\scripts\build-local.ps1 -Target All -Version 0.2.0-local
-pwsh -File .\scripts\package-source.ps1 -Ref HEAD -Version 0.2.0-local
+pwsh -File .\scripts\package-source.ps1
 ```
 ## 跨平台安装包与 Releases
 
