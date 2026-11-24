@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
-using System.Text;
+using Microsoft.AspNetCore.Routing;
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using System.Text.Encodings.Web;
 
@@ -99,8 +100,14 @@ public sealed class ApiExchangeLogging(RequestDelegate next, ILogger<ApiExchange
         }
     }
 
-    private static string Limit(string value, int max) =>
-        value.Length <= max ? value : value[..max] + "…（已截断）";
+    private static string Limit(string value, int max)
+    {
+        // Defense in depth for credential-like assignments embedded inside otherwise allowed strings.
+        var safe = Regex.Replace(value,
+            @"(?i)\b(password|pwd|device[-_]?key|access[-_]?key|api[-_]?key|authorization|token|secret)\s*[:=]\s*[^;\s,]+",
+            "$1=[REDACTED]");
+        return safe.Length <= max ? safe : safe[..max] + "…（已截断）";
+    }
 
     private static string FormatBody(CaptureStream capture, string? contentType)
     {
