@@ -27,9 +27,10 @@ public sealed class ApiDocumentationTests
             var html = await client.GetStringAsync("/docs/index.html");
             Assert.Contains("swagger-ui-bundle.js", html);
             Assert.Contains("/docs/zh-cn.js", html);
-            Assert.Contains("/openapi/v1.json", html);
+            var configScript = await client.GetStringAsync("/docs/index.js");
+            Assert.Contains("/openapi/v1.json", configScript);
             Assert.Contains("StockCount", html);
-            Assert.Contains("supportedSubmitMethods", html);
+            Assert.Contains("supportedSubmitMethods", configScript);
             var script = await client.GetStringAsync("/docs/zh-cn.js");
             Assert.Contains("在线测试", script);
             using var asset = await client.GetAsync("/docs/swagger-ui-bundle.js");

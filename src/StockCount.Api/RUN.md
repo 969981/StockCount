@@ -59,7 +59,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/v1/inventory-counts?pageSize=20" -H
 - `/health` 返回 Running 只证明进程活着（没有连接数据库）；`/ready` 返回数据库 Reachable 才代表从本进程能执行 SELECT 1。
 - 分页请求使用 `pageSize=1..100`、`cursor` 为 `nextCursor` 返回的**数值偏移量字符串**，不会按 `CUNSTA_0` 状态预过滤；这种 OFFSET 分页在实时新增/修改单据时可能出现页边界变化。
 - `countType` 在 SQL 中明确 CAST 成 nvarchar，以兼容 XTEST/COB 的类型差异。
-- POST 库位校验当前**只支持扫码文本恰好为 STOLOC.LOC_0**，且使用表头站点+仓库+库位复合定位；`LC.` 等现场协议仍需在 PDA 真机验证后加入解析器，不能擅自截掉前缀。
+- POST 库位校验支持现场确认的 `LC.` + 库位值协议（例如 `LC.DEMO-01`），兼容纯库位值。先去掉一次 LC 前缀，再校验 1–10 字符，按当前帐套 STOLOC.LOC_0 与盘点表头站点、仓库匹配。返回数据库库位值，不含 LC 前缀；区分格式错误、不存在、仓库不匹配、重复记录与查询失败。
 - POST 标签解析按完整 `XLABELDTL.QRCOD_0` 过滤，并关联 ITMMASTER 品名/规格，**不按 `STA_0` 过滤**；标签原数量仅作参考，不是实盘输入。
 - 如无正确连接串或 SQL 不可达，`/ready` 返回 503；读接口的异常会由 ASP.NET Core 异常处理中间件转换为服务器错误，不能当成正常业务数据。
 
@@ -110,6 +110,10 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
+
+## API 请求与响应明细日志
+
+业务 API 的每次请求完成后，写入一条 `StockCount.Api.Logging.ApiExchangeLogging` SQLite 日志：来源 IP/端口、HTTP 方法及路由、帐套、路径/查询入参、允许清单内的 JSON 入参和响应、HTTP 状态、请求耗时及关联编号。正文每侧限 8192 字节，超限或非 JSON 不记录原文；敏感请求头、未知 JSON 字段不写入。已接收的拒绝请求仍记录状态，未经读取的请求正文显示未读取。记录不改变请求/响应字节，不在公网暴露日志接口。旧日志与清理规则不变。真实业务日志必须按企业权限管理，不得上传公开仓库。
 
 ## 中文 Swagger 接口文档
 

@@ -104,18 +104,37 @@ public sealed class StockCountApiClient : ICountScanGateway
             (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)),
             null,ct);
 
-    public async Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
+    public async Task<LocationScanResult> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
     {
         try
         {
             var result=await ReadJsonAsync<ResolvedLocation>(
                 HttpMethod.Post,"/api/v1/locations/resolve",
                 new ResolveLocationRequest(countNumber,rawCode),ct);
-            return result.IsValid ? result.LocationCode : null;
+            return result.IsValid && !string.IsNullOrWhiteSpace(result.LocationCode)
+                ? new LocationScanResult(result.LocationCode)
+                : new LocationScanResult(null, "LOCATION_INVALID",
+                    LocationScanPolicy.Describe("LOCATION_INVALID"));
         }
-        catch (ScanApiException e) when (e.Code is "LOCATION_INVALID" or "COUNT_NOT_FOUND")
+        catch (ScanApiException e) when (e.Code is "LOCATION_INVALID" or "LOCATION_FORMAT_INVALID" or
+            "LOCATION_NOT_FOUND" or "LOCATION_OUTSIDE_WAREHOUSE" or "LOCATION_AMBIGUOUS" or
+            "COUNT_NOT_FOUND" or "LOCATION_LOOKUP_UNAVAILABLE" or "LOCATION_REQUEST_INVALID")
         {
-            return null;
+            return new LocationScanResult(null, e.Code,
+                e.Code == "LOCATION_REQUEST_INVALID" ? e.Message : LocationScanPolicy.Describe(e.Code));
+        }
+        catch (ScanApiException e)
+        {
+            var message = (int)e.StatusCode is 401 or 403
+                ? "库位查询被后台拒绝，请检查设备访问权限。"
+                : "库位查询失败，请检查后台服务或数据库连接（HTTP " + (int)e.StatusCode + "）。";
+            return new LocationScanResult(null, "LOCATION_LOOKUP_UNAVAILABLE", message);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch (Exception e)
+        {
+            return new LocationScanResult(null, "LOCATION_LOOKUP_UNAVAILABLE",
+                "库位查询失败：" + ConnectionDiagnostics.DescribeException(e));
         }
     }
 

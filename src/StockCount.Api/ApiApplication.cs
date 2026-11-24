@@ -44,11 +44,13 @@ public static class ApiApplication
         });
         
         var app = builder.Build();
+        // Capture outside exception handling so the log includes the actual problem response.
+        app.UseMiddleware<StockCount.Api.Logging.ApiExchangeLogging>();
         app.UseExceptionHandler();
         app.UseStockCountDocumentation();
 
         // Persist structured HTTP access records through the configured ILogger provider.
-        // Request bodies (including scanned QR data) and Authorization/DeviceKey headers are never logged.
+        // Detailed business JSON is captured by ApiExchangeLogging; credentials and unknown fields are excluded.
         app.Use(async (context, next) =>
         {
             var started = System.Diagnostics.Stopwatch.StartNew();
@@ -94,7 +96,7 @@ public static class ApiApplication
                         "PDA 连接结果：来源 {RemoteIp}，{Result}，HTTP {StatusCode}，耗时 {DurationMs} ms，诊断编号 {DiagnosticId}",
                         remote?.ToString() ?? "未知", result, status, started.ElapsedMilliseconds, probeId);
                 }
-                else if (!health)
+                else if (!health && !path.StartsWithSegments("/api/v1"))
                 {
                     var logger = loggerFactory.CreateLogger("StockCount.Api.Http");
                     logger.LogInformation("HTTP {Method} {Path} -> {StatusCode} ({DurationMs} ms)",
@@ -226,29 +228,43 @@ public static class ApiApplication
         
         app.MapPost("/api/v1/locations/resolve",
             async (HttpContext context, ResolveLocationRequest request, IInventoryReadRepository repository,
-                CancellationToken cancellationToken) =>
+                ILogger<Program> logger, CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
             if (string.IsNullOrWhiteSpace(request.CountNumber) || request.CountNumber.Length > 30 ||
-                string.IsNullOrWhiteSpace(request.RawCode) || request.RawCode.Length > 200)
-                return Error(400, "LOCATION_REQUEST_INVALID", "请输入有效盘点单号与库位码。", environment.Name);
-            var count = await repository.GetCountAsync(environment, request.CountNumber, cancellationToken);
-            if (count is null) return Error(404, "COUNT_NOT_FOUND", "未找到对应盘点单。", environment.Name);
-        
-            // Scan protocol (e.g. LC. prefix) has NOT yet been field-verified.
-            // V0.1 only accepts a raw code exactly equal to STOLOC.LOC_0.
-            var locationCode = request.RawCode.Trim();
-            if (locationCode.Length > 10)
-                return Error(422, "LOCATION_INVALID", "盘点库位超过 XCOUTD.LOC_0 的 10 字符上限。", environment.Name);
-        
-            var location = await repository.FindLocationAsync(environment, count.SiteCode,
-                count.WarehouseCode, locationCode, cancellationToken);
-            return location is null
-                ? Error(422, "LOCATION_INVALID", "当前站点与仓库不存在该库位，或扫码协议尚未适配。", environment.Name)
-                : Results.Ok(new ResolvedLocation(environment.Name, location.LocationCode,
-                    location.SiteCode, location.WarehouseCode, true, null));
+                request.CountNumber.Any(char.IsControl))
+                return Error(400, "LOCATION_REQUEST_INVALID", "盘点单号无效，请重新选择盘点单。", environment.Name);
+
+            if (!LocationScanPolicy.TryParse(request.RawCode, out var locationCode))
+                return Error(422, "LOCATION_FORMAT_INVALID",
+                    LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"), environment.Name);
+
+            try
+            {
+                var count = await repository.GetCountAsync(environment, request.CountNumber, cancellationToken);
+                if (count is null)
+                    return Error(404, "COUNT_NOT_FOUND", LocationScanPolicy.Describe("COUNT_NOT_FOUND"), environment.Name);
+                var matches = await repository.InspectLocationAsync(environment, count.SiteCode,
+                    count.WarehouseCode, locationCode, cancellationToken);
+                var code = LocationScanPolicy.ClassifyLookup(matches.TotalMatches, matches.ScopedMatches);
+                if (code is not null)
+                {
+                    logger.LogInformation("库位校验未通过：帐套 {Environment}，原因 {Code}", environment.Name, code);
+                    return Error(code == "LOCATION_NOT_FOUND" ? 404 : code == "LOCATION_AMBIGUOUS" ? 409 : 422,
+                        code, LocationScanPolicy.Describe(code), environment.Name);
+                }
+                return Results.Ok(new ResolvedLocation(environment.Name, matches.LocationCode!,
+                    count.SiteCode, count.WarehouseCode, true, null));
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch (Exception error)
+            {
+                logger.LogWarning(error, "库位查询失败：帐套 {Environment}", environment.Name);
+                return Error(503, "LOCATION_LOOKUP_UNAVAILABLE",
+                    LocationScanPolicy.Describe("LOCATION_LOOKUP_UNAVAILABLE"), environment.Name);
+            }
         });
-        
+
         app.MapPost("/api/v1/labels/resolve",
             async (HttpContext context, ResolveLabelRequest request, IInventoryReadRepository repository,
                 CancellationToken cancellationToken) =>

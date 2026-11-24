@@ -68,7 +68,7 @@ MV-IDP5204 实体扫描键
 - 原厂输出可分 `FOCUSMODE`、`FOCUSANDCOVERMODE`、`BROADCASTMODE`、`CLIPBOARDMODE`。为了避免扫码内容误进入正在编辑的人工数量框，**StockCount 首选 BROADCASTMODE**。
 - 建议 `SINGLEMODE`、`singleTime=3000`（源于原厂示例），但不强制推断其它模式无法工作。
 - **不要**在厂商服务中随意开启前缀/后缀过滤、字符剪切、位置截取；二维码内部 `@@`、`|` 等分隔符必须保留，平台层仅移除扫码终止符 CR/LF。
-- 扫描 `LC.` 只是曾见到的库位前缀示例，不代表所有场景都合法；扫码原文交给后端校验，库位按站点 + 仓库 + 库位匹配。
+- `LC.` + 库位值协议已由现场需求确认（2026-11-24）；硬件层保留原始扫码内容，Core 与 API 解析器去掉一次前缀并校验，按站点 + 仓库 + 库位匹配。实际真机和库位主数据仍需验收。
 - `ScanCodeType` 是设备读码制式信息，**不是** Sage X3 的 `XLABELDTL.STA_0` 或盘点单 `CUNSTA_0` 状态码。
 - 当扫码硬件配置为键盘/焦点输出时，Receiver 收不到 `com.service.scanner.data` 不一定代表扫描枪坏；先检查输出模式。
 
