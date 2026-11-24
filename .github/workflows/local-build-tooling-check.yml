@@ -119,8 +119,11 @@ jobs:
         run: ./tests/LocalTooling.Smoke.ps1
       - name: Verify generated source package checksum
         run: |
-          $path = 'dist/ci-source-test/StockCount-Source-v0.2.0-local.zip'
+          $commit = (& git rev-parse HEAD).Trim()
+          $short = (& git rev-parse --short=7 $commit).Trim()
+          $base = "dist/ci-source-test/StockCount-Source-$short"
+          $path = "$base.zip"
           $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
-          $text = Get-Content 'dist/ci-source-test/StockCount-Source-v0.2.0-local.SHA256SUMS.txt' -Raw
+          $text = Get-Content "$base.SHA256SUMS.txt" -Raw
           if (-not $text.StartsWith($hash)) { throw 'Source ZIP checksum mismatch.' }
           Write-Host "Verified source ZIP SHA256: $hash"

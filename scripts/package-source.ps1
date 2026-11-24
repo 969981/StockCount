@@ -4,17 +4,19 @@
   Export a reproducible ZIP of committed StockCount source code, docs,
   workflows and scripts, without Git history or untracked local files.
 .EXAMPLE
-  pwsh -File .\scripts\package-source.ps1 -Version 0.2.0-local
+  pwsh -File .\scripts\package-source.ps1
 .EXAMPLE
-  pwsh -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2 -Version 0.2.0-preview.2
+  pwsh -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2
 .NOTES
   Refuses a dirty working tree by default so changes are not silently lost.
+  The archive name uses the selected commit abbreviation (at least 7 hex digits).
+  -Version is retained as optional SourceInfo metadata only, not a filename.
   -AllowDirtySnapshot archives ONLY the selected commit and warns that
   uncommitted files are intentionally excluded.
 #>
 [CmdletBinding()]
 param(
-  [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version = '0.2.0-local',
+  [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version,
   [string]$Ref = 'HEAD',
   [string]$OutputDirectory = 'dist\source',
   [switch]$AllowDirtySnapshot
@@ -47,6 +49,16 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) {
   throw "Git reference cannot be resolved to a commit: $Ref"
 }
 $commit = $commit.Trim()
+# Resolve abbreviation from the selected commit, not the working HEAD.
+# Git extends seven characters when necessary to keep it unique.
+$shortCommit = (& git -C $root rev-parse --short=7 $commit | Select-Object -First 1)
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($shortCommit)) {
+  throw "Cannot abbreviate commit: $commit"
+}
+$shortCommit = $shortCommit.Trim()
+if ($shortCommit -notmatch '^[0-9a-f]{7,40}$' -or -not $commit.StartsWith($shortCommit, [StringComparison]::Ordinal)) {
+  throw "Invalid short commit hash: $shortCommit"
+}
 $tracked = @(& git -C $root -c core.quotePath=false ls-tree -r --name-only $commit)
 if ($LASTEXITCODE -ne 0 -or $tracked.Count -eq 0) { throw 'Selected commit contains no tracked files.' }
 
@@ -98,7 +110,7 @@ $out = if ([IO.Path]::IsPathRooted($OutputDirectory)) {
   [IO.Path]::GetFullPath($OutputDirectory)
 } else { [IO.Path]::GetFullPath((Join-Path $root $OutputDirectory)) }
 New-Item -Path $out -ItemType Directory -Force | Out-Null
-$folder = "StockCount-Source-v$Version"
+$folder = "StockCount-Source-$shortCommit"
 $zip = Join-Path $out "$folder.zip"
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 & git -C $root archive --format=zip "--prefix=$folder/" "--output=$zip" $commit
@@ -165,8 +177,9 @@ $restoreInfo = if ($isModernSnapshot) {
 "$hash  $folder.zip" | Set-Content -LiteralPath (Join-Path $out "$folder.SHA256SUMS.txt") -Encoding ascii
 @"
 StockCount SOURCE SNAPSHOT
-Version: $Version
+Version label (optional): $Version
 Ref: $Ref
+Short commit: $shortCommit
 Commit: $commit
 ZIP: $folder.zip
 SHA256: $hash
@@ -176,5 +189,5 @@ Restore: extract, then follow docs/LOCAL_BUILD_DEPLOY.md.
 $restoreInfo
 "@ | Set-Content -LiteralPath (Join-Path $out "$folder.SourceInfo.txt") -Encoding utf8
 Write-Host "SOURCE ZIP CREATED: $zip" -ForegroundColor Green
-Write-Host "Commit: $commit"
+Write-Host "Commit: $commit ($shortCommit)"
 Write-Host "SHA256: $hash"

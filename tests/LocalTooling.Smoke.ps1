@@ -102,8 +102,26 @@ try {
     if (-not $rejectedSensitive) { throw 'Avalonia ZIP packager accepted live user settings' }
 
     $sourceOut = Join-Path $repo 'dist\ci-source-test'
-    & (Join-Path $repo 'scripts/package-source.ps1') -Version '0.2.0-local' -Ref HEAD -OutputDirectory $sourceOut
-    $sourceZip = Join-Path $sourceOut 'StockCount-Source-v0.2.0-local.zip'
+    $sourceCommit = (& git -C $repo rev-parse HEAD).Trim()
+    $sourceShort = (& git -C $repo rev-parse --short=7 $sourceCommit).Trim()
+    $sourceFolder = "StockCount-Source-$sourceShort"
+    & (Join-Path $repo 'scripts/package-source.ps1') -OutputDirectory $sourceOut
+    $sourceZip = Join-Path $sourceOut "$sourceFolder.zip"
+    $info = Get-Content -LiteralPath (Join-Path $sourceOut "$sourceFolder.SourceInfo.txt") -Raw
+    if (!$info.Contains("Commit: $sourceCommit") -or !$info.Contains("Short commit: $sourceShort")) {
+        throw 'SourceInfo does not record the actual archived commit'
+    }
+    $digest = (Get-FileHash -LiteralPath $sourceZip -Algorithm SHA256).Hash.ToLowerInvariant()
+    $checksum = (Get-Content -LiteralPath (Join-Path $sourceOut "$sourceFolder.SHA256SUMS.txt") -Raw).Trim()
+    if ($checksum -ne "$digest  $sourceFolder.zip") { throw 'Source checksum filename or digest mismatch' }
+    # Explicit commit and old -Version callers must produce the same archive name and bytes.
+    & (Join-Path $repo 'scripts/package-source.ps1') -Ref $sourceCommit -Version '0.2.0-local' -OutputDirectory $sourceOut
+    if ((Get-FileHash -LiteralPath $sourceZip -Algorithm SHA256).Hash.ToLowerInvariant() -ne $digest) {
+        throw 'Source ZIP is not reproducible for the same commit'
+    }
+    if (@(Get-ChildItem -LiteralPath $sourceOut -File -Filter '*.zip').Count -ne 1) {
+        throw 'Legacy version label changed the source ZIP name'
+    }
     if (-not (Test-Path $sourceZip)) { throw 'Git source ZIP was not created' }
     Add-Type -AssemblyName System.IO.Compression
     $archive = [IO.Compression.ZipFile]::OpenRead($sourceZip)
@@ -135,13 +153,13 @@ try {
             '.github/workflows/pda-android-build.yml'
         )
         foreach ($relative in $mustContain) {
-            $entry = "StockCount-Source-v0.2.0-local/$relative"
+            $entry = "$sourceFolder/$relative"
             if ($files -notcontains $entry) {
                 throw "Modern source ZIP is missing a required build input: $relative"
             }
         }
 
-        if ($files -notcontains 'StockCount-Source-v0.2.0-local/scripts/build-local.ps1') {
+        if ($files -notcontains "$sourceFolder/scripts/build-local.ps1") {
             throw 'Build script missing from source ZIP'
         }
         if (@($files | Where-Object { $_ -match '/(node_modules|\.git|bin|obj)/' }).Count -gt 0) {
