@@ -14,7 +14,7 @@
 #>
 [CmdletBinding()]
 param(
-  [Parameter(Mandatory)][ValidateSet('Android','WindowsSetup','WindowsPortable')]
+  [Parameter(Mandatory)][ValidateSet('Android','WindowsSetup','WindowsPortable','AvaloniaPortable')]
   [string]$Target,
   [Parameter(Mandatory)][string]$PackagePath,
   [string]$Destination,
@@ -30,6 +30,10 @@ if (-not (Test-Path -LiteralPath $package -PathType Leaf)) {
 }
 
 switch ($Target) {
+  'AvaloniaPortable' {
+    & (Join-Path $PSScriptRoot 'deploy-avalonia-portable.ps1') -PackagePath $package -Destination $Destination -Launch:$Launch
+    if (-not $?) { throw 'Avalonia Portable upgrade failed.' }
+  }
   'WindowsSetup' {
     if ([IO.Path]::GetExtension($package) -ne '.exe') { throw 'Setup must be an .exe file.' }
     Write-Host "Starting the NSIS installer: $package" -ForegroundColor Cyan
