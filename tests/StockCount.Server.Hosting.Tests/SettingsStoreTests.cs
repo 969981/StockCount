@@ -29,6 +29,8 @@ public sealed class SettingsStoreTests
     {
         var settings = new ServerSettings();
         Assert.True(settings.AutoStartApi);
+        Assert.Equal("192.168.1.1,1433", settings.SqlServer);
+        Assert.Equal("PDA", settings.EffectiveX3AuditUser);
         Assert.False(settings.SchemaReviewed);
         Assert.False(settings.EnableTestWrites);
         Assert.False(settings.ProductionSchemaReviewed);
@@ -44,12 +46,39 @@ public sealed class SettingsStoreTests
                     draft.ProductionSchemaReviewed && draft.EnableProductionWrites);
         Assert.False(saved.SchemaReviewed || saved.EnableTestWrites ||
                      saved.ProductionSchemaReviewed || saved.EnableProductionWrites);
-        Assert.Throws<InvalidOperationException>(() => draft.Validate());
+        draft.Validate();
+        Assert.Equal("PDA", draft.EffectiveX3AuditUser);
         var connection = saved.Copy();
         connection.AllowLan = true;
         connection.AllowKeylessLan = true;
         connection.Validate();
         Assert.False(connection.EnableProductionWrites);
+    }
+
+    [Theory]
+    [InlineData("", "PDA")]
+    [InlineData("   ", "PDA")]
+    [InlineData("USR1", "USR1")]
+    public void OptionalAuditCodeResolvesWithoutBlockingWriteSettings(string value, string expected)
+    {
+        var settings = new ServerSettings
+        {
+            SchemaReviewed = true, EnableTestWrites = true,
+            ProductionSchemaReviewed = true, EnableProductionWrites = true,
+            X3AuditUser = value
+        };
+        settings.Validate();
+        Assert.Equal(expected, settings.EffectiveX3AuditUser);
+    }
+
+    [Fact]
+    public void InvalidCustomAuditCodeStillRejected()
+    {
+        var settings = new ServerSettings
+        {
+            SchemaReviewed = true, EnableTestWrites = true, X3AuditUser = "TOOLONG"
+        };
+        Assert.Throws<InvalidOperationException>(() => settings.Validate());
     }
 
     [Fact]

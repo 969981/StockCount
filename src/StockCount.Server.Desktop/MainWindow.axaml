@@ -20,7 +20,7 @@
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21"/>
                 <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
-                <TextBlock Text="打开管理器时默认自动启动 API（SQL Server 地址尚未配置时先等待保存）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
+                <TextBlock Text="打开管理器时默认自动启动 API（首次请确认并保存数据库配置）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="API 健康检查使用仅本机的管理端口（业务端口 + 1）。" TextWrapping="Wrap" Opacity="0.7"/>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <Button Content="启动 API" Command="{Binding StartCommand}" />
@@ -47,7 +47,7 @@
           <StackPanel Margin="16" Spacing="12" MaxWidth="720" HorizontalAlignment="Left">
             <TextBlock Text="SQL Server 配置" FontSize="22" FontWeight="SemiBold" />
             <TextBlock Text="SQL Server 地址 / 实例"/>
-            <TextBox Watermark="例如 SQLHOST\\INSTANCE 或 host,1433" Text="{Binding Settings.SqlServer, Mode=TwoWay}" Width="650"/>
+            <TextBox Watermark="192.168.1.1,1433" Text="{Binding Settings.SqlServer, Mode=TwoWay}" Width="650"/>
             <TextBlock Text="数据库"/>
             <TextBox Text="{Binding Settings.SqlDatabase, Mode=TwoWay}" Width="650"/>
             <CheckBox Content="Windows 集成身份验证" IsChecked="{Binding Settings.IntegratedSecurity, Mode=TwoWay}"/>
@@ -88,9 +88,9 @@
                 <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding WriteDraft.EnableProductionWrites, Mode=TwoWay}"/>
                 <Button Content="{Binding WriteGatesButtonText}" Command="{Binding SelectAllWriteGatesCommand}"
                         HorizontalAlignment="Left"/>
-                <TextBlock Text="首次无审计用户时预选四项，仅为界面草稿。保存连接不会启用写入。确认对应帐套已完成数据库前检、幂等迁移及授权后，再保存写入授权。" TextWrapping="Wrap" Opacity="0.8"/>
-                <TextBlock Text="X3 操作员编码（写入 CREUSR_0 / UPDUSR_0，1–5 字符）"/>
-                <TextBox Text="{Binding WriteDraft.X3AuditUser, Mode=TwoWay}" Watermark="已批准的 X3 用户编码" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
+                <TextBlock Text="首次预选四项仅为草稿。确认对应帐套已完成前检、幂等迁移及授权后保存；操作员编码无需手工填写。" TextWrapping="Wrap" Opacity="0.8"/>
+                <TextBlock Text="X3 操作员编码（可选，默认 PDA）"/>
+                <TextBox Text="{Binding WriteDraft.X3AuditUser, Mode=TwoWay}" Watermark="PDA（留空自动使用）" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
                 <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>

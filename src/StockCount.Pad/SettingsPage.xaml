@@ -23,7 +23,7 @@
             <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
                     Padding="8,0">
               <Entry x:Name="ApiAddress" Keyboard="Url"
-                     Placeholder="内网 IP:5080"
+                     Placeholder="192.168.1.1:5080"
                      FontSize="14" BackgroundColor="Transparent"
                      HeightRequest="48"/>
             </Border>
