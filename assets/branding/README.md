@@ -18,9 +18,15 @@ status: active
 
 | 平台 | 图标接入 | 产物 |
 | --- | --- | --- |
-| Android MAUI APK | `src/StockCount.Pad/Resources/AppIcon/appicon.svg` 的 `MauiIcon` | Resizetizer 自动生成各 density 的 Android Launcher 图标 |
+| Android MAUI APK | `appicon.svg`（满幅背景）+ `appiconfg.svg`（透明 PDA 前景）；`ForegroundScale=0.75` | 普通与圆形图标、Android 8+ 自适应图标及各密度 PNG |
 | Windows Tauri 2（现有 Setup/Portable） | `desktop/server-console/assets/app-icon.svg` | `npm run tauri -- icon` 生成 `src-tauri/icons/` 下的 `icon.ico`、PNG 等 |
 | Windows Avalonia .NET 10 | `src/StockCount.Server.Desktop/Assets/server.ico` | 由服务器 SVG 派生的多尺寸 ICO，已纳入 Git 与源码 ZIP，直接作为 EXE 和主窗口图标 |
+
+## Android Launcher 图标
+
+原有品牌主图仍为 [pda.svg](pda.svg)。Android 使用两层 SVG，保留原有 PDA、箱子、条码、绿色确认勾。背景填满 512×512 画布，前景不含底板；75% 缩放给系统圆形、圆角方形等裁切留出空间。Manifest 显式设置 `android:icon="@mipmap/appicon"` 与 `android:roundIcon="@mipmap/appicon_round"`，修复系统回退到默认安卓图标的问题。
+
+构建与发布前通过 [APK 图标验证脚本](../../scripts/verify-android-launcher-icon.ps1) 调用 Android SDK aapt2 检查实际 APK 的资源表、Manifest 引用、两种 adaptive-icon XML 和各自 PNG，而不是只验证源 SVG。设备桌面视觉及缓存刷新仍需真机验收。
 
 ## 构建
 
@@ -56,6 +62,6 @@ pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
 ## 发布验证
 
 - GitHub Actions 的 Avalonia 构建检查真实 `server.ico` 和 Windows EXE。
-- Android Debug/Release 工作流编译新的 `MauiIcon`，新 APK 的启动器图标随构建更新。
+- Android Debug/Release 工作流校验真实 APK 的自适应启动器资源；正式签名包也执行同一校验。
 - Tauri 工作流和统一 Release 工作流生成 Windows `icon.ico` 和 NSIS 安装包。
 - 正式 Android Release APK 仍需要仓库预先配置持久签名证书的 Secrets；没有签名密钥时，不能宣称完整的 GitHub Release 已发布。

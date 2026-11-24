@@ -78,6 +78,7 @@ if (-not $verifier) {
 }
 & $verifier verify --verbose --print-certs $apks[0].FullName
 if ($LASTEXITCODE -ne 0) { throw 'Release APK signature verification failed.' }
+& (Join-Path $PSScriptRoot 'verify-android-launcher-icon.ps1') -ApkPath $apks[0].FullName
 
 $releaseApk = Join-Path $out "StockCount-PDA-v$Version-Android-Release-Signed.apk"
 Copy-Item -LiteralPath $apks[0].FullName -Destination $releaseApk -Force

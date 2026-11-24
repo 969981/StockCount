@@ -122,6 +122,14 @@ if ($isModernSnapshot) {
     '.github/workflows/pda-android-build.yml'
   )
 }
+# Require every declared adaptive layer in newer snapshots without penalizing old tags.
+$padProject = Read-GitUtf8 @('-C', $root, 'show', "${commit}:src/StockCount.Pad/StockCount.Pad.csproj")
+if ($padProject -match 'ForegroundFile="Resources/AppIcon/appiconfg.svg"') {
+  $mustHave += @('src/StockCount.Pad/Resources/AppIcon/appicon.svg',
+                 'src/StockCount.Pad/Resources/AppIcon/appiconfg.svg',
+                 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml',
+                 'scripts/verify-android-launcher-icon.ps1')
+}
 # Legacy commits generated the ICO during build; newer ones must carry the
 # actual static resource in Git, including when the archive has no .git directory.
 if ($isModernSnapshot) {

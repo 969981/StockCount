@@ -12,6 +12,7 @@ on:
       - 'src/StockCount.Api/Properties/launchSettings.json'
       - 'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj'
       - 'scripts/build-android-release.ps1'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
       - 'tests/StockCount.Core.Tests/**'
@@ -25,6 +26,7 @@ on:
       - 'src/StockCount.Api/Properties/launchSettings.json'
       - 'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj'
       - 'scripts/build-android-release.ps1'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
       - 'tests/StockCount.Core.Tests/**'
@@ -73,13 +75,14 @@ jobs:
           if (!(Test-Path 'src/StockCount.Server.Desktop/bin/Debug/net10.0-windows/StockCount.Api.exe')) {
             throw 'Avalonia Visual Studio Debug did not stage StockCount.Api.exe'
           }
-      - name: Verify Android launcher brand SVG is wired
+      - name: Verify Android adaptive launcher source layers
         shell: pwsh
         run: |
           $project = Get-Content "src/StockCount.Pad/StockCount.Pad.csproj" -Raw
           if ($project -notmatch "Resources/AppIcon/appicon.svg") { throw "MauiIcon lost" }
           [xml]$svg = Get-Content "src/StockCount.Pad/Resources/AppIcon/appicon.svg" -Raw
           if ($svg.svg.viewBox -ne "0 0 512 512") { throw "StockCount PDA SVG invalid" }
+          ./tests/BrandIcons.Smoke.ps1
       - name: Verify generated APK is present
         shell: pwsh
         run: |
@@ -89,6 +92,12 @@ jobs:
             Write-Host ("APK: " + $_.FullName + " (" + $_.Length + " bytes)")
             Get-FileHash $_.FullName -Algorithm SHA256 | Format-List
           }
+      - name: Verify actual Debug APK launcher resources
+        shell: pwsh
+        run: |
+          $apks = @(Get-ChildItem 'src/StockCount.Pad/bin/Debug/net10.0-android' -File -Filter '*-Signed.apk')
+          if ($apks.Count -ne 1) { throw 'Expected exactly one signed Debug APK' }
+          ./scripts/verify-android-launcher-icon.ps1 -ApkPath $apks[0].FullName
       - name: Upload installable Android APK (debug signed for testing)
         uses: actions/upload-artifact@v4
         with:
@@ -118,6 +127,9 @@ jobs:
         run: |
           dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
           if ($LASTEXITCODE -ne 0) { throw "Android Release compilation failed" }
+          $apks = @(Get-ChildItem 'src/StockCount.Pad/bin/Release/net10.0-android' -File -Filter '*-Signed.apk')
+          if ($apks.Count -ne 1) { throw 'Expected one Release QA APK' }
+          ./scripts/verify-android-launcher-icon.ps1 -ApkPath $apks[0].FullName
       - name: Publish and verify signed Android Release APK
         if: steps.release_signing.outputs.configured == 'true' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         shell: pwsh

@@ -226,6 +226,19 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target WindowsSetup -PackagePa
 
 ## 五、Android APK 安装 / 升级
 
+### 自定义图标刷新与真机验收
+
+若旧 APK 仍显示默认 Android 图标，更新到含 adaptive icon 和 Manifest 绑定的提交。关闭 VS 后只清理 PDA 的构建目录，重新构建并验证 APK：
+
+```powershell
+Remove-Item .\src\StockCount.Pad\bin,.\src\StockCount.Pad\obj -Recurse -Force -ErrorAction SilentlyContinue
+pwsh -File .\scripts\build-local.ps1 -Target Android
+```
+
+构建脚本通过 Android SDK aapt2 验证 APK 内图标。优先同签名覆盖安装（保留设备 Key、设置、待确认请求 UUID）。仅当覆盖安装后图标仍是缓存旧图标、且所有待确认盘点已处理并备份配置时，才可手动卸载测试设备的 `com.dreamer.stockcount.pad` 再安装。不要自动卸载现场生产 PDA。
+
+
+
 连接已授权 PDA，先检查设备：
 
 ```powershell

@@ -20,7 +20,9 @@ on:
       - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
-      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/**'
+      - 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'scripts/build-android-release.ps1'
   pull_request:
@@ -33,7 +35,9 @@ on:
       - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
-      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/**'
+      - 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'scripts/build-android-release.ps1'
 
@@ -91,6 +95,7 @@ jobs:
           $path = "src/StockCount.Pad/bin/Debug/net10.0-android"
           $signed = @(Get-ChildItem $path -File -Filter "*-Signed.apk")
           if ($signed.Count -ne 1) { throw "Expected one signed APK, got $($signed.Count)" }
+          ./scripts/verify-android-launcher-icon.ps1 -ApkPath $signed[0].FullName
           New-Item -ItemType Directory release-android -Force | Out-Null
           $dest = "release-android/StockCount-PDA-v$env:RELEASE_VERSION-Android-Debug-Signed.apk"
           Copy-Item -LiteralPath $signed[0].FullName -Destination $dest
