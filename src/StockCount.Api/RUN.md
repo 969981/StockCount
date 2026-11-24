@@ -110,3 +110,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
+
+## 中文 Swagger 接口文档
+
+API 启动后，浏览器打开 `http://127.0.0.1:5080` 自动跳转中文 Swagger；也可访问 `/docs`、`/swagger`，OpenAPI JSON 位于 `/openapi/v1.json`。局域网监听启用后，使用后台电脑实际局域网 IP。文档和脚本内置，无需互联网/CDN，无需数据库在线即可浏览。文档仅允许直接私有 IPv4 或本机回环来源，业务 API 的设备认证和写入授权不变。在线执行仅支持 GET；POST 包含请求结构及返回说明，但不在文档内直接执行。内部关闭接口不公开。请求头 `X-StockCount-Environment` 选择 Test/Production，默认测试示例 Test；旧版认证使用可选 `X-StockCount-Device-Key`。禁止公网映射。
