@@ -53,8 +53,9 @@
             <CheckBox Content="Windows 集成身份验证" IsChecked="{Binding Settings.IntegratedSecurity, Mode=TwoWay}"/>
             <TextBlock Text="SQL Server 用户名"/>
             <TextBox Text="{Binding Settings.SqlUser, Mode=TwoWay}" Width="650"/>
-            <TextBlock Text="SQL Server 密码（留空表示保留原凭据；不会写入 JSON）"/>
-            <TextBox PasswordChar="●" Text="{Binding SqlPasswordInput, Mode=TwoWay}" Width="650"/>
+            <TextBlock Text="SQL Server 密码（已保存时显示固定掩码）"/>
+            <TextBox PasswordChar="●" Text="{Binding SqlPasswordInput, Mode=TwoWay}"
+                     Watermark="{Binding SqlPasswordWatermark}" Width="650"/>
             <TextBlock Text="{Binding CredentialState}" Opacity="0.7"/>
             <CheckBox Content="加密 SQL Server 连接（推荐）" IsChecked="{Binding Settings.EncryptSql, Mode=TwoWay}"/>
             <CheckBox Content="信任服务器证书（生产环境不建议）" IsChecked="{Binding Settings.TrustServerCertificate, Mode=TwoWay}"/>
