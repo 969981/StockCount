@@ -30,7 +30,9 @@ on:
       - 'assets/branding/**'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'desktop/server-console/assets/app-icon.svg'
-      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/**'
+      - 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
       - '.github/workflows/local-build-tooling-check.yml'
   pull_request:
@@ -61,7 +63,9 @@ on:
       - 'assets/branding/**'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'desktop/server-console/assets/app-icon.svg'
-      - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
+      - 'src/StockCount.Pad/Resources/AppIcon/**'
+      - 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml'
+      - 'scripts/verify-android-launcher-icon.ps1'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
       - '.github/workflows/local-build-tooling-check.yml'
 
@@ -94,6 +98,7 @@ jobs:
             'scripts/publish-stockcount-release.ps1',
             'scripts/deploy-local.ps1',
             'scripts/package-source.ps1',
+            'scripts/verify-android-launcher-icon.ps1',
             'scripts/build-avalonia-desktop.ps1',
             'scripts/build-tauri-sidecar.ps1',
             'scripts/package-windows-portable.ps1',
