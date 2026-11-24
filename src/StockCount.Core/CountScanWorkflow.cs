@@ -11,6 +11,8 @@ public sealed class ScanCommitRejectedException(string code, string message) : E
     public string Code { get; } = code;
 }
 
+public sealed record LocationScanResult(string? Location, string? ErrorCode = null, string? Message = null);
+
 public sealed record CountScanFeedback(string Kind, string? Message = null, int AutoDismissMs = 0);
 
 /// <summary>Serialized before POST, restored after Android process termination.</summary>
@@ -28,7 +30,7 @@ public interface IPendingSubmissionStore
 
 public interface ICountScanGateway
 {
-    Task<string?> ResolveLocationAsync(string countNumber, string rawCode, CancellationToken ct);
+    Task<LocationScanResult> ResolveLocationAsync(string countNumber, string rawCode, CancellationToken ct);
     Task<BoxScanData?> ResolveLabelAsync(string countNumber, string qr, CancellationToken ct);
     Task<bool> SubmitAsync(string countNumber, Guid requestId, string qr,
         string boxNumber, string location, decimal qty, CancellationToken ct);
@@ -110,7 +112,11 @@ public sealed class CountScanWorkflow(
 
             if (!LooksLikeBoxQr(raw))
             {
-                var location = await gateway.ResolveLocationAsync(CountNumber, raw, ct);
+                var code = LocationScanPolicy.Normalize(raw);
+                if (!LocationScanPolicy.IsValidFormat(code))
+                    return new CountScanFeedback("Error", LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"));
+                var result = await gateway.ResolveLocationAsync(CountNumber, code, ct);
+                var location = result.Location;
                 if (!string.IsNullOrWhiteSpace(location))
                 {
                     if (!string.Equals(Location, location, StringComparison.Ordinal))
@@ -120,13 +126,11 @@ public sealed class CountScanWorkflow(
                     }
                     return new CountScanFeedback("LocationUpdated");
                 }
-                return string.IsNullOrWhiteSpace(Location)
-                    ? new CountScanFeedback("Error", "请先扫描盘点库位！")
-                    : new CountScanFeedback("Error", "无法识别有效库位或箱标签。");
+                return new CountScanFeedback("Error", result.Message ?? LocationScanPolicy.Describe(result.ErrorCode ?? "LOCATION_LOOKUP_UNAVAILABLE"));
             }
 
             if (string.IsNullOrWhiteSpace(Location))
-                return new CountScanFeedback("Error", "请先扫描盘点库位！");
+                return new CountScanFeedback("Error", "当前扫描的是箱码，请先扫描盘点库位！");
 
             ClearBox();
             var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, ct);
