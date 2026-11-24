@@ -19,7 +19,14 @@ public sealed class StockCountApiClient : ICountScanGateway
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     public string EnvironmentName => Preferences.Default.Get("StockCountEnvironment","Test");
-    public string BaseUrl => Preferences.Default.Get("StockCountApiUrl","").TrimEnd('/');
+    public string BaseUrl
+    {
+        get
+        {
+            var saved = Preferences.Default.Get("StockCountApiUrl", "");
+            return string.IsNullOrWhiteSpace(saved) ? ApiEndpointPolicy.DefaultEndpoint : saved.TrimEnd('/');
+        }
+    }
 
     public async Task ConfigureAsync(string baseUrl,string environment,string deviceKey)
     {
