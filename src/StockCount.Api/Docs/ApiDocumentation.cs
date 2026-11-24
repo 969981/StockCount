@@ -71,10 +71,10 @@ public sealed class ChineseOperationFilter : IOperationFilter
 {
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        var path = context.ApiDescription.RelativePath?.Split('?')[0];
+        var path = context.ApiDescription.RelativePath?.Split('?')[0].Replace("{requestId:guid}", "{requestId}");
         var method = context.ApiDescription.HttpMethod;
         var key = method + " " + path;
-        var (tag, title, detail, response, success) = key switch
+        (string tag, string title, string detail, Type? response, string success) = key switch
         {
             "GET health" => ("服务诊断", "检查 API 服务状态", "仅检查进程是否可达，不连接 SQL Server。", (Type?)null, "200"),
             "GET ready" => ("服务诊断", "测试 SQL Server 连接", "执行 SELECT 1，检查当前帐套连接，不代表具备写入权限。", null, "200"),
@@ -149,7 +149,7 @@ public sealed class ChineseOperationFilter : IOperationFilter
         if (path == "health") return;
         foreach (var (status, description) in new[] { ("400", "参数或帐套不合法"), ("401", "设备密钥未授权"), ("403", "访问或写入被拒绝"), ("404", "未找到对应记录"), ("409", "重复箱码、单据状态或事务冲突"), ("422", "库位、标签或业务数据不合法"), ("503", "数据库未就绪、写入不可用或提交结果未知") })
         {
-            if (path == "ready" && status is "404" or "409" or "422") continue;
+            if (path == "ready" && (status is "404" or "409" or "422")) continue;
             operation.Responses[status] = new OpenApiResponse { Description = description };
         }
     }
