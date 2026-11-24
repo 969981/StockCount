@@ -206,6 +206,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task StartAsync()
     {
+        if (_closing) return;
         try
         {
             if (_settingsInvalid) throw new InvalidOperationException("配置文件损坏，不能启动。");
@@ -281,9 +282,8 @@ public partial class MainViewModel : ObservableObject
                 Message = "请先启动或确认 API 正常运行，再打开中文接口文档。";
                 return;
             }
-            var current = _store.Load();
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
-                $"http://127.0.0.1:{current.ApiPort}/docs") { UseShellExecute = true });
+                ApiDocsUrl) { UseShellExecute = true });
         }
         catch (Exception ex) { Message = "打开接口文档失败：" + ex.Message; }
     }
@@ -315,7 +315,7 @@ public partial class MainViewModel : ObservableObject
                 _confirmedExternalApi = null;
                 StopExternalText = "停止外部 API（需确认）";
             }
-            ApiDocsUrl = $"http://127.0.0.1:{current.ApiPort}/docs";
+            ApiDocsUrl = $"http://127.0.0.1:{status.ApiPort}/docs";
             ApiUrl = (current.AllowLan ? "http://<服务器局域网IP>:" : "http://127.0.0.1:") + current.ApiPort;
             if (status.LastError is not null && status.State == "Stopped") Message = status.LastError;
             OnPropertyChanged(nameof(IsRunning));
