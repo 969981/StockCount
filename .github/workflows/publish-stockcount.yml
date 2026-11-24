@@ -193,9 +193,9 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/build-avalonia-desktop.ps1 -Configuration Release
-          if ($LASTEXITCODE -ne 0) { throw "Avalonia Windows build failed" }
+          if (-not $?) { throw "Avalonia Windows build failed" }
           ./scripts/package-avalonia-portable.ps1 -Version $env:RELEASE_VERSION -OutputDirectory 'release-windows'
-          if ($LASTEXITCODE -ne 0) { throw "Avalonia Portable packager failed" }
+          if (-not $?) { throw "Avalonia Portable packager failed" }
           $zip = "release-windows/StockCount-Avalonia-v$env:RELEASE_VERSION-Windows-x64-Portable.zip"
           if (!(Test-Path -LiteralPath $zip)) { throw "Avalonia Portable ZIP missing" }
           Get-FileHash -LiteralPath $zip -Algorithm SHA256 | Format-List
