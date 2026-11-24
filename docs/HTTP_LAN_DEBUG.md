@@ -95,6 +95,10 @@ TCP 成功不代表 StockCount API 可用；只有 /health 返回 StockCount 服
 
 Avalonia 的 SQLite 日志显示「PDA 连接诊断」分类：收到 /health 或 /ready 连接请求时记录来源 IP、监听端口、帐套、诊断编号，完成时记录结果、HTTP 状态及耗时。与 PDA 显示的编号对应查询；本机无标记健康轮询不记录，设备密钥、数据库密码、扫码内容不进入诊断日志。若 PDA 仅有 TCP/Ping 失败、尚未发送 HTTP 请求，后台不会凭空产生请求日志。
 
+### 4.2 中文 Swagger 文档
+
+API 运行后访问 `http://服务器IP:5080/docs`（根地址或 /swagger 也可跳转），后台服务总览提供打开按钮。OpenAPI JSON 地址为 /openapi/v1.json。所有资源随 API 发布，内网无需联网。中文分组、请求头、参数、返回模型可直接查看；页面只允许 GET 在线调试，POST 仅展示文档，不直接提交盘点。设备授权、帐套和写入门禁保持不变。
+
 ## 5. 海康扫码与业务验收
 
 扫码广播默认 Action 为 `com.service.scanner.data`，Extra 为 `ScanCode`。在 PDA 设置页扫描测试码，看到广播时间/长度后再验证选择盘点单、扫描库位、扫描完整箱码、人工录入数量。若局域网 API 通、扫描广播不通，则是设备适配问题而不是 HTTP 问题。
