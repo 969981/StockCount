@@ -27,9 +27,29 @@ if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
   throw 'Git is required. Install Git for Windows and rerun in a cloned repository.'
 }
 
+# Git writes UTF-8 path bytes on Windows even if the console is using GBK/CP936.
+# Decode stdout explicitly rather than relying on PowerShell's console encoding.
+# ArgumentList preserves paths and ref names containing spaces and Unicode.
+function Read-GitUtf8([string[]]$GitArguments) {
+  $start = [System.Diagnostics.ProcessStartInfo]::new()
+  $start.FileName = (Get-Command git -CommandType Application -ErrorAction Stop | Select-Object -First 1).Source
+  $start.UseShellExecute = $false
+  $start.RedirectStandardOutput = $true
+  $start.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false, $true)
+  foreach ($argument in $GitArguments) { $start.ArgumentList.Add($argument) }
+  $process = [System.Diagnostics.Process]::new()
+  $process.StartInfo = $start
+  try {
+    if (-not $process.Start()) { throw 'Cannot start Git.' }
+    $result = $process.StandardOutput.ReadToEnd()
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) { throw "Git failed (exit $($process.ExitCode)): $($GitArguments -join ' ')" }
+    return $result
+  } finally { $process.Dispose() }
+}
+
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$gitRoot = (& git -C $root rev-parse --show-toplevel)
-if ($LASTEXITCODE -ne 0) { throw 'Not a Git repository. Clone StockCount first.' }
+$gitRoot = Read-GitUtf8 @('-C', $root, 'rev-parse', '--show-toplevel')
 if ([IO.Path]::GetFullPath($gitRoot.Trim()) -ne [IO.Path]::GetFullPath($root)) {
   throw "Run this script inside the StockCount repository. Current root: $gitRoot"
 }
@@ -59,8 +79,10 @@ $shortCommit = $shortCommit.Trim()
 if ($shortCommit -notmatch '^[0-9a-f]{7,40}$' -or -not $commit.StartsWith($shortCommit, [StringComparison]::Ordinal)) {
   throw "Invalid short commit hash: $shortCommit"
 }
-$tracked = @(& git -C $root -c core.quotePath=false ls-tree -r --name-only $commit)
-if ($LASTEXITCODE -ne 0 -or $tracked.Count -eq 0) { throw 'Selected commit contains no tracked files.' }
+# NUL-delimited raw names avoid Git quoting and newline/tab ambiguity.
+$tree = Read-GitUtf8 @('-C', $root, 'ls-tree', '-r', '-z', '--name-only', $commit)
+$tracked = @($tree.Split([char]0, [StringSplitOptions]::RemoveEmptyEntries))
+if ($tracked.Count -eq 0) { throw 'Selected commit contains no tracked files.' }
 
 # Fail closed if secrets or compiled build output were accidentally committed.
 # Filename checks do not replace a full content-level secret audit.
@@ -122,7 +144,7 @@ if ((Get-Item -LiteralPath $zip).Length -lt 10240) {
 }
 
 Add-Type -AssemblyName System.IO.Compression
-$archive = [IO.Compression.ZipFile]::OpenRead($zip)
+$archive = [IO.Compression.ZipFile]::Open($zip, [IO.Compression.ZipArchiveMode]::Read, [System.Text.Encoding]::UTF8)
 try {
   $names = @($archive.Entries | ForEach-Object { $_.FullName.Replace('\','/') })
   foreach ($file in $mustHave) {
