@@ -10,6 +10,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference Include="../../src/StockCount.Api/StockCount.Api.csproj" />
     <ProjectReference Include="../../src/StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../../src/StockCount.Contracts/StockCount.Contracts.csproj" />
     <ProjectReference Include="../../src/StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
