@@ -181,6 +181,128 @@ public sealed class StockCountApiClient : ICountScanGateway
         !string.IsNullOrWhiteSpace(
             await SecureStorage.Default.GetAsync("StockCountDeviceKey"));
 
+    /// <summary>Probe the address currently entered in Settings without saving or writing ERP data.</summary>
+    public async Task DiagnoseConnectionAsync(string address, string environment, string enteredKey,
+        Action<string> report)
+    {
+        if (!ApiEndpointPolicy.TryNormalize(address, out var normalized))
+        {
+            report("✗ API 地址格式无效。请输入内网 IP:端口或完整 HTTPS 地址。");
+            return;
+        }
+
+        var endpoint = new Uri(normalized);
+        var lines = new List<string>
+        {
+            $"目标：{normalized}",
+            $"帐套：{(environment == "Production" ? "COB" : "XTEST")}"
+        };
+        void Add(string line) { lines.Add(line); report(string.Join("\n", lines)); }
+        Add("正在检测 TCP 端口…");
+        var tcp = await ConnectionDiagnostics.ProbeTcpAsync(endpoint.Host, endpoint.Port);
+        Add(tcp.Detail);
+        if (!tcp.Reachable)
+        {
+            Add(await ConnectionDiagnostics.ProbeIcmpAsync(endpoint.Host));
+            Add("请核对 Windows ipconfig、PDA Wi-Fi、API 是否启动、是否允许局域网监听及防火墙入站规则。");
+            Add("API / SQL Server：尚未检测（TCP 未连接）。");
+            return;
+        }
+
+        // Do not forward saved credentials to a different, unsaved server.
+        var key = enteredKey;
+        if (string.IsNullOrWhiteSpace(key) &&
+            string.Equals(normalized, BaseUrl, StringComparison.OrdinalIgnoreCase))
+        {
+            try { key = await SecureStorage.Default.GetAsync("StockCountDeviceKey") ?? ""; }
+            catch (Exception) { Add("旧版设备密钥读取失败；仍可检测免密服务。"); }
+        }
+        var probeId = Guid.NewGuid().ToString("D");
+        Add("诊断编号：" + probeId);
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false })
+            { Timeout = TimeSpan.FromSeconds(10) };
+        async Task<HttpResponseMessage> Probe(string path, bool authenticated)
+        {
+            using var req = new HttpRequestMessage(HttpMethod.Get, normalized + path);
+            req.Headers.TryAddWithoutValidation("X-StockCount-Environment", environment);
+            req.Headers.TryAddWithoutValidation("X-StockCount-Connection-Test", "1");
+            req.Headers.TryAddWithoutValidation("X-StockCount-Diagnostic-Id", probeId);
+            if (authenticated && !string.IsNullOrWhiteSpace(key))
+                req.Headers.TryAddWithoutValidation("X-StockCount-Device-Key", key);
+            return await http.SendAsync(req);
+        }
+
+        try
+        {
+            Add("正在检查 API /health…");
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            using var health = await Probe("/health", false);
+            if (!health.IsSuccessStatusCode)
+            {
+                Add($"✗ API 健康检查：HTTP {(int)health.StatusCode}。端口可达，但服务地址或协议可能不正确。");
+                return;
+            }
+            using var body = JsonDocument.Parse(await health.Content.ReadAsStringAsync());
+            if (body.RootElement.ValueKind != JsonValueKind.Object ||
+                !body.RootElement.TryGetProperty("service", out var service) ||
+                service.ValueKind != JsonValueKind.String ||
+                service.GetString() != "StockCount.Api")
+            {
+                Add("✗ 该端口返回了 HTTP 响应，但不是 StockCount API。请检查端口。");
+                return;
+            }
+            Add($"✓ StockCount API 可达（HTTP {(int)health.StatusCode}，{watch.ElapsedMilliseconds} ms）。");
+        }
+        catch (JsonException)
+        {
+            Add("✗ 端口可达，但 /health 未返回 StockCount JSON；可能连接了其他服务。");
+            return;
+        }
+        catch (Exception error)
+        {
+            Add("✗ API 健康检查：" + ConnectionDiagnostics.DescribeException(error));
+            return;
+        }
+
+        try
+        {
+            Add("正在检查设备访问权限与 SQL Server /ready…");
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            using var ready = await Probe("/ready", true);
+            switch ((int)ready.StatusCode)
+            {
+                case 200:
+                    using (var body = JsonDocument.Parse(await ready.Content.ReadAsStringAsync()))
+                    {
+                        if (body.RootElement.ValueKind != JsonValueKind.Object ||
+                            !body.RootElement.TryGetProperty("database", out var db) ||
+                            db.ValueKind != JsonValueKind.String || db.GetString() != "Reachable")
+                        {
+                            Add("✗ /ready 响应格式不正确，无法确认数据库连通。");
+                            return;
+                        }
+                    }
+                    Add($"✓ 设备访问成功；SQL Server SELECT 1 成功（{watch.ElapsedMilliseconds} ms）。");
+                    Add("连接正常。此测试不执行写入，不代表盘点写入权限已通过。");
+                    break;
+                case 401:
+                    Add("✗ HTTP 401：设备密钥未授权。请开启后台局域网免密模式，或配置旧版密钥。");
+                    break;
+                case 403:
+                    Add("✗ HTTP 403：服务拒绝访问。请检查后台免密设置、来源 IP 和访问策略。");
+                    break;
+                case 503:
+                    Add("✗ HTTP 503：API 已收到请求，但数据库未就绪。请在后台测试 SQL Server 连接、账号密码和数据库权限。");
+                    break;
+                default:
+                    Add($"✗ /ready 返回 HTTP {(int)ready.StatusCode}，请检查后台 SQLite 日志。");
+                    break;
+            }
+        }
+        catch (JsonException) { Add("✗ /ready 响应格式不正确，无法确认数据库连通。"); }
+        catch (Exception error) { Add("✗ 数据库就绪检查：" + ConnectionDiagnostics.DescribeException(error)); }
+    }
+
     /// <summary>Only checks that ASP.NET Core is alive; distinct from SQL /ready.</summary>
     public async Task<bool> PingServerAsync(CancellationToken ct=default)
     {
