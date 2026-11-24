@@ -1,9 +1,28 @@
 namespace StockCount.Core;
 
-/// <summary>Only known field constraints; do not assume an unverified warehouse barcode pattern.</summary>
+/// <summary>Confirmed LC. scanner prefix; plain location values remain compatible.</summary>
 public static class LocationScanPolicy
 {
     public static string Normalize(string? raw) => (raw ?? "").TrimEnd('\r', '\n').Trim(' ');
+
+    public static bool TryParse(string? raw, out string locationCode)
+    {
+        locationCode = "";
+        var text = Normalize(raw);
+        if (text.StartsWith("LC.", StringComparison.OrdinalIgnoreCase))
+            text = text[3..];
+
+        // A standalone location label contains one LC value, not a box or
+        // another composite field. Never truncate or strip a second prefix.
+        if (text.Contains("@@", StringComparison.Ordinal) ||
+            new[] { "LC.", "ID.", "PT.", "LN.", "MT.", "LT.", "QT.", "PG." }
+                .Any(prefix => text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ||
+            !IsValidFormat(text) || text != text.Trim())
+            return false;
+
+        locationCode = text;
+        return true;
+    }
 
     public static bool IsValidFormat(string? code) =>
         !string.IsNullOrWhiteSpace(code) && code.Length <= 10 && !code.Any(char.IsControl);
@@ -15,7 +34,7 @@ public static class LocationScanPolicy
 
     public static string Describe(string code) => code switch
     {
-        "LOCATION_FORMAT_INVALID" => "库位编码格式不符合要求：必须为 1–10 个字符，不能含控制字符。请扫描库位标签！",
+        "LOCATION_FORMAT_INVALID" => "库位编码格式不符合要求：请扫描 LC. 开头的库位标签，提取后的库位须为 1–10 个字符，不能含控制字符。",
         "LOCATION_NOT_FOUND" => "当前帐套不存在该库位，请核对库位编码！",
         "LOCATION_OUTSIDE_WAREHOUSE" => "该库位存在，但不属于当前盘点单的站点或仓库！",
         "LOCATION_AMBIGUOUS" => "当前仓库存在重复库位记录，请联系后台管理员核查！",
