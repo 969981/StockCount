@@ -14,6 +14,10 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/build-local.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
       - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
@@ -23,6 +27,10 @@ on:
     paths:
       - '.github/workflows/publish-stockcount.yml'
       - 'scripts/package-windows-portable.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/build-local.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
       - 'src/StockCount.Pad/Resources/AppIcon/appicon.svg'
