@@ -11,6 +11,8 @@ namespace StockCount.Core;
 /// </summary>
 public static class ApiEndpointPolicy
 {
+    public const string DefaultEndpoint = "http://192.168.1.1:5080";
+
     public static bool TryNormalize(string? input, out string normalized)
     {
         normalized = "";
