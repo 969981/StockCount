@@ -90,9 +90,7 @@ if ($Target -in @('All','Windows')) {
 }
 
 if ($Target -in @('All','Avalonia')) {
-  Require-Tool node 'Avalonia Windows icon generation needs Node.js 22+ and npm.'
-  Require-Tool npm 'Avalonia Windows icon generation needs Node.js 22+ and npm.'
-  # The Avalonia path only needs .NET + Node for the shared branded ICO.
+  # Avalonia uses the tracked native ICO and needs no Node/npm/Rust toolchain.
   # No Rust toolchain/WebView2 is required for this native Windows app.
   & (Join-Path $PSScriptRoot 'build-avalonia-desktop.ps1') -Configuration Release
   if (-not $?) { throw 'Avalonia Windows self-contained build failed.' }
