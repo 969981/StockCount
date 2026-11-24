@@ -25,7 +25,7 @@ public sealed partial class MainWindow : Window
                 await vm.RefreshLogsCommand.ExecuteAsync(null);
             };
             await vm.InitializeAsync();
-            if (!_shutdownComplete) _timer.Start();
+            if (!_shutdownStarted) _timer.Start();
         };
         Closing += async (_, args) =>
         {
@@ -33,6 +33,7 @@ public sealed partial class MainWindow : Window
             args.Cancel = true;
             if (_shutdownStarted) return;
             _shutdownStarted = true;
+            IsEnabled = false;
             _timer.Stop();
             try
             {
