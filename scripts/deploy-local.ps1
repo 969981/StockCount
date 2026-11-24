@@ -85,7 +85,7 @@ switch ($Target) {
     # The sidecar writes SQLite logs adjacent to the desktop EXE. Never swap
     # binaries while a live API holds a .db-wal or .db-shm database open.
     $running = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-      $_.ProcessName -in @('stockcount-server-console','StockCount.Api')
+      $_.ProcessName -in @('stockcount-server-console','StockCount.Server.Desktop','StockCount.Api')
     })
     if ($running.Count -gt 0) {
       throw 'StockCount desktop/API is still running. Stop the service, close the manager, and rerun before updating. SQLite logs must not be touched while running.'
