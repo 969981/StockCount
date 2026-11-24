@@ -12,7 +12,7 @@ status: active
 - **PDA / Android**：手持扫码设备、纸箱条码和绿色盘点确认，源图 [pda.svg](pda.svg)。
 - **Windows 服务端**：服务器机架、网络节点与管理状态，源图 [server.svg](server.svg)。
 
-源文件采用真正的 SVG 路径和几何形状重新绘制，不是把 PNG 包装进 SVG。文件在 [variants](variants/) 提供 **64、128、256、512、1024** 像素的画布预设；SVG 使用同一个 `viewBox="0 0 512 512"`，可以无损自由缩放，预设不改变线条或色彩。
+源文件采用真正的 SVG 路径和几何形状重新绘制，不是把 PNG 包装进 SVG。文件在 [SVG 尺寸预设](https://github.com/969981/StockCount/tree/main/assets/branding/variants) 提供 **64、128、256、512、1024** 像素的画布预设；SVG 使用同一个 `viewBox="0 0 512 512"`，可以无损自由缩放，预设不改变线条或色彩。
 
 ## 实际应用接入
 
