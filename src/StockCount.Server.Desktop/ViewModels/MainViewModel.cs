@@ -14,6 +14,10 @@ public partial class MainViewModel : ObservableObject
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
     private bool _settingsInvalid;
     private bool _initialized;
+    private bool _closing;
+    private PortOwner? _externalApi;
+    private PortOwner? _confirmedExternalApi;
+    private int _externalPort;
 
     [ObservableProperty] private ServerSettings settings = new();
     [ObservableProperty] private ServerSettings writeDraft = new();
@@ -44,6 +48,10 @@ public partial class MainViewModel : ObservableObject
         OnPropertyChanged(nameof(WriteGatesButtonText));
     [ObservableProperty] private string message = "准备就绪。";
     [ObservableProperty] private string serviceState = "未启动";
+    [ObservableProperty] private string portOwners = "尚未检查监听端口。";
+    [ObservableProperty] private bool canStopExternal;
+    [ObservableProperty] private string stopExternalText = "停止外部 API（需确认）";
+    [ObservableProperty] private bool apiReachable;
     [ObservableProperty] private string databaseState = "未测试";
     [ObservableProperty] private string credentialState = "未检查";
     [ObservableProperty]
@@ -212,8 +220,41 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task StopAsync()
     {
+        if (!_runtime.IsRunning)
+        {
+            Message = "当前管理器未启动 API。外部服务请先确认身份，再使用专用停止按钮。";
+            await RefreshStatusAsync();
+            return;
+        }
         try { await _runtime.StopAsync(); Message = "API 已停止。"; }
         catch (Exception ex) { Message = "停止失败：" + ex.Message; }
+        await RefreshStatusAsync();
+    }
+
+    [RelayCommand]
+    private async Task StopExternalAsync()
+    {
+        var candidate = _externalApi;
+        if (candidate is null || !CanStopExternal)
+        {
+            Message = "无法确认外部 API 身份，不允许终止进程。";
+            return;
+        }
+        if (_confirmedExternalApi != candidate)
+        {
+            _confirmedExternalApi = candidate;
+            StopExternalText = $"确认终止 PID {candidate.ProcessId}";
+            Message = "请确认其他管理器及 PDA 已停止操作、没有待提交盘点事务。旧 API 无管理令牌，停止将直接终止该进程；再次点击才执行。";
+            return;
+        }
+        _confirmedExternalApi = null;
+        StopExternalText = "停止外部 API（需确认）";
+        try
+        {
+            await _runtime.StopExternalAsync(_externalPort, candidate);
+            Message = "外部 API 已停止，端口已释放。现在可以启动新版 API。";
+        }
+        catch (Exception ex) { Message = "停止外部 API 失败：" + ex.Message; }
         await RefreshStatusAsync();
     }
 
@@ -235,9 +276,9 @@ public partial class MainViewModel : ObservableObject
     {
         try
         {
-            if (!_runtime.IsRunning)
+            if (!ApiReachable)
             {
-                Message = "请先启动 API，再打开中文接口文档。";
+                Message = "请先启动或确认 API 正常运行，再打开中文接口文档。";
                 return;
             }
             var current = _store.Load();
@@ -250,23 +291,42 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshStatusAsync()
     {
+        if (_closing) return;
         try
         {
             var current = _store.Load();
             var status = await _runtime.StatusAsync(current);
-            ServiceState = status.Running ? (status.Healthy ? "运行中 · 健康" : "运行中 · 未就绪") : "已停止";
+            ServiceState = status.State switch
+            {
+                "OwnedHealthy" => "运行中 · 当前管理器 · 健康",
+                "OwnedUnhealthy" => "运行中 · 当前管理器 · 未就绪",
+                "ExternalApi" => "外部 API 正在运行（可能为残留进程）",
+                "PortConflict" => "端口占用 · 服务身份未确认",
+                _ => "已停止"
+            };
+            ApiReachable = status.Healthy;
+            PortOwners = status.Owners.Count == 0 ? $"端口 {status.ApiPort} / {status.ApiPort + 1} 无监听。" :
+                string.Join("\n", status.Owners.Select(x => x.Display));
+            _externalApi = status.ExternalApi;
+            _externalPort = status.ApiPort;
+            CanStopExternal = _externalApi is not null;
+            if (_confirmedExternalApi != _externalApi)
+            {
+                _confirmedExternalApi = null;
+                StopExternalText = "停止外部 API（需确认）";
+            }
             ApiDocsUrl = $"http://127.0.0.1:{current.ApiPort}/docs";
             ApiUrl = (current.AllowLan ? "http://<服务器局域网IP>:" : "http://127.0.0.1:") + current.ApiPort;
-            if (status.LastError is not null && !status.Running) Message = status.LastError;
+            if (status.LastError is not null && status.State == "Stopped") Message = status.LastError;
             OnPropertyChanged(nameof(IsRunning));
         }
-        catch (Exception ex) { Message = "状态检查失败：" + ex.Message; }
+        catch (Exception ex) { ServiceState = "状态未知 · 检测失败"; PortOwners = ex.Message; ApiReachable = false; CanStopExternal = false; _externalApi = null; _confirmedExternalApi = null; StopExternalText = "停止外部 API（需确认）"; Message = "状态检查失败：" + ex.Message; }
     }
 
     [RelayCommand]
     private async Task RefreshLogsAsync()
     {
-        if (!await _refreshGate.WaitAsync(0)) return;
+        if (_closing || !await _refreshGate.WaitAsync(0)) return;
         try
         {
             // Translate only for display, retaining the unmodified source in SQLite.
@@ -316,7 +376,7 @@ public partial class MainViewModel : ObservableObject
 
     public async Task CloseAsync()
     {
-        try { await _runtime.DisposeAsync(); }
-        finally { _refreshGate.Dispose(); }
+        _closing = true;
+        await _runtime.DisposeAsync();
     }
 }
