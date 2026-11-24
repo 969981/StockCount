@@ -230,7 +230,7 @@ jobs:
           debug_apk=(release-files/*-Android-Debug-Signed.apk)
           release_apk=(release-files/*-Android-Release-Signed.apk)
           setup=(release-files/*-Windows-x64-Setup.exe)
-          portable=(release-files/*-Windows-x64-Portable.zip)
+          portable=(release-files/StockCount-Server-v*-Windows-x64-Portable.zip)
           avalonia=(release-files/*-Avalonia-*-Windows-x64-Portable.zip)
           if (( ${#debug_apk[@]} != 1 || ${#release_apk[@]} != 1 || ${#setup[@]} != 1 || ${#portable[@]} != 1 || ${#avalonia[@]} != 1 )); then
             echo "Missing assets (release signing requires four GitHub Secrets): Debug=${#debug_apk[@]} Release=${#release_apk[@]} Setup=${#setup[@]} Portable=${#portable[@]} Avalonia=${#avalonia[@]}" >&2
