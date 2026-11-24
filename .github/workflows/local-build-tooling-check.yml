@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'scripts/build-local.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'scripts/get-app-version.ps1'
       - 'scripts/set-app-version.ps1'
       - 'scripts/build-android-release.ps1'
@@ -12,6 +14,8 @@ on:
       - 'scripts/configure-android-release-secrets.ps1'
       - 'scripts/publish-stockcount-release.ps1'
       - 'scripts/deploy-local.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'scripts/package-source.ps1'
       - 'scripts/build-avalonia-desktop.ps1'
       - 'StockCount.slnx'
@@ -32,6 +36,8 @@ on:
   pull_request:
     paths:
       - 'scripts/build-local.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'scripts/get-app-version.ps1'
       - 'scripts/set-app-version.ps1'
       - 'scripts/build-android-release.ps1'
@@ -39,6 +45,8 @@ on:
       - 'scripts/configure-android-release-secrets.ps1'
       - 'scripts/publish-stockcount-release.ps1'
       - 'scripts/deploy-local.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
       - 'scripts/package-source.ps1'
       - 'scripts/build-avalonia-desktop.ps1'
       - 'StockCount.slnx'
@@ -76,6 +84,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $scripts = @(
             'scripts/build-local.ps1',
+            'scripts/package-avalonia-portable.ps1',
+            'scripts/deploy-avalonia-portable.ps1',
             'scripts/get-app-version.ps1',
             'scripts/set-app-version.ps1',
             'scripts/build-android-release.ps1',
@@ -83,6 +93,8 @@ jobs:
             'scripts/configure-android-release-secrets.ps1',
             'scripts/publish-stockcount-release.ps1',
             'scripts/deploy-local.ps1',
+            'scripts/package-avalonia-portable.ps1',
+            'scripts/deploy-avalonia-portable.ps1',
             'scripts/package-source.ps1',
             'scripts/build-avalonia-desktop.ps1',
             'scripts/build-tauri-sidecar.ps1',
