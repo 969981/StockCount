@@ -1,17 +1,18 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
+using System.Text.Json;
 
 namespace StockCount.Server.Hosting;
 
-public sealed record ServerRuntimeStatus(bool Running, bool Healthy, int ApiPort, string? LastError);
+public sealed record ServerRuntimeStatus(bool Running, bool Healthy, int ApiPort, string? LastError,
+    string State, IReadOnlyList<PortOwner> Owners, PortOwner? ExternalApi = null);
 
-/// <summary>Owns only the API child started by this process; never kills unrelated API processes.</summary>
+/// <summary>Manages its own child; external APIs require verified port ownership and explicit operator confirmation.</summary>
 public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault vault) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromMilliseconds(900) };
+    private readonly HttpClient _http = new(new HttpClientHandler { UseProxy = false, AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMilliseconds(900) };
     private Process? _child;
     private string _adminToken = "";
     private int _port = 5080;
@@ -51,6 +52,9 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         Put("STOCKCOUNT_ALLOW_KEYLESS_LAN", (settings.AllowLan && settings.AllowKeylessLan).ToString());
         Put("STOCKCOUNT_DEVICE_KEY", settings.AllowLan && settings.AllowKeylessLan ? "" : vault.GetOrCreateDeviceKey());
         Put("STOCKCOUNT_ADMIN_TOKEN", adminToken);
+        using var manager = Process.GetCurrentProcess();
+        Put("STOCKCOUNT_MANAGER_PID", manager.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        Put("STOCKCOUNT_MANAGER_STARTED_UTC_TICKS", manager.StartTime.ToUniversalTime().Ticks.ToString(System.Globalization.CultureInfo.InvariantCulture));
         Put("STOCKCOUNT_LOG_DB_PATH", store.LogPath);
         return info;
     }
@@ -60,9 +64,14 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         try
         {
             using var result = await _http.GetAsync($"http://127.0.0.1:{port + 1}/health", ct);
-            return result.IsSuccessStatusCode;
+            if (!result.IsSuccessStatusCode) return false;
+            using var json = JsonDocument.Parse(await result.Content.ReadAsStringAsync(ct));
+            return json.RootElement.ValueKind == JsonValueKind.Object &&
+                json.RootElement.TryGetProperty("service", out var service) &&
+                service.ValueKind == JsonValueKind.String && service.GetString() == "StockCount.Api";
         }
         catch (HttpRequestException) { return false; }
+        catch (JsonException) { return false; }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested) { return false; }
     }
 
@@ -77,21 +86,30 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         {
             if (IsRunning) throw new InvalidOperationException("服务已经在当前管理器中运行。");
             if (_child is not null) { _child.Dispose(); _child = null; }
-            if (await HealthyOnLocalPortAsync(settings.ApiPort, ct))
-                throw new InvalidOperationException("管理端口上已有运行中的 API，请先停止另一管理器。");
+            var occupied = PortInspection.Read(settings.ApiPort);
+            if (occupied.Count > 0)
+                throw new InvalidOperationException("端口已占用：" + string.Join("；", occupied.Select(x => x.Display)) +
+                    "。请在服务总览查看进程并确认处理。");
             _adminToken = Guid.NewGuid().ToString("N");
             _port = settings.ApiPort;
             _lastError = null;
             var process = new Process { StartInfo = BuildStartInfo(settings, _adminToken) };
+            var started = false;
             try
             {
                 if (!process.Start()) throw new InvalidOperationException("操作系统未启动 API 子进程。");
+                started = true;
                 _child = process;
                 for (var i = 0; i < 40; i++)
                 {
                     ct.ThrowIfCancellationRequested();
                     if (process.HasExited) break;
-                    if (await HealthyOnLocalPortAsync(_port, ct)) return;
+                    if (await HealthyOnLocalPortAsync(_port, ct))
+                    {
+                        var owners = PortInspection.Read(_port);
+                        if (owners.Any(x => x.Port == _port) && owners.Any(x => x.Port == _port + 1) &&
+                            owners.All(x => x.ProcessId == process.Id)) return;
+                    }
                     await Task.Delay(175, ct);
                 }
                 throw new InvalidOperationException(process.HasExited
@@ -100,7 +118,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
             }
             catch
             {
-                if (!process.HasExited) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(CancellationToken.None); }
+                if (started && !process.HasExited) { process.Kill(entireProcessTree: true); await process.WaitForExitAsync(CancellationToken.None); }
                 process.Dispose();
                 _child = null;
                 _adminToken = "";
@@ -118,7 +136,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         {
             if (_child is null) return;
             var process = _child;
-            _child = null; // a later status call must not describe a stopping process as live
+            // Keep ownership until stop has succeeded; status is serialized by the gate.
             if (!process.HasExited)
             {
                 try
@@ -129,7 +147,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
                 }
                 catch (HttpRequestException) { }
                 catch (TaskCanceledException) { }
-                using var shutdownDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(4));
+                using var shutdownDeadline = new CancellationTokenSource(TimeSpan.FromSeconds(35));
                 try { await process.WaitForExitAsync(shutdownDeadline.Token); }
                 catch (OperationCanceledException) { /* unresponsive process: only terminate our own child */ }
                 if (!process.HasExited)
@@ -139,6 +157,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
                 }
             }
             process.Dispose();
+            _child = null;
             _adminToken = "";
         }
         finally { _gate.Release(); }
@@ -146,12 +165,54 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
 
     public async Task<ServerRuntimeStatus> StatusAsync(ServerSettings settings)
     {
-        var running = IsRunning;
-        var healthy = running && await HealthyOnLocalPortAsync(_port);
-        var error = _lastError;
-        if (_child is { HasExited: true } exited)
-            error = $"API 已退出，退出码 {exited.ExitCode}";
-        return new ServerRuntimeStatus(running, healthy, settings.ApiPort, error);
+        await _gate.WaitAsync();
+        try
+        {
+            var running = IsRunning;
+            var port = running ? _port : settings.ApiPort;
+            var owners = PortInspection.Read(port);
+            var healthy = owners.Any(x => x.Port == port + 1) && await HealthyOnLocalPortAsync(port);
+            var error = _lastError;
+            if (_child is { HasExited: true } exited)
+                error = $"API 已退出，退出码 {exited.ExitCode}";
+            if (running)
+            {
+                healthy = healthy && owners.Any(x => x.Port == port) &&
+                    owners.All(x => x.ProcessId == _child!.Id);
+                return new(true, healthy, port, error, healthy ? "OwnedHealthy" : "OwnedUnhealthy", owners);
+            }
+            var external = PortInspection.ConfirmedExternalApi(owners, port, healthy);
+            return new(false, external is not null, port, error,
+                external is not null ? "ExternalApi" : owners.Count > 0 ? "PortConflict" : "Stopped",
+                owners, external);
+        }
+        finally { _gate.Release(); }
+    }
+
+    public async Task StopExternalAsync(int port, PortOwner expected)
+    {
+        await _gate.WaitAsync();
+        try
+        {
+            if (IsRunning) throw new InvalidOperationException("当前管理器已有服务，禁止终止外部进程。");
+            using var process = Process.GetProcessById(expected.ProcessId);
+            _ = process.Handle;
+            var current = PortInspection.ConfirmedExternalApi(PortInspection.Read(port), port,
+                await HealthyOnLocalPortAsync(port));
+            if (current is null || current != expected || process.HasExited ||
+                process.StartTime.ToUniversalTime().Ticks != expected.StartedUtcTicks ||
+                !string.Equals(process.MainModule?.FileName, expected.Path, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("占用进程身份已改变或无法确认，未执行停止。");
+            // No previous manager's admin token is available. Only the explicitly
+            // confirmed, still-identical StockCount API may be terminated.
+            process.Kill();
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+            await process.WaitForExitAsync(deadline.Token);
+            if (PortInspection.Read(port).Count > 0)
+                throw new InvalidOperationException("旧 API 已退出，但端口仍有监听，请刷新检查。");
+            _lastError = null;
+        }
+        finally { _gate.Release(); }
     }
 
     public async Task<bool> TestDatabaseAsync(ServerSettings settings, CancellationToken ct = default)
