@@ -13,9 +13,48 @@ public sealed class CountScanWorkflowTests
         var fake=new FakeGateway();
         var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试盘点单");
         var result=await workflow.HandleScanAsync(Qr);
-        Assert.Equal("请先扫描盘点库位！",result.Message);
+        Assert.Equal("当前扫描的是箱码，请先扫描盘点库位！",result.Message);
+        Assert.Equal(0,fake.LocationRequests);
         Assert.Equal(0,fake.LabelRequests);
         Assert.Null(workflow.Box);
+    }
+
+    [Theory]
+    [InlineData("01234567890")]
+    [InlineData("LOC\t001")]
+    public async Task InvalidLocationFormatDoesNotQueryDatabase(string raw)
+    {
+        var fake = new FakeGateway();
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        var feedback = await workflow.HandleScanAsync(raw);
+        Assert.Equal("Error", feedback.Kind);
+        Assert.Contains("库位编码格式不符合要求", feedback.Message);
+        Assert.Equal(0, fake.LocationRequests);
+        Assert.Null(workflow.Location);
+    }
+
+    [Theory]
+    [InlineData("LOCATION_NOT_FOUND", "当前帐套不存在该库位")]
+    [InlineData("LOCATION_OUTSIDE_WAREHOUSE", "不属于当前盘点单")]
+    [InlineData("LOCATION_AMBIGUOUS", "重复库位记录")]
+    [InlineData("LOCATION_LOOKUP_UNAVAILABLE", "库位查询失败")]
+    [InlineData("COUNT_NOT_FOUND", "当前盘点单不存在")]
+    [InlineData("LOCATION_INVALID", "旧版后台")]
+    public async Task LocationLookupFailureExplainsReasonAndKeepsCurrentLocation(string code, string expected)
+    {
+        var fake = new FakeGateway { LocationError = code };
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        var initial = await workflow.HandleScanAsync("UNKNOWN");
+        Assert.Equal("Error", initial.Kind);
+        Assert.Contains(expected, initial.Message);
+        Assert.Null(workflow.Location);
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        var later = await workflow.HandleScanAsync("UNKNOWN");
+        Assert.Equal("Error", later.Kind);
+        Assert.Contains(expected, later.Message);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+        Assert.NotNull(workflow.Box);
     }
 
     [Fact]
@@ -208,10 +247,17 @@ public sealed class CountScanWorkflowTests
         public bool RejectDuplicateAtCommit { get; set; }
         public bool ThrowDuringSubmit { get; set; }
         public int LabelRequests { get; private set; }
+        public int LocationRequests { get; private set; }
+        public string LocationError { get; set; } = "LOCATION_NOT_FOUND";
         public decimal? LastSubmittedQuantity { get; private set; }
         public Guid? LastRequestId { get; private set; }
-        public Task<string?> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct) =>
-            Task.FromResult<string?>(rawCode is "LOC-DEMO01" or "LOC-DEMO02" ? rawCode : null);
+        public Task<LocationScanResult> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
+        {
+            LocationRequests++;
+            return Task.FromResult(rawCode is "LOC-DEMO01" or "LOC-DEMO02"
+                ? new LocationScanResult(rawCode)
+                : new LocationScanResult(null, LocationError));
+        }
         public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct)
         {
             LabelRequests++;
