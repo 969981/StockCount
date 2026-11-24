@@ -13,7 +13,9 @@ public sealed class ServerSettings
     // Existing JSON without this opt-in retains the old keyed policy.
     public bool AllowKeylessLan { get; set; }
     public string CertPath { get; set; } = "";
-    public string SqlServer { get; set; } = "";
+    public const string DefaultSqlServer = "192.168.1.1,1433";
+    public const string DefaultAuditUser = "PDA";
+    public string SqlServer { get; set; } = DefaultSqlServer;
     public string SqlDatabase { get; set; } = "sagex3";
     public bool IntegratedSecurity { get; set; }
     public string SqlUser { get; set; } = "";
@@ -24,6 +26,11 @@ public sealed class ServerSettings
     public bool SchemaReviewed { get; set; }
     public bool ProductionSchemaReviewed { get; set; }
     public string X3AuditUser { get; set; } = "";
+
+    // An application identifier, not a claimed individual X3 operator.
+    [JsonIgnore]
+    public string EffectiveX3AuditUser => string.IsNullOrWhiteSpace(X3AuditUser)
+        ? DefaultAuditUser : X3AuditUser.Trim();
 
     public ServerSettings Copy() => (ServerSettings)MemberwiseClone();
 
@@ -60,8 +67,8 @@ public sealed class ServerSettings
         if (EnableProductionWrites && !ProductionSchemaReviewed)
             throw new InvalidOperationException("COB 未完成独立核验，不允许开启写入。");
         if ((EnableTestWrites || EnableProductionWrites) &&
-            (string.IsNullOrWhiteSpace(X3AuditUser) || X3AuditUser.Length > 5 || X3AuditUser.Any(char.IsControl)))
-            throw new InvalidOperationException("开启写入前必须填写 1–5 字符的已批准 X3 审计用户编码。");
+            (EffectiveX3AuditUser.Length > 5 || EffectiveX3AuditUser.Any(char.IsControl)))
+            throw new InvalidOperationException("自定义 X3 操作员编码须为 1–5 字符；留空使用 PDA。");
     }
 
     public bool DatabaseIdentityChangedFrom(ServerSettings previous, bool newPassword) =>
