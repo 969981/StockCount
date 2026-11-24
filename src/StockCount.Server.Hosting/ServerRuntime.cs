@@ -17,6 +17,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
     private string _adminToken = "";
     private int _port = 5080;
     private string? _lastError;
+    private int _disposing;
 
     public bool IsRunning => _child is { HasExited: false };
 
@@ -84,6 +85,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         await _gate.WaitAsync(ct);
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposing) != 0, this);
             if (IsRunning) throw new InvalidOperationException("服务已经在当前管理器中运行。");
             if (_child is not null) { _child.Dispose(); _child = null; }
             var occupied = PortInspection.Read(settings.ApiPort);
@@ -168,6 +170,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         await _gate.WaitAsync();
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposing) != 0, this);
             var running = IsRunning;
             var port = running ? _port : settings.ApiPort;
             var owners = PortInspection.Read(port);
@@ -194,6 +197,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         await _gate.WaitAsync();
         try
         {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposing) != 0, this);
             if (IsRunning) throw new InvalidOperationException("当前管理器已有服务，禁止终止外部进程。");
             using var process = Process.GetProcessById(expected.ProcessId);
             _ = process.Handle;
@@ -235,8 +239,9 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
 
     public async ValueTask DisposeAsync()
     {
-        await StopAsync();
-        _http.Dispose();
-        _gate.Dispose();
+        if (Interlocked.Exchange(ref _disposing, 1) != 0) return;
+        try { await StopAsync(); }
+        finally { _http.Dispose(); }
+        // Do not dispose the gate while previously queued status operations unwind.
     }
 }
