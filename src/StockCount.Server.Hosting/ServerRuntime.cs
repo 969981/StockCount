@@ -48,7 +48,8 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         Put("STOCKCOUNT_ALLOW_LAN", settings.AllowLan.ToString());
         Put("STOCKCOUNT_CERT_PATH", settings.CertPath);
         Put("STOCKCOUNT_CERT_PASSWORD", vault.Read("cert-password") ?? "");
-        Put("STOCKCOUNT_DEVICE_KEY", vault.GetOrCreateDeviceKey());
+        Put("STOCKCOUNT_ALLOW_KEYLESS_LAN", (settings.AllowLan && settings.AllowKeylessLan).ToString());
+        Put("STOCKCOUNT_DEVICE_KEY", settings.AllowLan && settings.AllowKeylessLan ? "" : vault.GetOrCreateDeviceKey());
         Put("STOCKCOUNT_ADMIN_TOKEN", adminToken);
         Put("STOCKCOUNT_LOG_DB_PATH", store.LogPath);
         return info;
@@ -69,7 +70,7 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
     {
         settings.Validate();
         store.EnsureWritableDirectory();
-        if (settings.AllowLan && string.IsNullOrEmpty(vault.GetOrCreateDeviceKey()))
+        if (settings.AllowLan && !settings.AllowKeylessLan && string.IsNullOrEmpty(vault.GetOrCreateDeviceKey()))
             throw new InvalidOperationException("开启 HTTP LAN 必须有设备访问密钥。");
         await _gate.WaitAsync(ct);
         try

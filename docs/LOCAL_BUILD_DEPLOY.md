@@ -254,7 +254,9 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\
 
 脚本执行 `adb install -r -t`，保留同签名版本的应用数据；如果提示 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，说明 APK 签名不同，**脚本不会自动卸载**。Android 卸载会清除应用 SecureStorage 等数据，必须先解决未确认盘点单、UUID、草稿的数据迁移或备份，再决定后续操作。
 
-安装后在 PDA 设置页配置 `http://<Windows局域网IP>:5080`、设备密钥、Test/XTEST 环境及海康扫码广播 Action/Extra；局域网 HTTP 不需要 PFX。不得在公共网络/互联网上暴露此明文 API。
+安装后在 PDA 设置页填写 Windows 局域网 IP:5080（自动补全 http://）、选择 Test/XTEST 环境及配置海康扫码广播 Action/Extra。Avalonia 的 API/PDA 页启用局域网 HTTP 与局域网免密连接，保存连接即可，无需 PDA 密钥；旧配置保留原认证方式，主动勾选免密才切换。Tauri 旧版仍可使用可选设备密钥。免密时同网段设备可直接访问业务 API，必须使用隔离网络、Windows 防火墙和 ACL，禁止公网映射。
+
+写入设置独立保存：四项在无审计编码时默认预选为界面草稿，不代表已核验或实际启用；保存连接不受空审计编码阻塞。现场核实两个帐套后填写已批准的 1–5 字符 X3 操作员编码（写入 CREUSR_0/UPDUSR_0），再确认保存写入授权。更换数据库身份会撤销已有授权。
 
 ## 六、打包完整源码（独立于编译产物）
 

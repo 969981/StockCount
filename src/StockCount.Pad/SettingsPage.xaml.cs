@@ -33,7 +33,7 @@ public partial class SettingsPage : ContentPage
         {
             DeviceKeyStatus.Text = await _api.HasDeviceKeyAsync()
                 ? "设备密钥已安全保存 · 留空表示不修改"
-                : "尚未配置设备访问密钥";
+                : "未设置密钥（内网免密模式无需填写）";
         }
         catch
         {
@@ -120,7 +120,8 @@ public partial class SettingsPage : ContentPage
         SaveButton.IsEnabled = false;
         try
         {
-            var nextUrl = ApiAddress.Text?.Trim() ?? "";
+            if (!ApiEndpointPolicy.TryNormalize(ApiAddress.Text, out var nextUrl))
+                throw new InvalidOperationException("请输入内网 IP:端口（例如 192.168.x.x:5080）或完整 HTTPS 地址。");
             var nextKey = DeviceKey.Text ?? "";
             var pending = await _pendingStore.LoadAsync(CancellationToken.None);
             if (pending is not null &&
@@ -136,10 +137,11 @@ public partial class SettingsPage : ContentPage
             }
 
             await _api.ConfigureAsync(nextUrl, _environment, nextKey);
+            ApiAddress.Text = _api.BaseUrl;
             DeviceKey.Text = "";
             DeviceKeyStatus.Text = await _api.HasDeviceKeyAsync()
                 ? "设备密钥已安全保存 · 留空表示不修改"
-                : "尚未配置设备访问密钥";
+                : "未设置密钥（内网免密模式无需填写）";
             await DisplayAlertAsync("设置已保存",
                 "连接信息已保存到 PDA。请返回盘点单列表重新加载当前帐套。", "OK");
         }
@@ -150,13 +152,17 @@ public partial class SettingsPage : ContentPage
         finally { SaveButton.IsEnabled = true; }
     }
 
+    private void ToggleLegacyKey_Clicked(object sender, EventArgs e) =>
+        LegacyKeyPanel.IsVisible = !LegacyKeyPanel.IsVisible;
+
     private async void Test_Clicked(object sender, EventArgs e)
     {
         ConnectionResult.Text = "正在检查 API 进程和数据库…";
         try
         {
             if (!string.Equals(_environment, _api.EnvironmentName, StringComparison.Ordinal) ||
-                !string.Equals(ApiAddress.Text?.TrimEnd('/'), _api.BaseUrl, StringComparison.OrdinalIgnoreCase) ||
+                (!ApiEndpointPolicy.TryNormalize(ApiAddress.Text, out var testUrl) ||
+                 !string.Equals(testUrl, _api.BaseUrl, StringComparison.OrdinalIgnoreCase)) ||
                 !string.IsNullOrWhiteSpace(DeviceKey.Text))
             {
                 ConnectionResult.Text = "请先保存设置，再测试当前连接。";
@@ -166,7 +172,7 @@ public partial class SettingsPage : ContentPage
             var apiOk = await _api.PingServerAsync();
             if (!apiOk)
             {
-                ConnectionResult.Text = "API 不可达，请检查 HTTPS 地址和网络。";
+                ConnectionResult.Text = "API 不可达，请检查 IP、端口、局域网监听及 Windows 防火墙。";
                 return;
             }
             try

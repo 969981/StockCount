@@ -69,9 +69,10 @@ if (hasHostPort && (port is < 1024 or >= 65535))
     throw new InvalidOperationException("API 端口必须在 1024..65534，额外占用本机端口+1 做服务管理。");
 
 var allowLan = Enabled("STOCKCOUNT_ALLOW_LAN");
-// LAN HTTP is deliberate for trusted isolated PDA Wi-Fi. The device key is
-// still mandatory for LAN access; never expose this listener to the Internet.
-if (hasHostPort && allowLan && string.IsNullOrEmpty(Env("STOCKCOUNT_DEVICE_KEY")))
+// LAN HTTP is for isolated trusted PDA networks. Keyless access is a separate
+// explicit host setting; remote public peers are still rejected.
+var allowKeylessLan = hasHostPort && allowLan && Enabled("STOCKCOUNT_ALLOW_KEYLESS_LAN");
+if (hasHostPort && allowLan && !allowKeylessLan && string.IsNullOrEmpty(Env("STOCKCOUNT_DEVICE_KEY")))
     throw new InvalidOperationException("开启局域网 HTTP 之前必须配置设备访问密钥。");
 
 var app = ApiApplication.Build(args, builder =>
@@ -91,7 +92,8 @@ var app = ApiApplication.Build(args, builder =>
 
     if (hasHostPort)
     {
-        configuration["StockCount:DeviceKey"] = Env("STOCKCOUNT_DEVICE_KEY");
+        configuration["StockCount:DeviceKey"] = allowKeylessLan ? "" : Env("STOCKCOUNT_DEVICE_KEY");
+        configuration["StockCount:AllowKeylessLan"] = allowKeylessLan.ToString();
         configuration["StockCount:AdminToken"] = Env("STOCKCOUNT_ADMIN_TOKEN");
         configuration["AllowedHosts"] = allowLan ? "*" : "localhost;127.0.0.1";
         builder.WebHost.ConfigureKestrel(options =>

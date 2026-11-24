@@ -16,6 +16,7 @@ public partial class MainViewModel : ObservableObject
     private bool _initialized;
 
     [ObservableProperty] private ServerSettings settings = new();
+    [ObservableProperty] private ServerSettings writeDraft = new();
     [ObservableProperty] private string sqlPasswordInput = "";
     [ObservableProperty] private string certPasswordInput = "";
     [ObservableProperty] private string logSearch = "";
@@ -45,6 +46,28 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string serviceState = "未启动";
     [ObservableProperty] private string databaseState = "未测试";
     [ObservableProperty] private string credentialState = "未检查";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SqlPasswordWatermark))]
+    private bool hasSavedSqlPassword;
+
+    // Display only a fixed placeholder, never the stored credential or its length.
+    public string SqlPasswordWatermark => HasSavedSqlPassword ? "••••••••" : "请输入 SQL Server 密码";
+
+    private void RefreshSqlCredentialState()
+    {
+        try
+        {
+            HasSavedSqlPassword = !string.IsNullOrEmpty(_vault.Read("sql-password"));
+            CredentialState = HasSavedSqlPassword
+                ? "SQL 密码已保存 · 输入新密码可替换，留空保留原密码"
+                : "未保存 SQL 密码";
+        }
+        catch (Exception ex)
+        {
+            HasSavedSqlPassword = false;
+            CredentialState = "凭据读取失败：" + ex.Message;
+        }
+    }
     [ObservableProperty] private string apiUrl = "http://127.0.0.1:5080";
     [ObservableProperty] private ObservableCollection<ServerLog> logEntries = new();
 
@@ -65,9 +88,9 @@ public partial class MainViewModel : ObservableObject
             _settingsInvalid = true;
             Message = "配置加载失败，已阻止覆盖： " + ex.Message;
         }
+        WriteDraft = Settings.CreateWriteDraft();
         ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
-        try { CredentialState = _vault.Read("sql-password") is null ? "未保存 SQL 密码" : "SQL 密码已保存"; }
-        catch (Exception ex) { CredentialState = "凭据读取失败：" + ex.Message; }
+        RefreshSqlCredentialState();
     }
 
     /// <summary>Called only after the window has opened; keeps start failures visible in UI.</summary>
@@ -107,38 +130,65 @@ public partial class MainViewModel : ObservableObject
             return;
         }
         ConfirmAllWriteGatesPending = false;
-        Settings.SchemaReviewed = true;
-        Settings.EnableTestWrites = true;
-        Settings.ProductionSchemaReviewed = true;
-        Settings.EnableProductionWrites = true;
-        OnPropertyChanged(nameof(Settings));
+        WriteDraft.SchemaReviewed = true;
+        WriteDraft.EnableTestWrites = true;
+        WriteDraft.ProductionSchemaReviewed = true;
+        WriteDraft.EnableProductionWrites = true;
+        OnPropertyChanged(nameof(WriteDraft));
         Message = "已勾选四项（尚未生效），请填写经批准的 X3 审计用户编码并保存；更换数据库身份会重置授权。";
     }
 
     [RelayCommand]
-    private async Task SaveSettingsAsync()
+    private Task SaveSettingsAsync() => SaveAsync(saveWriteApprovals: false);
+
+    [RelayCommand]
+    private Task SaveWriteSettingsAsync() => SaveAsync(saveWriteApprovals: true);
+
+    private async Task SaveAsync(bool saveWriteApprovals)
     {
         try
         {
             if (_settingsInvalid) throw new InvalidOperationException("配置文件无效，请先修复或备份并移走原文件。");
-            if (_runtime.IsRunning) throw new InvalidOperationException("服务运行中：请先停止服务再修改配置。");
             var old = _store.Load();
+            var next = Settings.Copy();
             var newSqlPassword = !string.IsNullOrEmpty(SqlPasswordInput);
-            if (Settings.DatabaseIdentityChangedFrom(old, newSqlPassword))
-                Settings.RevokeWriteApprovals();
-            Settings.Validate();
+            var identityChanged = next.DatabaseIdentityChangedFrom(old, newSqlPassword);
+            if (saveWriteApprovals)
+            {
+                if (identityChanged)
+                    throw new InvalidOperationException("请先保存数据库连接，再核验对应帐套并保存写入授权。");
+                next.CopyWriteApprovalsFrom(WriteDraft);
+                next.X3AuditUser = next.X3AuditUser.Trim();
+            }
+            else
+            {
+                // A connection save never activates an unsaved write draft.
+                next.CopyWriteApprovalsFrom(old);
+                if (identityChanged) next.RevokeWriteApprovals();
+            }
+            next.Validate();
+            // Validate before stopping the currently running, owned API.
+            var wasRunning = _runtime.IsRunning;
+            if (wasRunning) await _runtime.StopAsync();
             if (newSqlPassword) _vault.Write("sql-password", SqlPasswordInput);
             if (!string.IsNullOrEmpty(CertPasswordInput)) _vault.Write("cert-password", CertPasswordInput);
-            _store.Save(Settings);
-            Settings = _store.Load(); // refresh nested checkbox bindings after revoking old approvals
+            _store.Save(next);
+            Settings = _store.Load();
+            if (saveWriteApprovals || identityChanged)
+                WriteDraft = Settings.CreateWriteDraft();
             ConfirmAllWriteGatesPending = false;
             SqlPasswordInput = "";
             CertPasswordInput = "";
-            CredentialState = _vault.Read("sql-password") is null ? "未保存 SQL 密码" : "SQL 密码已保存";
-            ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
-            Message = "配置已保存至 EXE 同目录。数据库身份变化时写入授权已重置。";
-            if (Settings.AutoStartApi && !string.IsNullOrWhiteSpace(Settings.SqlServer))
+            RefreshSqlCredentialState();
+            var savedMessage = saveWriteApprovals ? "写入授权已保存。" :
+                identityChanged ? "连接已保存；数据库身份变化，旧写入授权已撤销。" :
+                "连接已保存；未保存的写入授权草稿不影响连接。";
+            Message = savedMessage;
+            if ((wasRunning || Settings.AutoStartApi) && !string.IsNullOrWhiteSpace(Settings.SqlServer))
+            {
                 await StartAsync();
+                if (_runtime.IsRunning) Message = savedMessage + " API 已启动。";
+            }
         }
         catch (Exception ex) { Message = "保存失败：" + ex.Message; }
         await RefreshStatusAsync();

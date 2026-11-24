@@ -10,6 +10,8 @@ public sealed class ServerSettings
     public bool AutoStartApi { get; set; } = true;
     public int ApiPort { get; set; } = 5080;
     public bool AllowLan { get; set; }
+    // Existing JSON without this opt-in retains the old keyed policy.
+    public bool AllowKeylessLan { get; set; }
     public string CertPath { get; set; } = "";
     public string SqlServer { get; set; } = "";
     public string SqlDatabase { get; set; } = "sagex3";
@@ -23,6 +25,30 @@ public sealed class ServerSettings
     public bool ProductionSchemaReviewed { get; set; }
     public string X3AuditUser { get; set; } = "";
 
+    public ServerSettings Copy() => (ServerSettings)MemberwiseClone();
+
+    public void CopyWriteApprovalsFrom(ServerSettings source)
+    {
+        SchemaReviewed = source.SchemaReviewed;
+        EnableTestWrites = source.EnableTestWrites;
+        ProductionSchemaReviewed = source.ProductionSchemaReviewed;
+        EnableProductionWrites = source.EnableProductionWrites;
+        X3AuditUser = source.X3AuditUser;
+    }
+
+    // A UI preset, not a saved or effective authorization.
+    public ServerSettings CreateWriteDraft()
+    {
+        var draft = Copy();
+        if (string.IsNullOrWhiteSpace(X3AuditUser) && !SchemaReviewed && !EnableTestWrites &&
+            !ProductionSchemaReviewed && !EnableProductionWrites)
+        {
+            draft.SchemaReviewed = draft.EnableTestWrites = true;
+            draft.ProductionSchemaReviewed = draft.EnableProductionWrites = true;
+        }
+        return draft;
+    }
+
     public void Validate()
     {
         if (ApiPort is < 1024 or > 65534)
@@ -34,7 +60,7 @@ public sealed class ServerSettings
         if (EnableProductionWrites && !ProductionSchemaReviewed)
             throw new InvalidOperationException("COB 未完成独立核验，不允许开启写入。");
         if ((EnableTestWrites || EnableProductionWrites) &&
-            (string.IsNullOrWhiteSpace(X3AuditUser) || X3AuditUser.Length > 5))
+            (string.IsNullOrWhiteSpace(X3AuditUser) || X3AuditUser.Length > 5 || X3AuditUser.Any(char.IsControl)))
             throw new InvalidOperationException("开启写入前必须填写 1–5 字符的已批准 X3 审计用户编码。");
     }
 

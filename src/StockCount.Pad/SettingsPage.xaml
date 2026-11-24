@@ -23,25 +23,29 @@
             <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
                     Padding="8,0">
               <Entry x:Name="ApiAddress" Keyboard="Url"
-                     Placeholder="https://现场服务器:5080"
+                     Placeholder="内网 IP:5080"
                      FontSize="14" BackgroundColor="Transparent"
                      HeightRequest="48"/>
             </Border>
-            <Label Text="服务器地址由现场人员填写；APK 只通过 HTTPS 访问 API，不直接连接 SQL Server。"
+            <Label Text="输入内网 IP:端口即可，自动补全 http://。PDA 通过 API 访问数据库，不直接连接 SQL Server。"
                    Style="{StaticResource SecondaryText}" LineBreakMode="WordWrap"/>
 
-            <Label Text="PDA 设备访问密钥" FontSize="12"
+            <Button Text="旧版密钥设置（可选）" Style="{StaticResource SecondaryAction}"
+                    Clicked="ToggleLegacyKey_Clicked"/>
+            <VerticalStackLayout x:Name="LegacyKeyPanel" IsVisible="False" Spacing="8">
+            <Label Text="旧版服务密钥（可选）" FontSize="12"
                    FontAttributes="Bold" TextColor="#536581"/>
             <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
                     Padding="8,0">
               <Entry x:Name="DeviceKey" IsPassword="True"
-                     Placeholder="输入新密钥；留空保留原密钥"
+                     Placeholder="内网免密模式无需填写"
                      BackgroundColor="Transparent" FontSize="14"
                      HeightRequest="48"/>
             </Border>
-            <Label x:Name="DeviceKeyStatus" Text="设备密钥保存在 Android SecureStorage"
+            <Label x:Name="DeviceKeyStatus" Text="仅旧版密钥认证模式需要填写"
                    Style="{StaticResource SecondaryText}"
                    LineBreakMode="WordWrap"/>
+            </VerticalStackLayout>
             <Button Text="◉  测试连接" Style="{StaticResource SecondaryAction}"
                     Clicked="Test_Clicked"/>
             <Label x:Name="ConnectionResult" Text="请先保存配置，再测试服务连接"
@@ -130,7 +134,7 @@
           <VerticalStackLayout Spacing="7">
             <Label Text="安全说明" FontAttributes="Bold"
                    TextColor="#496485" FontSize="13"/>
-            <Label Text="PDA 仅保存 API 地址、Test/Production 环境和设备访问密钥。数据库服务器、账号、密码只能在 Windows Tauri 管理器配置。"
+            <Label Text="可信隔离局域网免密模式只需 API 地址和帐套；旧版服务可选密钥。数据库账号密码仅在 Windows 管理器配置。"
                    FontSize="12" TextColor="#647A9C"/>
             <Label Text="已提交但响应丢失时，原单据、数量和 UUID 会加密保存；确认结果之前，不允许切换服务器或帐套。"
                    FontSize="12" TextColor="#647A9C"/>

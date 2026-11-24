@@ -36,6 +36,23 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void NewWriteDraftPreselectsFourWithoutChangingEffectiveSettings()
+    {
+        var saved = new ServerSettings();
+        var draft = saved.CreateWriteDraft();
+        Assert.True(draft.SchemaReviewed && draft.EnableTestWrites &&
+                    draft.ProductionSchemaReviewed && draft.EnableProductionWrites);
+        Assert.False(saved.SchemaReviewed || saved.EnableTestWrites ||
+                     saved.ProductionSchemaReviewed || saved.EnableProductionWrites);
+        Assert.Throws<InvalidOperationException>(() => draft.Validate());
+        var connection = saved.Copy();
+        connection.AllowLan = true;
+        connection.AllowKeylessLan = true;
+        connection.Validate();
+        Assert.False(connection.EnableProductionWrites);
+    }
+
+    [Fact]
     public void SchemaApprovalIsNotInheritedAfterDatabaseIdentityChange()
     {
         var previous = new ServerSettings { SqlServer = "SERVER-A", SchemaReviewed = true, ProductionSchemaReviewed = true };

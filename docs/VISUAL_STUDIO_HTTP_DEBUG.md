@@ -61,7 +61,7 @@ date: 2026-11-23
    ```
 
 4. APK 通常在 `src/StockCount.Pad/bin/Debug/net10.0-android/`；用 `Get-ChildItem ... -Recurse -Filter '*-Signed.apk'` 确认确切名称。签名发布版仍需长期 JKS，Debug 包不能替代正式签名版。
-5. 手机端内网 API URL 为 `http://服务器局域网IP:5080`，需在 Avalonia 管理器中显式开启 LAN HTTP、配置设备 Key、防火墙限制来源；AndroidManifest 已设置 `android:usesCleartextTraffic="true"`。真实扫码/ERP SQL 写入仍需现场联调。
+5. 手机端内网 API URL 为 `http://服务器局域网IP:5080`，也可直接填 IP:端口自动补全 HTTP；Avalonia 管理器开启 LAN HTTP 与局域网免密连接（旧版配置须主动勾选），保存 API 连接，防火墙限制 PDA 来源。旧版密钥模式仍兼容；AndroidManifest 已设置 `android:usesCleartextTraffic="true"`。真实扫码/ERP SQL 写入仍需现场联调。
 
 ### XAML 基础控件全部提示找不到类型（Label / ContentPage / Grid）
 
