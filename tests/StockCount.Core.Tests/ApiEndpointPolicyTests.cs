@@ -5,6 +5,14 @@ namespace StockCount.Core.Tests;
 
 public sealed class ApiEndpointPolicyTests
 {
+    [Fact]
+    public void DefaultPdaEndpointIsPrivateHttpOnBusinessPort()
+    {
+        Assert.Equal("http://192.168.1.1:5080", ApiEndpointPolicy.DefaultEndpoint);
+        Assert.True(ApiEndpointPolicy.TryNormalize(ApiEndpointPolicy.DefaultEndpoint, out var endpoint));
+        Assert.Equal(ApiEndpointPolicy.DefaultEndpoint, endpoint);
+    }
+
     [Theory]
     [InlineData("192.168.1.100:5080", "http://192.168.1.100:5080")]
     [InlineData(" 10.0.0.2:5080/ ", "http://10.0.0.2:5080")]
