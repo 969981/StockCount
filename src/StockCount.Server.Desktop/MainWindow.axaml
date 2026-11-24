@@ -20,7 +20,7 @@
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21"/>
                 <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
-                <TextBlock Text="打开管理器时默认自动启动 API（SQL Server 地址尚未配置时先等待保存）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
+                <TextBlock Text="打开管理器时默认自动启动 API（首次请确认并保存数据库配置）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="API 健康检查使用仅本机的管理端口（业务端口 + 1）。" TextWrapping="Wrap" Opacity="0.7"/>
                 <StackPanel Orientation="Horizontal" Spacing="10">
                   <Button Content="启动 API" Command="{Binding StartCommand}" />
