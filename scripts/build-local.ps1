@@ -1,8 +1,8 @@
 #requires -Version 7.0
-<#[.SYNOPSIS] Windows x64 local build of the native PDA APK, NSIS Setup and Portable ZIP. #>
+<#[.SYNOPSIS] Windows x64 local build: Android APK, Tauri Setup/Portable and Avalonia Portable. #>
 [CmdletBinding()]
 param(
-  [ValidateSet('All','Windows','Android')][string]$Target = 'All',
+  [ValidateSet('All','Windows','Android','Avalonia')][string]$Target = 'All',
   [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$')][string]$Version,
   [string]$OutputDirectory = 'dist\local',
   [switch]$SkipTests,
@@ -87,6 +87,20 @@ if ($Target -in @('All','Windows')) {
   $portable = Join-Path $out "StockCount-Server-v$Version-Windows-x64-Portable.zip"
   Assert-Artifact $portable
   $artifacts.Add($portable)
+}
+
+if ($Target -in @('All','Avalonia')) {
+  Require-Tool node 'Avalonia Windows icon generation needs Node.js 22+ and npm.'
+  Require-Tool npm 'Avalonia Windows icon generation needs Node.js 22+ and npm.'
+  # The Avalonia path only needs .NET + Node for the shared branded ICO.
+  # No Rust toolchain/WebView2 is required for this native Windows app.
+  & (Join-Path $PSScriptRoot 'build-avalonia-desktop.ps1') -Configuration Release
+  if (-not $?) { throw 'Avalonia Windows self-contained build failed.' }
+  & (Join-Path $PSScriptRoot 'package-avalonia-portable.ps1') -Version $Version -OutputDirectory $out
+  if (-not $?) { throw 'Avalonia Portable packaging failed.' }
+  $avaloniaZip = Join-Path $out "StockCount-Avalonia-v$Version-Windows-x64-Portable.zip"
+  Assert-Artifact $avaloniaZip
+  $artifacts.Add($avaloniaZip)
 }
 
 if ($Target -in @('All','Android')) {
