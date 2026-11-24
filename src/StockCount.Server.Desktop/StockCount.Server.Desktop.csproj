@@ -20,13 +20,11 @@
     <!-- Build the API before the desktop app; do not import the API into UI code. -->
     <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
-  <!-- The same SVG drives both the Tauri ICO and Avalonia EXE/taskbar icon.
-       Generate before MSBuild consumes ApplicationIcon / AvaloniaResource. -->
-  <Target Name="PrepareStockCountWindowIcon" BeforeTargets="PrepareForBuild"
-          Condition="'$(OS)' == 'Windows_NT' and '$(DesignTimeBuild)' != 'true'">
-    <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildProjectDirectory)\\..\\..\\scripts\\prepare-windows-brand-icons.ps1&quot;" />
-    <Error Condition="!Exists('$(MSBuildProjectDirectory)\\Assets\\server.ico')"
-           Text="StockCount server.ico missing after icon generation." />
+  <!-- The tracked native icon is a source resource. Visual Studio design-time
+       builds and extracted source ZIPs must not depend on npm or generated files. -->
+  <Target Name="ValidateStockCountWindowIcon" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)/Assets/server.ico')"
+           Text="Missing tracked Assets/server.ico. Restore it from the complete StockCount source archive." />
   </Target>
   <!-- Visual Studio F5: place the framework-dependent API and its runtime assets beside
        the Debug Avalonia EXE. Release/Portable uses build-avalonia-desktop.ps1 instead. -->
