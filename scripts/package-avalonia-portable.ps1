@@ -47,12 +47,22 @@ if (!(Test-Path -LiteralPath $inputPath -PathType Container)) {
 }
 $files = @(Get-ChildItem -LiteralPath $inputPath -Recurse -File -Force)
 if ($files.Count -eq 0) { throw "Avalonia publish output is empty: $inputPath" }
-$required = @('StockCount.Server.Desktop.exe', 'StockCount.Api.exe')
-foreach ($name in $required) {
+# The Avalonia Windows AppHost can be a small (~150 KB) EXE even when
+# self-contained: the framework runtime lives alongside it in DLLs.
+# The API is intentionally published as a single-file self-contained sidecar.
+$required = @{
+  'StockCount.Server.Desktop.exe' = 4096
+  'StockCount.Api.exe' = 1048576
+}
+foreach ($name in $required.Keys) {
   $exe = Join-Path $inputPath $name
-  if (!(Test-Path -LiteralPath $exe -PathType Leaf) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) {
-    throw "Required self-contained EXE missing/suspicious: $exe"
+  if (!(Test-Path -LiteralPath $exe -PathType Leaf) -or
+      (Get-Item -LiteralPath $exe).Length -lt $required[$name]) {
+    throw "Required Windows EXE missing or suspicious: $exe"
   }
+}
+if (@($files | Where-Object { $_.Extension -eq '.dll' }).Count -eq 0) {
+  throw 'Avalonia published .NET dependencies are missing; do not ship EXEs alone.'
 }
 
 # User data, credentials and signing material never belong in a distributable
