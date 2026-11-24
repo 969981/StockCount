@@ -20,15 +20,15 @@ status: active
 | --- | --- | --- |
 | Android MAUI APK | `src/StockCount.Pad/Resources/AppIcon/appicon.svg` 的 `MauiIcon` | Resizetizer 自动生成各 density 的 Android Launcher 图标 |
 | Windows Tauri 2（现有 Setup/Portable） | `desktop/server-console/assets/app-icon.svg` | `npm run tauri -- icon` 生成 `src-tauri/icons/` 下的 `icon.ico`、PNG 等 |
-| Windows Avalonia .NET 10 | `scripts/prepare-windows-brand-icons.ps1` | 从 **同一服务器 SVG** 生成 Tauri ICO 并复制为 `src/StockCount.Server.Desktop/Assets/server.ico`，作为 EXE 和主窗口图标 |
+| Windows Avalonia .NET 10 | `src/StockCount.Server.Desktop/Assets/server.ico` | 由服务器 SVG 派生的多尺寸 ICO，已纳入 Git 与源码 ZIP，直接作为 EXE 和主窗口图标 |
 
 ## 构建
 
 ```powershell
-# Windows：生成 Tauri + Avalonia 所需 ICO
-pwsh -File .\scripts\prepare-windows-brand-icons.ps1
+# 仅在品牌 SVG 修改后手动更新 ICO（需要 Node/npm）
+pwsh -File .\scripts\prepare-windows-brand-icons.ps1 -Force
 
-# Avalonia Debug / Release（MSBuild 自动执行上述准备步骤）
+# Avalonia Debug / Release（直接使用已提交 ICO，不需要 Node/npm）
 dotnet build src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c Debug
 pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release
 
@@ -39,11 +39,11 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -c Debug -f net10.0-androi
 pwsh -File .\scripts\build-local.ps1 -Target Windows
 ```
 
-首次生成 Windows 图标需要 Node.js 22+ 和 npm：共用项目已有的 `@tauri-apps/cli`，脚本会在缺失依赖时调用 `npm install`。生成的 `*.ico`、Android mipmap PNG 由构建产生，不纳入源码 Git 提交；原始 SVG 才是唯一可维护的设计源。
+仅 Tauri 图标生成或手动刷新 Avalonia ICO 需要 Node.js 22+ 和 npm。Avalonia 的 `Assets/server.ico` 是刻意提交的派生资源，源码 ZIP 也必须包含；其余 Tauri 生成图标、Android mipmap PNG 仍由构建生成。原始 SVG 是设计源。
 
 ## Windows Avalonia Portable 图标随软件部署
 
-新的服务器图标会在 Windows Avalonia 构建时生成 ICO 并写入 EXE 资源，因此 Portable ZIP **无需另外复制 SVG/ICO 到运行目录**。请使用完整发布目录打包，避免缺失 .NET 原生依赖：
+服务器 ICO 已随源码提交，Windows Avalonia 构建时直接写入 EXE 资源，因此 Portable ZIP **无需另外复制 SVG/ICO 到运行目录**。请使用完整发布目录打包，避免缺失 .NET 原生依赖：
 
 ```powershell
 pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local

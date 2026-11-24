@@ -138,7 +138,7 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-l
 ### 只编译 Avalonia Windows 原生管理器及 Portable ZIP
 
 ```powershell
-# .NET 10 + Node.js 22+，不需要 Rust 或 WebView2
+# .NET 10，不需要 Node.js、npm、Rust 或 WebView2
 pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
 
 # 或者独立编译、打包
@@ -146,7 +146,7 @@ pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release
 pwsh -File .\scripts\package-avalonia-portable.ps1 -Version 0.2.0-local
 ```
 
-Avalonia 的 Portable ZIP 含 `StockCount.Api.exe`、.NET DLL 与原生依赖，不能只复制两份 EXE。`server.svg` 经 MSBuild 生成 ICO，注入 Windows EXE 与窗口图标。
+Avalonia 的 Portable ZIP 含 `StockCount.Api.exe`、.NET DLL 与原生依赖，不能只复制两份 EXE。`Assets/server.ico` 已随 Git 与源码 ZIP 分发，直接注入 Windows EXE 和窗口；无需在编译期间生成。
 ### Android 同时构建 Debug + 正式签名 Release APK
 
 注意：**Release APK 必须使用项目长期保管的 JKS**。先阅读 [Android Release 签名手册](ANDROID_RELEASE_SIGNING.md)，将 keystore 放在仓库之外，并在当前终端设置签名口令环境变量（不得把密码写在命令行或仓库里）。
@@ -302,6 +302,7 @@ Get-FileHash ".\dist\source\StockCount-Source-$short.zip" -Algorithm SHA256
 | Rust/MSVC 链接失败 | 检查 `rustc -vV` 的 host 是否为 x86_64-pc-windows-msvc，安装 Visual Studio C++ Build Tools 与 Windows SDK |
 | npm 或 Tauri 找不到命令 | 安装 Node.js 22+、Rust，先 npm install，再运行构建 |
 | Portable 无法启动 API 或保存设置 | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录，`server-settings.json` 和 `server-logs.db` 均可在当前用户可写的目录中创建、WebView2 已安装 |
+| Avalonia GenerateAvaloniaResourcesTask 找不到 server.ico | 旧源码包遗漏了被忽略的 ICO；更新仓库并重新归档，或将新版已提交的 `src/StockCount.Server.Desktop/Assets/server.ico` 复制到旧源码包同一相对路径。 |
 | Avalonia Portable 缺少依赖 | 使用 package-avalonia-portable.ps1 打包完整 publish 目录；Avalonia 无需 WebView2，Tauri 则需要 |
 | Avalonia 升级被拒绝 | 先关闭 StockCount.Server.Desktop、Tauri 和 StockCount.Api，确认 ZIP 不含现场设置、SQLite 或签名私钥 |
 | Obsidian / Markdown 检查失败 | 执行 `python scripts/check_obsidian_links.py`，目录不能使用 `variants/` 这类相对链接，应链接具体文件或 GitHub 目录 URL |

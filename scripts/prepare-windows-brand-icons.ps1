@@ -1,7 +1,7 @@
 #requires -Version 7.0
 # Generates native Windows .ico resources from the committed server SVG.
 # This uses the repository's already-pinned Tauri CLI, not a third-party
-# vector converter. Called automatically by Avalonia's MSBuild target.
+# vector converter. Run manually only when refreshing the tracked native icon.
 [CmdletBinding()]
 param([switch]$Force)
 
@@ -12,6 +12,12 @@ $desktop = Join-Path $root 'desktop/server-console'
 $svg = Join-Path $desktop 'assets/app-icon.svg'
 $generatedIco = Join-Path $desktop 'src-tauri/icons/icon.ico'
 $target = Join-Path $root 'src/StockCount.Server.Desktop/Assets/server.ico'
+
+if (!$Force -and (Test-Path -LiteralPath $target -PathType Leaf)) {
+  if ((Get-Item -LiteralPath $target).Length -lt 1000) { throw "Invalid tracked Windows icon: $target" }
+  Write-Host "Tracked Windows icon ready: $target (use -Force to regenerate from SVG)."
+  return
+}
 
 if (!(Test-Path -LiteralPath $svg -PathType Leaf)) {
   throw "Missing source server SVG: $svg"

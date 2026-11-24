@@ -122,6 +122,15 @@ if ($isModernSnapshot) {
     '.github/workflows/pda-android-build.yml'
   )
 }
+# Legacy commits generated the ICO during build; newer ones must carry the
+# actual static resource in Git, including when the archive has no .git directory.
+if ($isModernSnapshot) {
+  $projectText = Read-GitUtf8 @('-C', $root, 'show', "${commit}:src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj")
+  if ($projectText -match '<ApplicationIcon>Assets/server\.ico</ApplicationIcon>' -and
+      $projectText -notmatch 'Name="PrepareStockCountWindowIcon"') {
+    $mustHave += 'src/StockCount.Server.Desktop/Assets/server.ico'
+  }
+}
 foreach ($file in $mustHave) {
   if ($tracked -notcontains $file) {
     throw "Missing essential source file in $Ref ($commit): $file"

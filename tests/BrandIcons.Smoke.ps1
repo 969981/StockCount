@@ -30,3 +30,28 @@ foreach ($role in @('pda','server')) {
 if ($apk.OuterXml -ne $masterPda.OuterXml) { throw 'Android app icon is not the PDA brand master' }
 if ($win.OuterXml -ne $masterServer.OuterXml) { throw 'Windows Tauri icon is not the server brand master' }
 Write-Host 'All 12 canonical/preset SVG files are well-formed, size-correct, and platform bindings match.' -ForegroundColor Green
+
+# The Windows Avalonia icon is a tracked binary resource, including in source ZIPs.
+$icoPath = Join-Path $root 'src/StockCount.Server.Desktop/Assets/server.ico'
+$ico = [IO.File]::ReadAllBytes($icoPath)
+if ($ico.Length -lt 1000 -or [BitConverter]::ToUInt16($ico,0) -ne 0 -or
+    [BitConverter]::ToUInt16($ico,2) -ne 1) { throw 'Invalid ICO header' }
+$count = [BitConverter]::ToUInt16($ico,4)
+if ($count -lt 4 -or $ico.Length -lt (6 + 16 * $count)) { throw 'Invalid ICO image directory' }
+$sizes = @()
+for ($i = 0; $i -lt $count; $i++) {
+    $offset = 6 + 16 * $i
+    $width = if ($ico[$offset] -eq 0) { 256 } else { [int]$ico[$offset] }
+    $height = if ($ico[$offset+1] -eq 0) { 256 } else { [int]$ico[$offset+1] }
+    $length = [BitConverter]::ToUInt32($ico,$offset+8)
+    $dataOffset = [BitConverter]::ToUInt32($ico,$offset+12)
+    if ($width -ne $height -or $length -eq 0 -or
+        $dataOffset -lt (6 + 16 * $count) -or ([long]$dataOffset + $length) -gt $ico.Length) {
+        throw "Invalid ICO image entry $i"
+    }
+    $sizes += $width
+}
+foreach ($size in @(16,32,48,256)) {
+    if ($sizes -notcontains $size) { throw "Tracked ICO missing size $size" }
+}
+Write-Host "Tracked Avalonia ICO verified: $($sizes -join ', ') pixels."

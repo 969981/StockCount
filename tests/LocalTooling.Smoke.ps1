@@ -152,6 +152,7 @@ try {
             'src/StockCount.Api/Properties/launchSettings.json',
             'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj',
             'src/StockCount.Server.Desktop/App.axaml',
+            'src/StockCount.Server.Desktop/Assets/server.ico',
             'src/StockCount.Server.Desktop/MainWindow.axaml',
             'src/StockCount.Server.Desktop/ViewModels/MainViewModel.cs',
             'src/StockCount.Server.Hosting/StockCount.Server.Hosting.csproj',

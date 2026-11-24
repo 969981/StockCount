@@ -44,6 +44,12 @@ date: 2026-11-23
 4. `server-settings.json` / `server-logs.db` 存储在实际桌面 EXE 同目录，Debug 与 Release 是 **不同目录**，不应误以为它们自动共享配置。SQL 密码及设备 Key 仍位于 Windows Credential Manager。
 5. 发布可用 Windows 目录：`pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release`。默认现有 `build-local.ps1 -Target Windows` 和 GitHub Release 仍构建 **Tauri** 安装包；不要把这两条不同的发布流程混为一谈。
 
+### 从源码 ZIP 直接生成 Avalonia
+
+`src/StockCount.Server.Desktop/Assets/server.ico` 现在作为正式资源提交并包含在源码 ZIP 中，不需要 Git 元数据、Node/npm 或预生成任务。解压后直接打开 StockCount.slnx 即可生成（仍需 .NET 10 SDK/NuGet 依赖；全解决方案另外需要 MAUI Android）。
+
+旧 ZIP（如 5af5a2d）若报告 GenerateAvaloniaResourcesTask 缺少 server.ico，请复制新版 ICO 到相同位置，或在旧源码根目录运行 `pwsh -File .\scripts\prepare-windows-brand-icons.ps1`（旧脚本需要 Node/npm）。不要删除窗口 Icon 或 ApplicationIcon 引用。推荐重新打包并解压最新完整源码。
+
 ## MAUI Android · 真机/模拟器编译
 
 1. 在 Visual Studio Installer 安装 **.NET Multi-platform App UI development** 工作负载；检查 `dotnet workload list` 是否包含 `maui-android`。必要时以管理员权限运行 `dotnet workload install maui-android`。
