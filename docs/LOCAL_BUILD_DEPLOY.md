@@ -17,7 +17,7 @@ tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Avalonia, Obsi
 | --- | --- | --- |
 | [build-local.ps1](../scripts/build-local.ps1) | 统一构建 + 自动打包 | Android APK、Tauri Setup/Portable、Avalonia Portable 与 SHA256 |
 | [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB、Tauri NSIS/Portable、Avalonia Portable 安全升级 |
-| [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | Source.zip、SourceInfo.txt、单独 SHA256 文件 |
+| [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | StockCount-Source-短CommitHash.zip、SourceInfo.txt、SHA256 文件 |
 | [package-avalonia-portable.ps1](../scripts/package-avalonia-portable.ps1) | 打包完整 .NET 自包含发布目录 | 含依赖的 StockCount-Avalonia-Portable.zip，拒绝现场配置 |
 | [deploy-avalonia-portable.ps1](../scripts/deploy-avalonia-portable.ps1) | Avalonia 更新执行器 | 逐文件校验、备份、失败尽力恢复 |
 | [new-android-release-jks.ps1](../scripts/new-android-release-jks.ps1) | 首次生成长期 JKS | 私有 keystore，不覆盖已有文件 |
@@ -257,14 +257,14 @@ pwsh -NoProfile -File .\scripts\deploy-local.ps1 -Target Android -PackagePath .\
 
 ```powershell
 git status
-pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref HEAD -Version 0.2.0-local
+pwsh -NoProfile -File .\scripts\package-source.ps1
 ```
 
 ### 对指定 Tag 制作可复现源码 ZIP
 
 ```powershell
 git fetch --tags
-pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2 -Version 0.2.0-preview.2
+pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2
 ```
 
 源码默认打包到 `dist\source\`：
@@ -272,12 +272,12 @@ pwsh -NoProfile -File .\scripts\package-source.ps1 -Ref v0.2.0-preview.2 -Versio
 ```text
 dist/
   source/
-    StockCount-Source-v0.2.0-local.zip
-    StockCount-Source-v0.2.0-local.SourceInfo.txt
-    StockCount-Source-v0.2.0-local.SHA256SUMS.txt
+    StockCount-Source-a39ec60.zip
+    StockCount-Source-a39ec60.SourceInfo.txt
+    StockCount-Source-a39ec60.SHA256SUMS.txt
 ```
 
-**打包语义**：严格使用 `git archive` 导出指定 Git 提交（`.cs/.csproj/.xaml/.rs/.ts/.tsx/.sql/.ps1`、文档、GitHub Actions 等），不含 `.git` 历史、node_modules、编译输出、SQLite 日志、证书和未跟踪的本地文件。归档文件名包含版本号，SourceInfo 记录精确的 40 位 Commit SHA。
+**打包语义**：严格使用 `git archive` 导出指定 Git 提交（`.cs/.csproj/.xaml/.rs/.ts/.tsx/.sql/.ps1`、文档、GitHub Actions 等），不含 `.git` 历史、node_modules、编译输出、SQLite 日志、证书和未跟踪的本地文件。归档文件名与 ZIP 内顶层目录统一为 `StockCount-Source-短CommitHash`，默认打包 HEAD，`-Ref` 可选择分支、Tag 或 Commit。Git 自动生成至少 7 位的唯一短哈希（例如上面的 `a39ec60` 仅为示例）；SourceInfo 同时记录短哈希、完整 Commit SHA 和 SHA256。旧 `-Version` 参数仍兼容，但仅作为可选说明字段，不改变文件名。不同提交生成不同文件名，同一提交重复打包覆盖同名归档。
 
 如果 `git status` 有未提交修改或未跟踪文件，脚本默认拒绝执行，避免误以为这些修改已包含在源码 ZIP。建议先 `git add` / `git commit`。如果有意只需要已提交的快照，可以加 `-AllowDirtySnapshot`，但它**不会把任何本地未提交修改放进 ZIP**。
 
@@ -289,7 +289,8 @@ dist/
 
 ```powershell
 Get-FileHash .\dist\local\StockCount-Server-v0.2.0-local-Windows-x64-Portable.zip -Algorithm SHA256
-Get-FileHash .\dist\source\StockCount-Source-v0.2.0-local.zip -Algorithm SHA256
+$short = git rev-parse --short=7 HEAD
+Get-FileHash ".\dist\source\StockCount-Source-$short.zip" -Algorithm SHA256
 ```
 
 | 现象 | 排查 / 处理 |
