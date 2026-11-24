@@ -58,7 +58,7 @@ Visual Studio 请在完整 `StockCount.slnx` 中把 `StockCount.Server.Desktop` 
 
 - EXE 所在目录必须可写，不会自动退回 AppData。
 - JSON 配置存在时优先读取；旧 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json` 只在 JSON 缺失时复制迁移，绝不删除原文件。错误 JSON 不默默降级。
-- SQL 密码、遗留证书密码、PDA 设备密钥位于 Windows Credential Manager。
+- SQL 密码、遗留证书密码、PDA 设备密钥位于 Windows Credential Manager。已保存 SQL 密码时，密码框显示固定八个圆点占位符；真实密码不会回填。留空保存保留原密码且不会撤销写入授权，只有实际输入新密码才替换凭据。
 - 设置数据库身份发生改变时，XTEST/COB 结构核验和写入开关均清空，重新审批后才可启用。
 - 局域网 HTTP 可选择免密连接（新配置默认预选、旧配置需主动启用），只允许直接内网 IP/回环访问业务 API。无需 PDA Key，但必须使用隔离网络、ACL 和防火墙；不向公网开放。旧版密钥模式和管理端口令牌仍保留。
 - 关闭/迁移前请备份 JSON、SQLite（包括 -wal、-shm）和需要重新录入的密钥；更新只覆盖可执行文件。
