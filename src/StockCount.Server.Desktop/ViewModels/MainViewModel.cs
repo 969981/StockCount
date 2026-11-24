@@ -106,9 +106,9 @@ public partial class MainViewModel : ObservableObject
 
         if (Settings.AutoStartApi)
         {
-            if (string.IsNullOrWhiteSpace(Settings.SqlServer))
+            if (!System.IO.File.Exists(_store.SettingsPath) || string.IsNullOrWhiteSpace(Settings.SqlServer))
             {
-                Message = "请先填写并保存 SQL Server 地址；配置完成后会自动启动 API。";
+                Message = "请确认并保存数据库配置；配置完成后会自动启动 API。";
             }
             else
             {
@@ -135,7 +135,7 @@ public partial class MainViewModel : ObservableObject
         WriteDraft.ProductionSchemaReviewed = true;
         WriteDraft.EnableProductionWrites = true;
         OnPropertyChanged(nameof(WriteDraft));
-        Message = "已勾选四项（尚未生效），请填写经批准的 X3 审计用户编码并保存；更换数据库身份会重置授权。";
+        Message = "已勾选四项（尚未生效），请确认对应帐套已核验后保存；操作员编码留空使用 PDA。更换数据库身份会重置授权。";
     }
 
     [RelayCommand]
@@ -158,7 +158,7 @@ public partial class MainViewModel : ObservableObject
                 if (identityChanged)
                     throw new InvalidOperationException("请先保存数据库连接，再核验对应帐套并保存写入授权。");
                 next.CopyWriteApprovalsFrom(WriteDraft);
-                next.X3AuditUser = next.X3AuditUser.Trim();
+                next.X3AuditUser = next.EffectiveX3AuditUser;
             }
             else
             {
