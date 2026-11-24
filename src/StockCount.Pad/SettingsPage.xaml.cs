@@ -157,39 +157,24 @@ public partial class SettingsPage : ContentPage
 
     private async void Test_Clicked(object sender, EventArgs e)
     {
-        ConnectionResult.Text = "正在检查 API 进程和数据库…";
+        TestConnectionButton.IsEnabled = false;
+        SaveButton.IsEnabled = false;
         try
         {
-            if (!string.Equals(_environment, _api.EnvironmentName, StringComparison.Ordinal) ||
-                (!ApiEndpointPolicy.TryNormalize(ApiAddress.Text, out var testUrl) ||
-                 !string.Equals(testUrl, _api.BaseUrl, StringComparison.OrdinalIgnoreCase)) ||
-                !string.IsNullOrWhiteSpace(DeviceKey.Text))
-            {
-                ConnectionResult.Text = "请先保存设置，再测试当前连接。";
-                return;
-            }
-
-            var apiOk = await _api.PingServerAsync();
-            if (!apiOk)
-            {
-                ConnectionResult.Text = "API 不可达，请检查 IP、端口、局域网监听及 Windows 防火墙。";
-                return;
-            }
-            try
-            {
-                var databaseOk = await _api.PingDatabaseAsync();
-                ConnectionResult.Text = databaseOk
-                    ? "✓ API 可达 · SQL Server SELECT 1 已就绪（不等于具备 ERP 写入权限）"
-                    : "✓ API 可达 · 数据库未就绪";
-            }
-            catch (Exception error)
-            {
-                ConnectionResult.Text = "✓ API 可达 · /ready 未通过：" + error.Message;
-            }
+            var address = ApiAddress.Text ?? "";
+            var environment = _environment;
+            var key = DeviceKey.Text ?? "";
+            await _api.DiagnoseConnectionAsync(address, environment, key,
+                result => ConnectionResult.Text = result);
         }
         catch (Exception error)
         {
-            ConnectionResult.Text = "连接异常：" + error.Message;
+            ConnectionResult.Text += "\n诊断异常：" + ConnectionDiagnostics.DescribeException(error);
+        }
+        finally
+        {
+            TestConnectionButton.IsEnabled = true;
+            SaveButton.IsEnabled = true;
         }
     }
 

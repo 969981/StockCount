@@ -46,9 +46,9 @@
                    Style="{StaticResource SecondaryText}"
                    LineBreakMode="WordWrap"/>
             </VerticalStackLayout>
-            <Button Text="◉  测试连接" Style="{StaticResource SecondaryAction}"
+            <Button x:Name="TestConnectionButton" Text="◉  测试连接" Style="{StaticResource SecondaryAction}"
                     Clicked="Test_Clicked"/>
-            <Label x:Name="ConnectionResult" Text="请先保存配置，再测试服务连接"
+            <Label x:Name="ConnectionResult" Text="检测当前输入的地址，无需先保存。依次检查 TCP、API 和数据库；不会写入盘点数据。"
                    FontSize="12" TextColor="#72829C"
                    LineBreakMode="WordWrap"/>
           </VerticalStackLayout>
