@@ -13,6 +13,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <!-- Explicit dependency required by .NET MAUI 8+; match the installed workload. -->
+    <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
     <ProjectReference Include="../StockCount.Core/StockCount.Core.csproj" />
     <ProjectReference Include="../StockCount.Contracts/StockCount.Contracts.csproj" />
     <MauiIcon Include="Resources/AppIcon/appicon.svg" Color="#1168E4" BaseSize="512,512" />

@@ -57,6 +57,23 @@ date: 2026-11-23
 4. APK 通常在 `src/StockCount.Pad/bin/Debug/net10.0-android/`；用 `Get-ChildItem ... -Recurse -Filter '*-Signed.apk'` 确认确切名称。签名发布版仍需长期 JKS，Debug 包不能替代正式签名版。
 5. 手机端内网 API URL 为 `http://服务器局域网IP:5080`，需在 Avalonia 管理器中显式开启 LAN HTTP、配置设备 Key、防火墙限制来源；AndroidManifest 已设置 `android:usesCleartextTraffic="true"`。真实扫码/ERP SQL 写入仍需现场联调。
 
+### XAML 基础控件全部提示找不到类型（Label / ContentPage / Grid）
+
+项目已显式引用 `Microsoft.Maui.Controls`，版本使用 MAUI workload 提供的 `$(MauiVersion)`（例如本机 10.0.110），不要设置 SkipValidateMauiImplicitPackageReferences 来掩盖缺失依赖。
+
+关闭 Visual Studio，在仓库根目录的 PowerShell 7 执行：
+
+```powershell
+dotnet --version
+dotnet workload list
+# 如缺少 maui-android，先执行 dotnet workload install maui-android
+Remove-Item .\src\StockCount.Pad\bin,.\src\StockCount.Pad\obj -Recurse -Force -ErrorAction SilentlyContinue
+dotnet restore .\src\StockCount.Pad\StockCount.Pad.csproj --force
+dotnet build .\src\StockCount.Pad\StockCount.Pad.csproj -f net10.0-android -c Debug
+```
+
+命令行成功后重新打开 StockCount.slnx，设置 StockCount.Pad 为启动项目。若仍有 XAML IntelliSense 报错，错误列表先切换为仅生成，区别设计时诊断和真实编译错误。
+
 ## PowerShell · 分项目验证
 
 ```powershell

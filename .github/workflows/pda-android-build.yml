@@ -45,6 +45,18 @@ jobs:
         run: dotnet workload install maui-android
       - name: Restore Android project
         run: dotnet restore src/StockCount.Pad/StockCount.Pad.csproj
+      - name: Verify explicit MAUI Controls reference and restored assembly package
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content 'src/StockCount.Pad/StockCount.Pad.csproj' -Raw
+          $reference = @($project.Project.ItemGroup.PackageReference | Where-Object { $_.Include -eq 'Microsoft.Maui.Controls' })
+          if ($reference.Count -ne 1 -or [string]::IsNullOrWhiteSpace($reference[0].Version)) {
+            throw 'Explicit Microsoft.Maui.Controls package reference is required for MAUI XAML.'
+          }
+          $assets = Get-Content 'src/StockCount.Pad/obj/project.assets.json' -Raw | ConvertFrom-Json -AsHashtable
+          if (!@($assets.libraries.Keys | Where-Object { $_ -match '^Microsoft\.Maui\.Controls/10\.' }).Count) {
+            throw 'MAUI 10 Controls package was not restored.'
+          }
       - name: Run pure scanning/unit tests
         run: dotnet test tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj -c Release
       - name: Build stand-alone Android debug APK
