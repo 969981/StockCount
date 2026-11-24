@@ -45,5 +45,3 @@ publish/
 # Local build, deployment and reproducible source archives
 /dist/
 
-# Windows icon generated from tracked SVG; build reproducibly via PowerShell/Tauri CLI
-src/StockCount.Server.Desktop/Assets/server.ico
