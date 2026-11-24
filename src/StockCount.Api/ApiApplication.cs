@@ -50,18 +50,54 @@ public static class ApiApplication
         app.Use(async (context, next) =>
         {
             var started = System.Diagnostics.Stopwatch.StartNew();
+            var path = context.Request.Path;
+            var health = path.Equals(new PathString("/health"));
+            var ready = path.Equals(new PathString("/ready"));
+            var remote = context.Connection.RemoteIpAddress;
+            if (remote?.IsIPv4MappedToIPv6 == true) remote = remote.MapToIPv4();
+            var loopback = remote is not null && IPAddress.IsLoopback(remote);
+            var marked = context.Request.Headers["X-StockCount-Connection-Test"].ToString() == "1";
+            var diagnostic = (health || ready) && (marked || !loopback);
+            var probeId = Guid.TryParse(context.Request.Headers["X-StockCount-Diagnostic-Id"], out var id)
+                ? id.ToString("D") : "-";
+            var environment = context.Request.Headers["X-StockCount-Environment"].ToString() switch
+            {
+                "Test" => "XTEST", "Production" => "COB", _ => "未指定"
+            };
+            var loggerFactory = context.RequestServices.GetRequiredService<ILoggerFactory>();
+            var diagnosticLogger = loggerFactory.CreateLogger("StockCount.Api.Connection");
+            if (diagnostic)
+                diagnosticLogger.LogInformation(
+                    "PDA 连接请求：来源 {RemoteIp}，本机端口 {Port}，检查 {Check}，帐套 {Environment}，诊断编号 {DiagnosticId}",
+                    remote?.ToString() ?? "未知", context.Connection.LocalPort,
+                    health ? "API 健康" : "数据库就绪", environment, probeId);
+            var failed = false;
             try { await next(); }
+            catch { failed = true; throw; }
             finally
             {
                 started.Stop();
-                if (!context.Request.Path.StartsWithSegments("/health"))
+                if (diagnostic)
                 {
-                    var logger = context.RequestServices
-                        .GetRequiredService<ILoggerFactory>()
-                        .CreateLogger("StockCount.Api.Http");
+                    var status = failed ? 500 : context.Response.StatusCode;
+                    var result = status switch
+                    {
+                        200 => health ? "API 可达" : "数据库连接成功",
+                        401 => "设备密钥未授权",
+                        403 => "访问被拒绝",
+                        503 => "数据库未就绪",
+                        _ => "检查失败"
+                    };
+                    diagnosticLogger.Log(status == 200 ? LogLevel.Information : LogLevel.Warning,
+                        "PDA 连接结果：来源 {RemoteIp}，{Result}，HTTP {StatusCode}，耗时 {DurationMs} ms，诊断编号 {DiagnosticId}",
+                        remote?.ToString() ?? "未知", result, status, started.ElapsedMilliseconds, probeId);
+                }
+                else if (!health)
+                {
+                    var logger = loggerFactory.CreateLogger("StockCount.Api.Http");
                     logger.LogInformation("HTTP {Method} {Path} -> {StatusCode} ({DurationMs} ms)",
                         context.Request.Method, context.Request.Path.Value,
-                        context.Response.StatusCode, started.ElapsedMilliseconds);
+                        failed ? 500 : context.Response.StatusCode, started.ElapsedMilliseconds);
                 }
             }
         });
