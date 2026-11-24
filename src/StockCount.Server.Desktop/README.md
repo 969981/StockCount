@@ -74,3 +74,7 @@ dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c
 开发侧至少验证：服务启停、重启保留配置、SQL 测试、SQLite 查询、密钥与 Tauri 兼容、端口冲突、LAN HTTP、防火墙、XTEST/COB 默认关闭及独立核验；真实 ERP 写入需单独授权，不在本阶段自动启用。
 
 原有 Tauri 2 版保持不变，现有 Setup/Portable GitHub Release 仍指向 Tauri。Avalonia 经过构建、联调和打包验收后才讨论替换正式发布入口。
+
+## 中文 API 文档
+
+服务总览的“打开中文 API 文档（Swagger）”使用实际已保存 API 端口在默认浏览器打开文档。局域网 PDA/电脑可访问 `http://服务器IP:5080/docs`，根地址和 `/swagger` 也自动跳转；需开启局域网监听。接口、参数、模型为中文说明，在线测试仅支持 GET，不会通过 Swagger 直接写入 ERP。
