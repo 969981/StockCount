@@ -152,6 +152,9 @@ public partial class SettingsPage : ContentPage
         finally { SaveButton.IsEnabled = true; }
     }
 
+    private void ToggleLegacyKey_Clicked(object sender, EventArgs e) =>
+        LegacyKeyPanel.IsVisible = !LegacyKeyPanel.IsVisible;
+
     private async void Test_Clicked(object sender, EventArgs e)
     {
         ConnectionResult.Text = "正在检查 API 进程和数据库…";
