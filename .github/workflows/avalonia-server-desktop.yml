@@ -7,6 +7,9 @@ on:
       - 'src/StockCount.Server.Hosting/**'
       - 'tests/StockCount.Server.Hosting.Tests/**'
       - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
+      - 'scripts/deploy-local.ps1'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
@@ -17,6 +20,9 @@ on:
       - 'src/StockCount.Server.Hosting/**'
       - 'tests/StockCount.Server.Hosting.Tests/**'
       - 'scripts/build-avalonia-desktop.ps1'
+      - 'scripts/package-avalonia-portable.ps1'
+      - 'scripts/deploy-avalonia-portable.ps1'
+      - 'scripts/deploy-local.ps1'
       - 'scripts/prepare-windows-brand-icons.ps1'
       - 'assets/branding/**'
       - 'desktop/server-console/assets/app-icon.svg'
@@ -44,10 +50,20 @@ jobs:
           if ((Get-Item $icon).Length -lt 1000) { throw "Avalonia .ico too small" }
           $exe = "publish/avalonia-desktop/StockCount.Server.Desktop.exe"
           if (!(Test-Path $exe)) { throw "Avalonia branded EXE missing" }
+      - name: Package and verify Avalonia Windows Portable
+        shell: pwsh
+        run: |
+          ./scripts/package-avalonia-portable.ps1 -OutputDirectory 'dist/avalonia-qa'
+          if ($LASTEXITCODE -ne 0) { throw "Avalonia ZIP packaging failed" }
+          $zip = @(Get-ChildItem dist/avalonia-qa -Filter '*-Windows-x64-Portable.zip' -File)
+          if ($zip.Count -ne 1) { throw "Expected one Avalonia ZIP" }
+          Write-Host "Avalonia Portable QA: $($zip[0].Name)"
       - name: Upload internal QA build
         uses: actions/upload-artifact@v4
         with:
           name: StockCount-Avalonia-Win-x64-Internal-QA
-          path: publish/avalonia-desktop/
+          path: |
+            publish/avalonia-desktop/
+            dist/avalonia-qa/*.zip
           if-no-files-found: error
           retention-days: 7
