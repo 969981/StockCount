@@ -30,6 +30,9 @@
             <Label Text="输入内网 IP:端口即可，自动补全 http://。PDA 通过 API 访问数据库，不直接连接 SQL Server。"
                    Style="{StaticResource SecondaryText}" LineBreakMode="WordWrap"/>
 
+            <Button Text="旧版密钥设置（可选）" Style="{StaticResource SecondaryAction}"
+                    Clicked="ToggleLegacyKey_Clicked"/>
+            <VerticalStackLayout x:Name="LegacyKeyPanel" IsVisible="False" Spacing="8">
             <Label Text="旧版服务密钥（可选）" FontSize="12"
                    FontAttributes="Bold" TextColor="#536581"/>
             <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
@@ -42,6 +45,7 @@
             <Label x:Name="DeviceKeyStatus" Text="仅旧版密钥认证模式需要填写"
                    Style="{StaticResource SecondaryText}"
                    LineBreakMode="WordWrap"/>
+            </VerticalStackLayout>
             <Button Text="◉  测试连接" Style="{StaticResource SecondaryAction}"
                     Clicked="Test_Clicked"/>
             <Label x:Name="ConnectionResult" Text="请先保存配置，再测试服务连接"
