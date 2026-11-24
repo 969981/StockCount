@@ -80,19 +80,21 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         return record is null ? null : ToDto(record, environment);
     }
 
-    public async Task<LocationRecord?> FindLocationAsync(
+    public async Task<LocationLookup> InspectLocationAsync(
         SelectedEnvironment environment, string siteCode, string warehouseCode,
         string locationCode, CancellationToken cancellationToken)
     {
         var schema = EnvironmentSelector.TablePrefix(environment);
+        // One read-only statement distinguishes absent codes, wrong scope and duplicate rows.
         var sql = $"""
-            SELECT S.LOC_0 AS LocationCode,S.STOFCY_0 AS SiteCode,
-                   S.WRH_0 AS WarehouseCode
+            SELECT COUNT_BIG(*) AS TotalMatches,
+                   COUNT_BIG(CASE WHEN S.STOFCY_0=@Site AND S.WRH_0=@Warehouse THEN 1 END) AS ScopedMatches,
+                   MIN(CASE WHEN S.STOFCY_0=@Site AND S.WRH_0=@Warehouse THEN S.LOC_0 END) AS LocationCode
             FROM {schema}.[STOLOC] S
-            WHERE S.STOFCY_0=@Site AND S.WRH_0=@Warehouse AND S.LOC_0=@Location;
+            WHERE S.LOC_0=@Location;
             """;
         await using var connection = await OpenAsync(cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<LocationRecord>(
+        return await connection.QuerySingleAsync<LocationLookup>(
             new CommandDefinition(sql, new { Site=siteCode, Warehouse=warehouseCode, Location=locationCode },
                 cancellationToken:cancellationToken));
     }
