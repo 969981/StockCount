@@ -93,8 +93,6 @@ jobs:
             'scripts/configure-android-release-secrets.ps1',
             'scripts/publish-stockcount-release.ps1',
             'scripts/deploy-local.ps1',
-            'scripts/package-avalonia-portable.ps1',
-            'scripts/deploy-avalonia-portable.ps1',
             'scripts/package-source.ps1',
             'scripts/build-avalonia-desktop.ps1',
             'scripts/build-tauri-sidecar.ps1',
