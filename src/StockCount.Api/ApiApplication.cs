@@ -66,8 +66,8 @@ public static class ApiApplication
             }
         });
 
-        // No user login screen: remote requests still require server-side device authorization.
-        // If no key has been configured, only loopback requests are permitted.
+        // Keyed legacy mode remains supported. With explicit keyless LAN mode,
+        // only direct private IPv4/loopback peers may access business endpoints.
         var deviceKey = app.Configuration["StockCount:DeviceKey"];
         var allowKeylessLan = app.Configuration.GetValue<bool>("StockCount:AllowKeylessLan");
         app.Use(async (context, next) =>
