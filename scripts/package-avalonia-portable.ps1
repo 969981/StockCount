@@ -21,7 +21,7 @@ Set-StrictMode -Version Latest
 if (-not $IsWindows) { throw 'Avalonia Portable packing requires Windows.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $configuredVersion = (& (Join-Path $PSScriptRoot 'get-app-version.ps1')).Trim()
-if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve application version.' }
+if ([string]::IsNullOrWhiteSpace($configuredVersion)) { throw 'Cannot resolve application version.' }
 if (!$Version) { $Version = $configuredVersion }
 if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9]+(\.[A-Za-z0-9]+)*)?$') {
   throw "Invalid Avalonia archive version: $Version"
@@ -40,7 +40,7 @@ $out = if ([IO.Path]::IsPathFullyQualified($OutputDirectory)) {
 
 if ($Build) {
   & (Join-Path $PSScriptRoot 'build-avalonia-desktop.ps1') -Configuration Release -OutputDirectory $inputPath
-  if ($LASTEXITCODE -ne 0) { throw 'Avalonia Release build failed.' }
+  if (-not $?) { throw 'Avalonia Release build failed.' }
 }
 if (!(Test-Path -LiteralPath $inputPath -PathType Container)) {
   throw "Avalonia publish output missing: $inputPath. Run build-avalonia-desktop.ps1 or use -Build."
