@@ -69,6 +69,7 @@ public static class ApiApplication
         // No user login screen: remote requests still require server-side device authorization.
         // If no key has been configured, only loopback requests are permitted.
         var deviceKey = app.Configuration["StockCount:DeviceKey"];
+        var allowKeylessLan = app.Configuration.GetValue<bool>("StockCount:AllowKeylessLan");
         app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
@@ -81,7 +82,7 @@ public static class ApiApplication
                     var isLocal = remote is not null
                         && (IPAddress.IsLoopback(remote)
                             || (remote.IsIPv4MappedToIPv6 && IPAddress.IsLoopback(remote.MapToIPv4())));
-                    if (!isLocal)
+                    if (!isLocal && !(allowKeylessLan && ApiEndpointPolicy.IsPrivateLanAddress(remote)))
                     {
                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
                         await context.Response.WriteAsJsonAsync(new { code = "DEVICE_ACCESS_NOT_CONFIGURED" });
