@@ -73,25 +73,27 @@
             <TextBlock Text="监听端口（管理端口自动使用端口 + 1）"/>
             <TextBox Text="{Binding Settings.ApiPort, Mode=TwoWay}" Width="240" HorizontalAlignment="Left"/>
             <CheckBox Content="允许可信隔离局域网 HTTP (监听所有 IP)" IsChecked="{Binding Settings.AllowLan, Mode=TwoWay}"/>
-            <TextBlock Text="HTTP 无传输加密：设备密钥及业务数据有被同网段监听的风险。禁止公网映射，并以防火墙限制 PDA 网段。" TextWrapping="Wrap"/>
-            <Button Content="复制当前设备访问密钥" Click="CopyDeviceKey" HorizontalAlignment="Left"/>
-            <TextBlock Text="设备密钥只保存在当前 Windows 用户 Credential Manager 中，不写入 JSON。" Opacity="0.7" TextWrapping="Wrap"/>
+            <CheckBox Content="局域网免密连接（PDA 只填 IP 和端口）" IsChecked="{Binding Settings.AllowKeylessLan, Mode=TwoWay}"/>
+            <TextBlock Text="免密模式仅允许内网 IP；同网段设备无需认证即可调用业务 API。仅在隔离可信网络使用，务必以防火墙限制 PDA 网段，禁止公网映射。" TextWrapping="Wrap"/>
+            <Button Content="保存 API 连接设置" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left"/>
+            <Button Content="复制旧版密钥（仅密钥认证模式需要）" Click="CopyDeviceKey" HorizontalAlignment="Left"/>
+            <TextBlock Text="免密模式不需要设备密钥。旧版密钥仍保存在 Windows Credential Manager，不写入 JSON。" Opacity="0.7" TextWrapping="Wrap"/>
             <Border BorderBrush="#D9A441" BorderThickness="1" CornerRadius="8" Padding="16">
               <StackPanel Spacing="10">
-                <TextBlock Text="环境写入安全门禁" FontSize="18" FontWeight="SemiBold"/>
-                <CheckBox Content="XTEST 结构 / 事务已独立验收" IsChecked="{Binding Settings.SchemaReviewed, Mode=TwoWay}"/>
-                <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding Settings.EnableTestWrites, Mode=TwoWay}"/>
-                <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding Settings.ProductionSchemaReviewed, Mode=TwoWay}"/>
-                <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding Settings.EnableProductionWrites, Mode=TwoWay}"/>
+                <TextBlock Text="环境写入授权（草稿）" FontSize="18" FontWeight="SemiBold"/>
+                <CheckBox Content="XTEST 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.SchemaReviewed, Mode=TwoWay}"/>
+                <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding WriteDraft.EnableTestWrites, Mode=TwoWay}"/>
+                <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.ProductionSchemaReviewed, Mode=TwoWay}"/>
+                <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding WriteDraft.EnableProductionWrites, Mode=TwoWay}"/>
                 <Button Content="{Binding WriteGatesButtonText}" Command="{Binding SelectAllWriteGatesCommand}"
                         HorizontalAlignment="Left"/>
-                <TextBlock Text="安全要求：这四项首次默认关闭；只有完成对应帐套的数据库前检、幂等迁移及独立授权后，才可集中勾选并保存。已确认的设置下次启动会保持勾选。" TextWrapping="Wrap" Opacity="0.8"/>
-                <TextBlock Text="X3 审计用户编码（需经现场批准）"/>
-                <TextBox Text="{Binding Settings.X3AuditUser, Mode=TwoWay}" MaxLength="5" Width="200" HorizontalAlignment="Left"/>
+                <TextBlock Text="首次无审计用户时预选四项，仅为界面草稿。保存连接不会启用写入。确认对应帐套已完成数据库前检、幂等迁移及授权后，再保存写入授权。" TextWrapping="Wrap" Opacity="0.8"/>
+                <TextBlock Text="X3 操作员编码（写入 CREUSR_0 / UPDUSR_0，1–5 字符）"/>
+                <TextBox Text="{Binding WriteDraft.X3AuditUser, Mode=TwoWay}" Watermark="已批准的 X3 用户编码" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
                 <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
-            <Button Content="保存 API 与权限设置" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left"/>
+            <Button Content="确认并保存写入授权" Command="{Binding SaveWriteSettingsCommand}" HorizontalAlignment="Left"/>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
