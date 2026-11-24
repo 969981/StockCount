@@ -43,10 +43,12 @@ public static class ApiApplication
         });
         
         var app = builder.Build();
+        // Capture outside exception handling so the log includes the actual problem response.
+        app.UseMiddleware<StockCount.Api.Logging.ApiExchangeLogging>();
         app.UseExceptionHandler();
 
         // Persist structured HTTP access records through the configured ILogger provider.
-        // Request bodies (including scanned QR data) and Authorization/DeviceKey headers are never logged.
+        // Detailed business JSON is captured by ApiExchangeLogging; credentials and unknown fields are excluded.
         app.Use(async (context, next) =>
         {
             var started = System.Diagnostics.Stopwatch.StartNew();
@@ -92,7 +94,7 @@ public static class ApiApplication
                         "PDA 连接结果：来源 {RemoteIp}，{Result}，HTTP {StatusCode}，耗时 {DurationMs} ms，诊断编号 {DiagnosticId}",
                         remote?.ToString() ?? "未知", result, status, started.ElapsedMilliseconds, probeId);
                 }
-                else if (!health)
+                else if (!health && !path.StartsWithSegments("/api/v1"))
                 {
                     var logger = loggerFactory.CreateLogger("StockCount.Api.Http");
                     logger.LogInformation("HTTP {Method} {Path} -> {StatusCode} ({DurationMs} ms)",

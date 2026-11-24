@@ -74,3 +74,7 @@ dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c
 开发侧至少验证：服务启停、重启保留配置、SQL 测试、SQLite 查询、密钥与 Tauri 兼容、端口冲突、LAN HTTP、防火墙、XTEST/COB 默认关闭及独立核验；真实 ERP 写入需单独授权，不在本阶段自动启用。
 
 原有 Tauri 2 版保持不变，现有 Setup/Portable GitHub Release 仍指向 Tauri。Avalonia 经过构建、联调和打包验收后才讨论替换正式发布入口。
+
+## API 请求明细日志
+
+SQLite 日志新增“API 请求明细”分类，业务接口、远端或显式标记的健康检查及数据库就绪检查会记录直接 TCP 来源 IP/端口、服务监听端口、帐套、HTTP 方法、匹配路由、允许记录的路径和查询参数、请求编号、诊断编号、幂等 UUID、状态码、耗时和实际读写字节数。入参及出参采用 JSON 业务字段允许清单，包含扫码内容、库位、箱码、单据和数量；设备密钥、密码、认证头、未知字段不记录，嵌入字符串的常见凭据赋值也做脱敏。每侧最多捕获 8192 字节，超过限制或非 JSON/无效 JSON 明确省略，原始 HTTP 响应不受影响。日志沿用原 SQLite 表和清理功能，含企业业务信息，仅供授权人员本机排查，禁止直接公开日志。可搜索 IP、单号、编号或错误码并选中文字复制。本机未标记健康轮询及内部管理接口不捕获正文。
