@@ -92,3 +92,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 - API XTEST/COB 实际写入/回滚/并发验收尚未完成，两帐套均由服务端独立授权（首次默认关闭）。
 
 详细步骤：[写入工作流](../../docs/WRITE_FLOW_IMPLEMENTATION.md) · [API 契约](../../docs/API_CONTRACT.md) · [安全与环境](../../docs/SECURITY_AND_ENVIRONMENTS.md)。
+
+## 库位扫码错误提示
+
+先扫库位再扫箱码。识别出箱标签但尚无库位时提示先扫描库位；其他码先检查已知字段约束（1–10 字符、无控制字符，移除扫码末尾 CR/LF），不预设未经现场验证的固定字母数字格式。符合约束时，API 在当前帐套 STOLOC 中按 LOC_0 查询全部匹配及当前盘点单站点/仓库匹配：不存在、其他仓库、当前仓库重复记录、数据库查询失败分别反馈。无效扫描不会改变当前有效库位；如操作员已明确确认丢弃未提交草稿，则仍遵守原草稿保护流程。新 APK 配合新版 API 才有完整分类，旧 API 的 LOCATION_INVALID 不会被误解成库位不存在。
