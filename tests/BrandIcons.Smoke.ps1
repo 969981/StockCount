@@ -27,7 +27,21 @@ foreach ($role in @('pda','server')) {
 [xml]$win = Get-Content (Join-Path $root 'desktop/server-console/assets/app-icon.svg') -Raw
 [xml]$masterPda = Get-Content (Join-Path $root 'assets/branding/pda.svg') -Raw
 [xml]$masterServer = Get-Content (Join-Path $root 'assets/branding/server.svg') -Raw
-if ($apk.OuterXml -ne $masterPda.OuterXml) { throw 'Android app icon is not the PDA brand master' }
+# Android now uses separate full-bleed background and transparent foreground.
+[xml]$fg = Get-Content (Join-Path $root 'src/StockCount.Pad/Resources/AppIcon/appiconfg.svg') -Raw
+foreach ($layer in @($apk,$fg)) {
+    if ($layer.DocumentElement.GetAttribute('viewBox') -ne '0 0 512 512') { throw 'Invalid Android adaptive icon canvas' }
+}
+if ($apk.DocumentElement.InnerXml -notmatch 'width="512" height="512" fill="url\(#badge\)"') { throw 'Adaptive background must cover the canvas' }
+if ($fg.DocumentElement.InnerXml -match 'url\(#badge\)' -or $fg.DocumentElement.InnerXml -notmatch '#0ABE71') { throw 'PDA foreground artwork is invalid' }
+[xml]$pad = Get-Content (Join-Path $root 'src/StockCount.Pad/StockCount.Pad.csproj') -Raw
+$icon = $pad.Project.ItemGroup.MauiIcon
+if ($icon.Include -ne 'Resources/AppIcon/appicon.svg' -or
+    $icon.ForegroundFile -ne 'Resources/AppIcon/appiconfg.svg' -or $icon.ForegroundScale -ne '0.75') { throw 'Android adaptive MauiIcon configuration missing' }
+[xml]$manifest = Get-Content (Join-Path $root 'src/StockCount.Pad/Platforms/Android/AndroidManifest.xml') -Raw
+$androidNs = 'http://schemas.android.com/apk/res/android'
+if ($manifest.manifest.application.GetAttribute('icon',$androidNs) -ne '@mipmap/appicon' -or
+    $manifest.manifest.application.GetAttribute('roundIcon',$androidNs) -ne '@mipmap/appicon_round') { throw 'Android launcher manifest binding missing' }
 if ($win.OuterXml -ne $masterServer.OuterXml) { throw 'Windows Tauri icon is not the server brand master' }
 Write-Host 'All 12 canonical/preset SVG files are well-formed, size-correct, and platform bindings match.' -ForegroundColor Green
 
