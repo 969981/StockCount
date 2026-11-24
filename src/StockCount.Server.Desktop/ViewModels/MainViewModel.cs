@@ -69,6 +69,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
     [ObservableProperty] private string apiUrl = "http://127.0.0.1:5080";
+    [ObservableProperty] private string apiDocsUrl = "http://127.0.0.1:5080/docs";
     [ObservableProperty] private ObservableCollection<ServerLog> logEntries = new();
 
     public string SettingsPath => _store.SettingsPath;
@@ -230,6 +231,23 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void OpenApiDocs()
+    {
+        try
+        {
+            if (!_runtime.IsRunning)
+            {
+                Message = "请先启动 API，再打开中文接口文档。";
+                return;
+            }
+            var current = _store.Load();
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+                $"http://127.0.0.1:{current.ApiPort}/docs") { UseShellExecute = true });
+        }
+        catch (Exception ex) { Message = "打开接口文档失败：" + ex.Message; }
+    }
+
+    [RelayCommand]
     private async Task RefreshStatusAsync()
     {
         try
@@ -237,6 +255,7 @@ public partial class MainViewModel : ObservableObject
             var current = _store.Load();
             var status = await _runtime.StatusAsync(current);
             ServiceState = status.Running ? (status.Healthy ? "运行中 · 健康" : "运行中 · 未就绪") : "已停止";
+            ApiDocsUrl = $"http://127.0.0.1:{current.ApiPort}/docs";
             ApiUrl = (current.AllowLan ? "http://<服务器局域网IP>:" : "http://127.0.0.1:") + current.ApiPort;
             if (status.LastError is not null && !status.Running) Message = status.LastError;
             OnPropertyChanged(nameof(IsRunning));

@@ -10,6 +10,8 @@
     <ProjectReference Include="../StockCount.Infrastructure/StockCount.Infrastructure.csproj" />
     <!-- 10.0.0 transitively includes vulnerable SQLitePCLRaw.lib.e_sqlite3 2.1.11.
          Use the patched .NET 10 provider and a recent native SQLite bundle. -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
+    <EmbeddedResource Include="Docs/zh-cn.js" LogicalName="StockCount.Swagger.zh-cn.js" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.14" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
   </ItemGroup>

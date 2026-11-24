@@ -20,6 +20,9 @@
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21"/>
                 <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
+                <TextBlock Text="{Binding ApiDocsUrl}" FontSize="14" Opacity="0.8"/>
+                <Button Content="打开中文 API 文档（Swagger）" Command="{Binding OpenApiDocsCommand}" HorizontalAlignment="Left"/>
+                <TextBlock Text="局域网浏览器可访问 http://服务器IP:业务端口/docs，在线测试仅开放 GET，不执行盘点写入。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="打开管理器时默认自动启动 API（首次请确认并保存数据库配置）；退出管理器时停止它启动的 API。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="API 健康检查使用仅本机的管理端口（业务端口 + 1）。" TextWrapping="Wrap" Opacity="0.7"/>
                 <StackPanel Orientation="Horizontal" Spacing="10">

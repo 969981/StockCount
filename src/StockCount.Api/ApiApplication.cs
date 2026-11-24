@@ -20,6 +20,7 @@ public static class ApiApplication
         var builder = WebApplication.CreateBuilder(args);
         configureBuilder?.Invoke(builder);
         builder.Services.AddProblemDetails();
+        builder.Services.AddStockCountDocumentation();
         builder.Services.AddScoped<IInventoryReadRepository>(services =>
         {
             var config = services.GetRequiredService<IConfiguration>();
@@ -46,6 +47,7 @@ public static class ApiApplication
         // Capture outside exception handling so the log includes the actual problem response.
         app.UseMiddleware<StockCount.Api.Logging.ApiExchangeLogging>();
         app.UseExceptionHandler();
+        app.UseStockCountDocumentation();
 
         // Persist structured HTTP access records through the configured ILogger provider.
         // Detailed business JSON is captured by ApiExchangeLogging; credentials and unknown fields are excluded.
@@ -168,7 +170,7 @@ public static class ApiApplication
                 return Task.CompletedTask;
             });
             return Results.Accepted();
-        });
+        }).ExcludeFromDescription();
 
         // Liveness only: does not imply that SQL Server is reachable.
         app.MapGet("/health", () => Results.Ok(new

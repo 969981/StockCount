@@ -114,3 +114,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 ## API 请求与响应明细日志
 
 业务 API 的每次请求完成后，写入一条 `StockCount.Api.Logging.ApiExchangeLogging` SQLite 日志：来源 IP/端口、HTTP 方法及路由、帐套、路径/查询入参、允许清单内的 JSON 入参和响应、HTTP 状态、请求耗时及关联编号。正文每侧限 8192 字节，超限或非 JSON 不记录原文；敏感请求头、未知 JSON 字段不写入。已接收的拒绝请求仍记录状态，未经读取的请求正文显示未读取。记录不改变请求/响应字节，不在公网暴露日志接口。旧日志与清理规则不变。真实业务日志必须按企业权限管理，不得上传公开仓库。
+
+## 中文 Swagger 接口文档
+
+API 启动后，浏览器打开 `http://127.0.0.1:5080` 自动跳转中文 Swagger；也可访问 `/docs`、`/swagger`，OpenAPI JSON 位于 `/openapi/v1.json`。局域网监听启用后，使用后台电脑实际局域网 IP。文档和脚本内置，无需互联网/CDN，无需数据库在线即可浏览。文档仅允许直接私有 IPv4 或本机回环来源，业务 API 的设备认证和写入授权不变。在线执行仅支持 GET；POST 包含请求结构及返回说明，但不在文档内直接执行。内部关闭接口不公开。请求头 `X-StockCount-Environment` 选择 Test/Production，默认测试示例 Test；旧版认证使用可选 `X-StockCount-Device-Key`。禁止公网映射。
