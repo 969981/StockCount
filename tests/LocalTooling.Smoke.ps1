@@ -105,7 +105,22 @@ try {
     $sourceCommit = (& git -C $repo rev-parse HEAD).Trim()
     $sourceShort = (& git -C $repo rev-parse --short=7 $sourceCommit).Trim()
     $sourceFolder = "StockCount-Source-$sourceShort"
-    & (Join-Path $repo 'scripts/package-source.ps1') -OutputDirectory $sourceOut
+    # Reproduce the Chinese Windows/Anaconda terminal environment: Git emits
+    # UTF-8 filenames while PowerShell's native output decoder is CP936.
+    $savedConsoleEncoding = [Console]::OutputEncoding
+    $savedOutputEncoding = $OutputEncoding
+    try {
+        [System.Text.Encoding]::RegisterProvider([System.Text.CodePagesEncodingProvider]::Instance)
+        [Console]::OutputEncoding = [System.Text.Encoding]::GetEncoding(936)
+        $OutputEncoding = [System.Text.Encoding]::GetEncoding(936)
+        & (Join-Path $repo 'scripts/package-source.ps1') -OutputDirectory $sourceOut
+        if ([Console]::OutputEncoding.CodePage -ne 936 -or $OutputEncoding.CodePage -ne 936) {
+            throw 'Source packager changed the calling terminal encoding'
+        }
+    } finally {
+        [Console]::OutputEncoding = $savedConsoleEncoding
+        $OutputEncoding = $savedOutputEncoding
+    }
     $sourceZip = Join-Path $sourceOut "$sourceFolder.zip"
     $info = Get-Content -LiteralPath (Join-Path $sourceOut "$sourceFolder.SourceInfo.txt") -Raw
     if (!$info.Contains("Commit: $sourceCommit") -or !$info.Contains("Short commit: $sourceShort")) {
@@ -132,6 +147,7 @@ try {
         $mustContain = @(
             'StockCount.slnx',
             'StockCount.Backend.slnx',
+            '00-StockCount-知识库主页.md',
             'src/StockCount.Api/StockCount.Api.csproj',
             'src/StockCount.Api/Properties/launchSettings.json',
             'src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj',
