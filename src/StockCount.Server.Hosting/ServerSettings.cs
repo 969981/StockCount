@@ -25,6 +25,30 @@ public sealed class ServerSettings
     public bool ProductionSchemaReviewed { get; set; }
     public string X3AuditUser { get; set; } = "";
 
+    public ServerSettings Copy() => (ServerSettings)MemberwiseClone();
+
+    public void CopyWriteApprovalsFrom(ServerSettings source)
+    {
+        SchemaReviewed = source.SchemaReviewed;
+        EnableTestWrites = source.EnableTestWrites;
+        ProductionSchemaReviewed = source.ProductionSchemaReviewed;
+        EnableProductionWrites = source.EnableProductionWrites;
+        X3AuditUser = source.X3AuditUser;
+    }
+
+    // A UI preset, not a saved or effective authorization.
+    public ServerSettings CreateWriteDraft()
+    {
+        var draft = Copy();
+        if (string.IsNullOrWhiteSpace(X3AuditUser) && !SchemaReviewed && !EnableTestWrites &&
+            !ProductionSchemaReviewed && !EnableProductionWrites)
+        {
+            draft.SchemaReviewed = draft.EnableTestWrites = true;
+            draft.ProductionSchemaReviewed = draft.EnableProductionWrites = true;
+        }
+        return draft;
+    }
+
     public void Validate()
     {
         if (ApiPort is < 1024 or > 65534)
