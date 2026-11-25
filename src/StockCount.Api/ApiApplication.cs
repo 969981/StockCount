@@ -352,8 +352,8 @@ public static class ApiApplication
             }
             catch (CountWriteException error)
             {
-                logger.LogWarning("Count submit rejected: {Code}, {Environment}, {RequestId}",
-                    error.Code, environment.Name, requestId);
+                logger.LogWarning(error, "Count submit rejected: {Code}, {Environment}, {RequestId}, {Reason}",
+                    error.Code, environment.Name, requestId, error.Message);
                 return Error(error.StatusCode, error.Code, error.Message, environment.Name);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
