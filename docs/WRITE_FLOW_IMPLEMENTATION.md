@@ -36,7 +36,7 @@ POST /api/v1/inventory-counts/COUNT-DEMO-001/items
 
 ## 原子事务、重复与幂等
 
-后端使用一个 SQL Server Serializable 事务和 sp_getapplock 跨 API 进程锁定环境+盘点单+箱码；先查持久化请求，命中 XCOUTD.AUUID_0 且箱号、库位和两数量列一致就返回原结果（HTTP 200）；不一致返回 409。之后在锁内再次查询 XCOUTD 的同单同箱记录，有重复即 409 BOX_ALREADY_RECORDED，提示“该箱号已扫描！”。
+后端使用一个 SQL Server Serializable 事务和 sp_getapplock 跨 API 进程锁定帐套 Schema+箱码（不含盘点单号）；先查持久化请求，命中 XCOUTD.AUUID_0 且箱号、库位和两数量列一致就返回原结果（HTTP 200）；不一致返回 409。之后在锁内再次查询当前帐套 XCOUTD 的任意盘点单同箱记录，有重复即 409 BOX_ALREADY_RECORDED，提示“该箱号已扫描！”。
 
 通过审核后仅 INSERT XCOUTD，COMMIT 成功才返回 HTTP 201 status=Committed。ROWID 从数据库生成并作为字符串返回；所有 NOT NULL 业务列显式赋值、AUUID 使用原请求 UUID 经 SQL Server binary(16) 转换，时间仍由 SQL Server 生成。PALNUM_0 和 ECCVALMAJ_0 填空、PDAID_0 填 StockCount、审计用户由现场配置，**这些真实 X3 映射尚未现场审批**。若 XCOUTD.ROWID 不是 IDENTITY，接口返回 ERP_SCHEMA_UNSUPPORTED，禁止猜测 MAX(ROWID)+1。
 
@@ -82,3 +82,9 @@ MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码�
 2026-11-25 PDA 成功反馈调整：服务端确认提交后立即完成本地草稿清理，显示400ms Toast，不等待提示消失；下一箱扫码可立即继续。未知结果保护与重复箱弹窗保持不变。
 
 2026-11-25：所有 CUNSTA_0 状态均允许提交，含已结束/未知状态；事务仍核对 XCOUTH 存在及站点、仓库上下文，不修改表头状态。
+
+### 2026-11-25 跨盘点单防重
+
+扫码与最终写入统一按 BOXNUM_0 查询当前 Schema 的全表，不限制日期、表头状态、仓库或站点，包含历史明细、非 StockCount 创建的记录。保留 alreadyRecordedInCount 和 BOX_ALREADY_RECORDED，旧 PDA 无需更新；同环境同单原 UUID 成功重放仍优先返回原结果。XTEST 与 COB 不互相阻断。不修改历史记录、数据库结构及其它系统写入规则。应用锁以 Schema+箱号为粒度，SQL Serializable 与 UPDLOCK/HOLDLOCK 检查覆盖写入竞争；旧版 API 不应与新版长期并行，外部写入系统不受应用锁统一约束。全表防重可能需要 BOXNUM_0 前导索引，须先只读核验执行计划并经 DBA 审批，不自动创建索引。
+
+验收：XTEST 单A先扫入箱X提交，再在单B扫码应提示该箱号已扫描；两台设备预先扫码同一未录入箱并在不同单同时提交，应只有一笔成功，另一笔重复拒绝或安全重试后拒绝；同单同UUID同载荷重放应返回原结果；COB 与 XTEST 各自隔离。实际 SQL 并发及硬件测试未执行。
