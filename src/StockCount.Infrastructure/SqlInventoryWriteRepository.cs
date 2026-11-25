@@ -107,7 +107,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         var stage = "获取盘点事务锁";
         try
         {
-            // Protect the same count+box across separate API processes.
+            // Protect the same box across all counts and separate API processes.
             // The application lock is scoped to this SQL transaction.
             const string lockSql = """
                 DECLARE @result int;
@@ -116,11 +116,9 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                     @LockOwner=N'Transaction', @LockTimeout=10000;
                 SELECT @result;
                 """;
-            var lockId = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-                System.Text.Encoding.UTF8.GetBytes(environment.Name + "\u001F" +
-                    countNumber + "\u001F" + request.BoxNumber)));
+            var lockResource = BoxDuplicateQuery.LockResource(environment, request.BoxNumber);
             var acquired = await connection.ExecuteScalarAsync<int>(
-                new CommandDefinition(lockSql, new { LockResource="StockCount:"+lockId },
+                new CommandDefinition(lockSql, new { LockResource=lockResource },
                     transaction, cancellationToken:ct));
             if (acquired < 0)
                 throw new CountWriteException(409, "COUNT_BUSY",
@@ -213,16 +211,12 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(409, "UNIT_MAPPING_UNSUPPORTED",
                     "标签存货单位为空、包含控制字符或超过3字符，无法写入盘点明细。");
 
-            stage = "检查 XCOUTD 重复箱号";
-            var duplicateSql = $"""
-                SELECT COUNT_BIG(*) FROM {schema}.[XCOUTD] D WITH (UPDLOCK,HOLDLOCK)
-                WHERE D.CUNNUM_0=@CountNumber AND D.BOXNUM_0=@BoxNumber;
-                """;
-            var duplicate = await connection.ExecuteScalarAsync<long>(
-                new CommandDefinition(duplicateSql,
-                    new { CountNumber=countNumber, BoxNumber=label.BoxNumber },
+            stage = "检查当前帐套 XCOUTD 全部盘点单重复箱号";
+            var duplicate = await connection.ExecuteScalarAsync<bool>(
+                new CommandDefinition(BoxDuplicateQuery.LockedExists(environment),
+                    new { BoxNumber=label.BoxNumber },
                     transaction, cancellationToken:ct));
-            if (duplicate != 0)
+            if (duplicate)
                 throw new CountWriteException(409, "BOX_ALREADY_RECORDED", "该箱号已扫描！");
 
             var units = CountWritePolicy.MapCountUnits(label.StockUnit, request.CountedQtyStu.Value);
