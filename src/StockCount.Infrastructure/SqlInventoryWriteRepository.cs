@@ -202,18 +202,25 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                     locationError == "LOCATION_AMBIGUOUS" ? 409 : 422, locationError, scope.Describe(locationError));
 
             var labelSql = $"""
-                SELECT L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
+                SELECT TOP (2) L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
                        L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit,
                        L.PCU_0 AS PackageUnit,L.PCUSTUCOE_0 AS UnitFactor
                 FROM {schema}.[XLABELDTL] L
-                WHERE L.QRCOD_0=@FullQr;
                 """;
-            var labels = (await connection.QueryAsync<LabelForWrite>(
-                new CommandDefinition(labelSql, new { FullQr=request.RawQrCode },
-                    transaction, cancellationToken:ct))).Take(2).ToArray();
-            if (labels.Length != 1)
+            async Task<LabelForWrite[]> QueryLabelAsync(string predicate, string value) =>
+                (await connection.QueryAsync<LabelForWrite>(
+                    new CommandDefinition(labelSql + predicate, new { Value=value },
+                        transaction, cancellationToken:ct))).ToArray();
+
+            var labels = await LabelLookupPolicy.FindAsync(request.RawQrCode,
+                value => QueryLabelAsync(" WHERE L.QRCOD_0=@Value;", value),
+                value => QueryLabelAsync(" WHERE L.PID_0=@Value;", value));
+            if (labels.Length > 1)
+                throw new CountWriteException(409, "LABEL_AMBIGUOUS",
+                    "二维码或箱号对应多条标签记录，请联系管理员核查。");
+            if (labels.Length == 0)
                 throw new CountWriteException(404, "LABEL_NOT_FOUND",
-                    "未查询到唯一完整箱标签二维码。");
+                    "完整二维码及箱号均未查询到标签。");
             var label = labels[0];
             if (!string.Equals(label.BoxNumber, request.BoxNumber, StringComparison.Ordinal))
                 throw new CountWriteException(409, "BOX_MISMATCH",
