@@ -39,8 +39,8 @@ SELECT HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'INSERT') AS [允许正式明�
        HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'SELECT') AS [允许正式明细查询],
        COL_LENGTH(N'COB.XCOUTD',N'AUUID_0') AS [请求识别码字节长度];
 
--- 4. Unit and quantity data: only 1:1 labels currently qualify for direct
---    write where QTYSTU = QTYPCU and PCU = STU. No status STA filtering.
+-- 4. Label unit distribution for research only. Count in STU: detail PCU=STU,
+--    factor=1 and QTYSTU=QTYPCU regardless of original label PCU/factor.
 SELECT TOP (20)
        L.STU_0 AS [存货单位],L.PCU_0 AS [包装单位],
        L.PCUSTUCOE_0 AS [换算系数],COUNT_BIG(*) AS [标签条数]

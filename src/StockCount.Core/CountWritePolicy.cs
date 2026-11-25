@@ -35,9 +35,21 @@ public static class CountWritePolicy
         return SHA256.HashData(Encoding.UTF8.GetBytes(payload));
     }
 
-    public static bool SupportedUnitMapping(string? stockUnit, string? packageUnit, decimal factor) =>
+    // Counting is performed in the label's stock unit, not its package unit.
+    public const decimal CountUnitFactor = 1m;
+
+    public sealed record CountUnits(string PackageUnit, decimal UnitFactor, decimal QuantityStu, decimal QuantityPcu);
+
+    // No original packaging data is accepted by this mapping function.
+    public static CountUnits MapCountUnits(string stockUnit, decimal manualQuantity)
+    {
+        if (!IsValidStockUnit(stockUnit))
+            throw new ArgumentException("Invalid stock unit.", nameof(stockUnit));
+        return new CountUnits(stockUnit, CountUnitFactor, manualQuantity, manualQuantity);
+    }
+
+    public static bool IsValidStockUnit(string? stockUnit) =>
         !string.IsNullOrWhiteSpace(stockUnit) &&
         stockUnit.Length <= 3 &&
-        string.Equals(stockUnit, packageUnit, StringComparison.OrdinalIgnoreCase) &&
-        factor == 1m;
+        !stockUnit.Any(char.IsControl);
 }

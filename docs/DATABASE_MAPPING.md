@@ -73,9 +73,9 @@ ITMMASTER (产品主数据; 品名/规格)
 | `ITMREF_0` | nvarchar(20) | 产品编码 | `itemCode` |
 | `LOT_0` | nvarchar(30) | 批次 | `lotNumber` |
 | `LOC_0` | nvarchar(10) | **现场扫码实际库位**（V1目标） | `countedLocation` |
-| `PCU_0` | nvarchar(3) | 包装单位（非STU别名） | `packageUnit` |
+| `PCU_0` | nvarchar(3) | 盘点计量单位 | `XLABELDTL.STU_0` |
 | **`QTYPCU_0`** | **numeric(28,13)** | **同一人工实盘数；必须与 `QTYSTU_0` 完全相等** | `quantityPcu = countedQtyStu`（后端派生） |
-| `PCUSTUCOE_0` | numeric(18,7) | PCU→STU 换算系数，非空 | `pcuStuFactor`（内部映射） |
+| `PCUSTUCOE_0` | numeric(18,7) | 盘点转换系数 | 固定 `1` |
 | **`QTYSTU_0`** | **numeric(28,13)** | **人工实盘数的目标列，且等于 `QTYPCU_0`** | **`countedQtyStu: decimal`** |
 | `ECCVALMAJ_0` | nvarchar(20) | X3 业务辅助字段；语义待核 | 服务端内部 |
 | `PDAID_0` | nvarchar(50) | 设备/PDA 关联标识；待核 | 审计上下文（方案待定） |
@@ -86,7 +86,7 @@ ITMMASTER (产品主数据; 品名/规格)
 
 **已验证索引现状**：COB 表头 `CUNNUM_0` 唯一、标签 `PID_0` 唯一；`XCOUTD` 仅 `ROWID` 作为唯一主键，**未发现 (`CUNNUM_0`, `BOXNUM_0`) 唯一约束**。COB 曾查到两组同单重复箱号，不能改历史数据来“修好”或直接添加复合索引。
 
-**最新 V1 业务要求（2026-11-23）**：只让操作员输入一次数量，后端将**相同 `decimal` 值**写进 `QTYSTU_0` 与 `QTYPCU_0`，两者必须相等。历史 COB `XCOUTD` 的 22,936 行也全部满足 `QTYPCU_0=QTYSTU_0`、系数=1；**历史事实支持同值模式，但不等于已经批准把 `PCUSTUCOE_0` 一律写死为1**。提交前仍须确认现有 X3 服务/单位字段支持这一写入组合。
+**最新 V1 业务要求（2026-11-23）**：只让操作员输入一次数量，后端将**相同 `decimal` 值**写进 `QTYSTU_0` 与 `QTYPCU_0`，两者必须相等。历史 COB `XCOUTD` 的 22,936 行也全部满足 `QTYPCU_0=QTYSTU_0`、系数=1；**2026-11-25 用户已确认盘点明细系数固定为1、PCU取标签STU**；现场实际写入仍待验收。
 
 ## 4. XLABELDTL — 箱标签表（COB 关键字段）
 
@@ -98,7 +98,7 @@ ITMMASTER (产品主数据; 品名/规格)
 | `LOT_0` | nvarchar(20) | 批号 |
 | `STU_0` | nvarchar(3) | 存货单位；人工输入数量的计量单位 |
 | `PCU_0` | nvarchar(3) | 包装单位 |
-| `PCUSTUCOE_0` | numeric(18,7) | 包装与存货单位系数；仍需确认写入换算 |
+| `PCUSTUCOE_0` | numeric(18,7) | 原标签包装与存货单位系数；盘点不使用此值 |
 | `QTY_0` | numeric(28,13) | **读取时的标签数量**，不是实际盘点数量 |
 | `LOC_0` | nvarchar(20) | 标签当前库位；不是现场扫描库位 |
 | `STA_0` | tinyint | 标签状态码；**V1 不按 STA_0 限制盘点** |
@@ -159,7 +159,7 @@ JOIN 可能依赖 ERP 物料组织/多语言约束；不可未经验证作“必
 | 箱码 | `XLABELDTL.PID_0` | `XCOUTD.BOXNUM_0` |
 | 产品、批次 | `XLABELDTL.ITMREF_0/LOT_0` | `XCOUTD.ITMREF_0/LOT_0` |
 | 品名、规格 | `ITMMASTER.YITMDES4_0/ITMDES2_0` | 仅显示，不必重复入库 |
-| 存货单位 STU | `XLABELDTL.STU_0` | UI 显示 STU；后端须核对 X3 `PCU_0` / `PCUSTUCOE_0` 一致性（待核），**不得据此改变实盘数** |
+| 存货单位 STU | `XLABELDTL.STU_0` | UI 显示 STU，写入 XCOUTD.PCU_0；原标签 PCU/系数不参与校验，**不得据此改变实盘数** |
 | 标签数量 | `XLABELDTL.QTY_0`、二维码 QT | **只读参考，不写实盘** |
 | 手填实盘数量 | Pad **仅一次**输入 `decimal` | **`XCOUTD.QTYSTU_0` 与 `XCOUTD.QTYPCU_0`，同时写入相同值** |
 | 原始标签状态 | `XLABELDTL.STA_0` | 供展示/诊断，不做状态准入 |
@@ -204,3 +204,5 @@ SELECT N'Test', COUNT_BIG(*) FROM [sagex3].[XTEST].[XCOUTH];
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
 - 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](API_CONTRACT.md)
+
+最新单位映射决议及证据见 [2026-11-25 盘点单位映射研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。

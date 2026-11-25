@@ -186,8 +186,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             stage = "读取 XLABELDTL 箱标签";
             var labelSql = $"""
                 SELECT TOP (2) L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
-                       L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit,
-                       L.PCU_0 AS PackageUnit,L.PCUSTUCOE_0 AS UnitFactor
+                       L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit
                 FROM {schema}.[XLABELDTL] L
                 """;
             async Task<LabelForWrite[]> QueryLabelAsync(string predicate, string value) =>
@@ -212,12 +211,11 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(422, "ERP_FIELD_TOO_LONG",
                     "标签的物料编码或批次无法写入 XCOUTD。");
 
-            // Only a genuine 1:1 stock/package unit mapping is safe for the
-            // user's forced rule QTYPCU == QTYSTU. Never silently recalculate.
-            if (!CountWritePolicy.SupportedUnitMapping(
-                    label.StockUnit,label.PackageUnit,label.UnitFactor))
+            // Count in STU. The label's packaging unit and factor are irrelevant:
+            // XCOUTD.PCU_0 = STU, factor = 1, both quantity columns = manual count.
+            if (!CountWritePolicy.IsValidStockUnit(label.StockUnit))
                 throw new CountWriteException(409, "UNIT_MAPPING_UNSUPPORTED",
-                    "物料的包装单位/存货单位系数不是 1:1，不能在保证两数量列相等的前提下直接写入。");
+                    "标签存货单位为空、包含控制字符或超过3字符，无法写入盘点明细。");
 
             stage = "检查 XCOUTD 重复箱号";
             var duplicateSql = $"""
@@ -231,7 +229,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (duplicate != 0)
                 throw new CountWriteException(409, "BOX_ALREADY_RECORDED", "该箱号已扫描！");
 
-            var qty = request.CountedQtyStu.Value;
+            var units = CountWritePolicy.MapCountUnits(label.StockUnit, request.CountedQtyStu.Value);
+            var qty = units.QuantityStu;
             // Every mandatory XCOUTD field is assigned explicitly except
             // ROWID, which the preflight above requires SQL Server IDENTITY to generate.
             // Unmapped optional business strings are blank (not SQL NULL).
@@ -255,7 +254,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             insert.Parameters.Add("@ItemCode", SqlDbType.NVarChar, 20).Value=label.ItemCode;
             insert.Parameters.Add("@LotNumber", SqlDbType.NVarChar, 30).Value=label.LotNumber;
             insert.Parameters.Add("@Location", SqlDbType.NVarChar, 10).Value=request.CountedLocation;
-            insert.Parameters.Add("@StockUnit", SqlDbType.NVarChar, 3).Value=label.StockUnit;
+            insert.Parameters.Add("@StockUnit", SqlDbType.NVarChar, 3).Value=units.PackageUnit;
             insert.Parameters.Add("@AuditUser", SqlDbType.NVarChar, 5).Value=options.AuditUser;
             insert.Parameters.Add("@RequestId", SqlDbType.UniqueIdentifier).Value=requestId;
             var amount = insert.Parameters.Add("@Quantity", SqlDbType.Decimal);
@@ -265,7 +264,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             var ratio = insert.Parameters.Add("@UnitFactor", SqlDbType.Decimal);
             ratio.Precision=18;
             ratio.Scale=7;
-            ratio.Value=1m;
+            ratio.Value=units.UnitFactor;
             var detailId = (string?)await insert.ExecuteScalarAsync(ct);
             if (string.IsNullOrWhiteSpace(detailId))
                 throw new CountWriteException(503, "ERP_WRITE_FAILED", "XCOUTD 未返回新建 ROWID。");
@@ -273,7 +272,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             stage = "提交 SQL 事务";
             await transaction.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
-                detailId,qty,qty,label.StockUnit,requestId,"Committed",false);
+                detailId,units.QuantityStu,units.QuantityPcu,units.PackageUnit,requestId,"Committed",false);
         }
         catch (CountWriteException error)
         {
@@ -355,8 +354,6 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         public string ItemCode { get; set; } = "";
         public string LotNumber { get; set; } = "";
         public string StockUnit { get; set; } = "";
-        public string PackageUnit { get; set; } = "";
-        public decimal UnitFactor { get; set; }
     }
 
     private sealed class SubmissionRow
