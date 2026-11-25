@@ -87,11 +87,50 @@ public sealed class CountScanWorkflowTests
         var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
         await workflow.HandleScanAsync("LC.LOC-DEMO01");
         var result = await workflow.HandleScanAsync("1794814541901|1");
-        Assert.Equal("未找到该箱标签！", result.Message);
+        Assert.StartsWith("未找到该箱标签！", result.Message);
         Assert.Equal("LOC-DEMO01", workflow.Location);
         Assert.Null(workflow.Box);
         Assert.Equal(1, fake.LocationRequests);
         Assert.Equal(1, fake.LabelRequests);
+    }
+
+    [Fact]
+    public async Task ObservedScannerSuffixRetriesOnlyAfterExactMissAndSubmitsMatchedQr()
+    {
+        const string qr = "ID.1234567890123|1@@WO.DEMO01261000001@@LN.1000@@MT.P00000001@@QT.100@@LT.L260101";
+        var fake = new FakeGateway { ExpectedLabelQr = qr };
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        await workflow.HandleScanAsync("LC.LOC-DEMO01");
+        Assert.Equal("BoxResolved", (await workflow.HandleScanAsync(qr + "\u4E8C")).Kind);
+        Assert.Equal(2, fake.LabelRequests);
+        Assert.Equal(qr, workflow.OriginalQr);
+        workflow.EnterManualQuantity(99m);
+        Assert.Equal("Submitted", (await workflow.SubmitAsync()).Kind);
+        Assert.Equal(qr, fake.LastSubmittedQr);
+    }
+
+    [Fact]
+    public async Task ExactQrWithSuffixWinsWithoutTruncation()
+    {
+        const string qr = "ID.BOX-001@@LT.L260101\u4E8C";
+        var fake = new FakeGateway { ExpectedLabelQr = qr };
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        await workflow.HandleScanAsync("LC.LOC-DEMO01");
+        Assert.Equal("BoxResolved", (await workflow.HandleScanAsync(qr)).Kind);
+        Assert.Equal(1, fake.LabelRequests);
+        Assert.Equal(qr, workflow.OriginalQr);
+    }
+
+    [Fact]
+    public async Task OtherSuffixIsNotSilentlyTrimmed()
+    {
+        const string qr = "ID.BOX-001@@LT.L260101";
+        var fake = new FakeGateway { ExpectedLabelQr = qr };
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        await workflow.HandleScanAsync("LC.LOC-DEMO01");
+        Assert.Equal("Error", (await workflow.HandleScanAsync(qr + "X")).Kind);
+        Assert.Equal(1, fake.LabelRequests);
+        Assert.Null(workflow.Box);
     }
 
     [Fact]
@@ -298,6 +337,8 @@ public sealed class CountScanWorkflowTests
     {
         public bool Duplicate { get; set; }
         public bool LabelMissing { get; set; }
+        public string? ExpectedLabelQr { get; set; }
+        public string? LastSubmittedQr { get; private set; }
         public string? LastLabelQr { get; private set; }
         public bool RejectDuplicateAtCommit { get; set; }
         public bool ThrowDuringSubmit { get; set; }
@@ -320,7 +361,8 @@ public sealed class CountScanWorkflowTests
         {
             LabelRequests++;
             LastLabelQr = qr;
-            if (LabelMissing) return Task.FromResult<BoxScanData?>(null);
+            if (LabelMissing || (ExpectedLabelQr is not null && qr != ExpectedLabelQr))
+                return Task.FromResult<BoxScanData?>(null);
             return Task.FromResult<BoxScanData?>(new BoxScanData("BOX-DEMO-001",
                 "ITM-DEMO-01","示例物料","DEMO-SPEC","LOT-01","PCS",Duplicate));
         }
@@ -329,6 +371,7 @@ public sealed class CountScanWorkflowTests
             string boxNumber,string location,decimal qty,CancellationToken ct)
         {
             LastRequestId=requestId;
+            LastSubmittedQr=qr;
             LastSubmittedLocation=location;
             if (RejectDuplicateAtCommit)
                 throw new ScanCommitRejectedException("BOX_ALREADY_RECORDED","该箱号已扫描！");
