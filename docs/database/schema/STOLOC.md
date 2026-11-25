@@ -3,7 +3,7 @@ title: "STOLOC — 库位主数据完整字段字典（XTEST 已实测）"
 aliases:
   - "StockCount · docs / database / schema / STOLOC"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -78,6 +78,140 @@ up: "[[docs/database/00-数据库知识地图]]"
 - V1 写入目标是 `XCOUTD.LOC_0 nvarchar(10)`，扫描库位无法容纳时拒绝写入，不可截断。
 
 SQL 位置：[全字段中文别名读数](../../../sql/read_only/select_five_tables_chinese_aliases.sql) · [关键业务只读 SQL](../../../sql/read_only/business_queries.sql)。
+
+## 业务数据查询 SQL（中文别名）
+
+2026-11-25 补充。以下均为只读，默认抽样 TOP (20)，字段使用 `中文业务别名（物理字段名）`；说明性别名不等于 X3 官方字典标题。原始码值和 CASE 翻译并列，转换不代表业务准入。切换 Schema 前核实真实列和菜单。
+
+### 1. 常用业务字段
+
+```sql
+SELECT TOP (20)
+    T.STOFCY_0 AS [库存站点（STOFCY_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.WRH_0 AS [仓库（WRH_0）],
+    T.YLOCDES1_0 AS [库位名称（YLOCDES1_0）],
+    T.LOCTYP_0 AS [库位类型（LOCTYP_0）],
+    T.LOCCAT_0 AS [库位种类码（LOCCAT_0）],
+    T.OCPCOD_0 AS [占用状态码（OCPCOD_0）],
+    CASE T.OCPCOD_0
+        WHEN 1 THEN N'空置的'
+        WHEN 2 THEN N'占用的'
+        WHEN 3 THEN N'满的'
+        ELSE N'未知或未命名码值'
+    END AS [占用状态（OCPCOD_0）],
+    T.LOKSTA_0 AS [冻结状态码（LOKSTA_0）],
+    CASE T.LOKSTA_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [是否冻结（LOKSTA_0）],
+    T.CUNLOKFLG_0 AS [盘点锁定标志码（CUNLOKFLG_0）],
+    CASE T.CUNLOKFLG_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [是否盘点锁定（CUNLOKFLG_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.QTYPCU_0 AS [包装单位数量（QTYPCU_0）],
+    T.MAXQTYPCU_0 AS [最大PAC数量（MAXQTYPCU_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）]
+FROM sagex3.XTEST.STOLOC AS T
+ORDER BY STOFCY_0, WRH_0, LOC_0;
+```
+
+### 2. 全部 41 个物理字段（静态 SQL）
+
+以下按已实测 XTEST 物理字段顺序展开，CASE 为附加显示列，不替换原始值。
+
+```sql
+SELECT TOP (20)
+    T.UPDTICK_0 AS [更新计数（UPDTICK_0）],
+    T.STOFCY_0 AS [库存站点（STOFCY_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.WRH_0 AS [仓库（WRH_0）],
+    T.OCPCOD_0 AS [占用状态码（OCPCOD_0）],
+    CASE T.OCPCOD_0
+        WHEN 1 THEN N'空置的'
+        WHEN 2 THEN N'占用的'
+        WHEN 3 THEN N'满的'
+        ELSE N'未知或未命名码值'
+    END AS [占用状态（OCPCOD_0）],
+    T.LOCTYP_0 AS [库位类型（LOCTYP_0）],
+    T.LOCCAT_0 AS [库位种类码（LOCCAT_0）],
+    T.LOCNUMFMT_0 AS [库位格式（LOCNUMFMT_0）],
+    T.PPSSEQ_0 AS [建议序列（PPSSEQ_0）],
+    T.MONITMFLG_0 AS [单一产品（MONITMFLG_0）],
+    T.DEDFLG_0 AS [专用的（DEDFLG_0）],
+    T.REAFLG_0 AS [可补货的（REAFLG_0）],
+    T.FRGMGTMOD_0 AS [解除管理（FRGMGTMOD_0）],
+    T.TEMLTI_0 AS [延迟期间（TEMLTI_0）],
+    T.FILMGTFLG_0 AS [容量管理（FILMGTFLG_0）],
+    T.AUZSST_0 AS [授权的子状态（AUZSST_0）],
+    T.AVADAT_0 AS [可用日期（AVADAT_0）],
+    T.AVAHOU_0 AS [可用时间（AVAHOU_0）],
+    T.ALLUSR_0 AS [保留用户（ALLUSR_0）],
+    T.ALLDAT_0 AS [保留日期（ALLDAT_0）],
+    T.ALLHOU_0 AS [保留期间（ALLHOU_0）],
+    T.MAXAUZWEI_0 AS [最大重量（MAXAUZWEI_0）],
+    T.WID_0 AS [宽度（WID_0）],
+    T.HEI_0 AS [高度（HEI_0）],
+    T.DTH_0 AS [深度（DTH_0）],
+    T.LOKSTA_0 AS [冻结状态码（LOKSTA_0）],
+    CASE T.LOKSTA_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [是否冻结（LOKSTA_0）],
+    T.CUNLOKFLG_0 AS [盘点锁定标志码（CUNLOKFLG_0）],
+    CASE T.CUNLOKFLG_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [是否盘点锁定（CUNLOKFLG_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.PCUSTUCOE_0 AS [包装/存货单位系数（PCUSTUCOE_0）],
+    T.QTYPCU_0 AS [包装单位数量（QTYPCU_0）],
+    T.MAXQTYPCU_0 AS [最大PAC数量（MAXQTYPCU_0）],
+    T.EXPNUM_0 AS [导出编号（EXPNUM_0）],
+    T.CREDAT_0 AS [创建日期（CREDAT_0）],
+    T.CREUSR_0 AS [创建用户（CREUSR_0）],
+    T.UPDDAT_0 AS [修改日期（UPDDAT_0）],
+    T.UPDUSR_0 AS [修改用户（UPDUSR_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）],
+    T.AUUID_0 AS [唯一识别码（AUUID_0）],
+    T.YLOCDES1_0 AS [库位名称（YLOCDES1_0）],
+    T.ROWID AS [系统行标识（ROWID）]
+FROM sagex3.XTEST.STOLOC AS T
+ORDER BY STOFCY_0, WRH_0, LOC_0;
+```
+
+### 3. 码值字典与核验
+
+| 字段 | 菜单 | 码值（中文） | 证据 |
+| --- | ---: | --- | --- |
+| OCPCOD_0 | 757 | 1 空置的；2 占用的；3 满的 | XTEST 2026-11-24 实测 |
+| LOKSTA_0 | 1 | 1 否；2 是 | 同上 |
+| CUNLOKFLG_0 | 1 | 1 否；2 是 | 同上 |
+| LOCCAT_0、FRGMGTMOD_0、MONITMFLG_0、DEDFLG_0、REAFLG_0、FILMGTFLG_0 | 待查 | 使用当前环境菜单查询，不硬编码 | 其他字段未回传枚举 |
+
+```sql
+SELECT DISTINCT
+    Z.CODZONE_0 AS [字段代码], Z.NOLIB_0 AS [本地菜单编号],
+    M.LANNUM_0 AS [码值], M.LAN_0 AS [语言],
+    M.LANMES_0 AS [状态含义]
+FROM sagex3.XTEST.ATABZON Z
+LEFT JOIN sagex3.XTEST.APLSTD M
+    ON M.LANCHP_0 = Z.NOLIB_0
+   AND M.LAN_0 IN (N'CHI', N'ENG') AND M.LANNUM_0 > 0
+WHERE Z.CODFIC_0 = N'STOLOC'
+  AND Z.CODTYP_0 = N'M' AND Z.NOLIB_0 > 0
+ORDER BY Z.CODZONE_0, Z.NOLIB_0, M.LANNUM_0, M.LAN_0;
+```
+
+全部菜单的动态 CASE（包括尚未手工核实的枚举）使用 [select_table_with_enum_aliases.sql](../../../sql/read_only/select_table_with_enum_aliases.sql)，将 `@TableName` 设为 `STOLOC`。脚本仅按现场非空且无冲突的中文字典生成 CASE，不使用菜单第0项；未知码值保留原值并标明未知。SQL 尚未在企业数据库执行验收，不提交实际业务数据。
+
 
 ---
 
