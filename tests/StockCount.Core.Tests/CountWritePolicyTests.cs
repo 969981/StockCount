@@ -72,17 +72,31 @@ public class CountWritePolicyTests
         Assert.Equal(expected, CountWritePolicy.IsValidStockUnit(stu));
 
     [Theory]
-    [InlineData("", 4000, 3950)]
-    [InlineData("PCS", 6, 5)]
-    [InlineData("BOX", 100, 99)]
-    [InlineData("", 0, 0)]
-    [InlineData("", 164000, 12)]
-    public void HistoricalPackagingDoesNotRestrictManualStockCount(
-        string labelPackageUnit, int labelFactor, int manualQuantity)
+    [InlineData("PCS", 3950)]
+    [InlineData("PCS", 5)]
+    [InlineData("PCS", 99)]
+    [InlineData("PCS", 0)]
+    [InlineData("UN", 12)]
+    [InlineData("SET", 3)]
+    public void MapsAllFourCountFieldsFromStockUnitAndManualQuantity(string stu, int manualQuantity)
     {
-        // Historical label values are evidence only, not policy inputs.
-        Assert.True(CountWritePolicy.IsValidStockUnit("PCS"));
-        Assert.Equal(1m, CountWritePolicy.CountUnitFactor);
-        Assert.Null(CountWritePolicy.Validate(Count, Qr, Box, Location, manualQuantity));
+        var mapped = CountWritePolicy.MapCountUnits(stu, manualQuantity);
+        Assert.Equal(stu, mapped.PackageUnit);
+        Assert.Equal(1m, mapped.UnitFactor);
+        Assert.Equal((decimal)manualQuantity, mapped.QuantityStu);
+        Assert.Equal((decimal)manualQuantity, mapped.QuantityPcu);
     }
+
+    [Fact]
+    public void FractionalManualQuantityIsNeverConverted()
+    {
+        var mapped = CountWritePolicy.MapCountUnits("KG", 1.2345678901234m);
+        Assert.Equal(1.2345678901234m, mapped.QuantityStu);
+        Assert.Equal(mapped.QuantityStu, mapped.QuantityPcu);
+        Assert.Equal(1m, mapped.UnitFactor);
+    }
+
+    [Fact]
+    public void InvalidStockUnitCannotBeMapped() =>
+        Assert.Throws<ArgumentException>(() => CountWritePolicy.MapCountUnits("", 10m));
 }
