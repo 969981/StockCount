@@ -7,7 +7,7 @@ status: active
 
 # StockCount.Pad · Android (.NET MAUI 10)
 
-> 2026-11-23：根据已确认的 HTML 原型，已提交四页 MAUI XAML UI、真实 API 接入、受保护草稿恢复、扫码队列和 1 秒成功提示。**尚未取得真实 MAUI Android 构建成功、实机扫码或 ERP XTEST/COB 联调结果，不能宣称 APK 已成功发布。**
+> 2026-11-23：根据已确认的 HTML 原型，已提交四页 MAUI XAML UI、真实 API 接入、受保护草稿恢复、扫码队列和非阻塞成功提示（2026-11-25 调整为400ms）。**尚未取得真实 MAUI Android 构建成功、实机扫码或 ERP XTEST/COB 联调结果，不能宣称 APK 已成功发布。**
 
 **构建核实（2026-11-23）**：[GitHub Actions #46](https://github.com/969981/StockCount/actions/runs/45110321348) **成功**：MAUI Android Debug APK 编译和 APK 生成检查通过、29 项 Core 单测通过。发布到 GitHub Releases 的带版本名 APK 将由 [统一发布流水线](../../.github/workflows/publish-stockcount.yml) 负责，只上传 `*-Signed.apk`，不会发布未签名同名文件。海康真机/SQL Server 现场验收仍待完成。
 
@@ -26,7 +26,7 @@ status: active
 
 - [工业 PDA UI 与扫码交互设计规范](../../docs/pda/PDA-UI-UX-设计规范与交互状态.md)：页面层级、竖屏线框、视觉 Token、Scan UI 状态、数量/提交反馈以及弱网恢复。
 - [可执行的 MAUI UI 改造任务与验收矩阵](../../docs/pda/PDA-UI-开发任务与验收.md)：P0/P1 开发拆分、API依赖、交互测试用例。
-- **本轮已按确认的 HTML 原型重构**：盘点单卡片、扫码状态、顶部环境标识、固定数量/提交、只读历史和设置；成功先提示1000ms后清箱；扫码中使用有界队列和忙碌反馈；原 UUID/草稿在 POST 前加密保存。源码已提交，效果仍需编译与真机视觉验收。
+- **本轮已按确认的 HTML 原型重构**：盘点单卡片、扫码状态、顶部环境标识、固定数量/提交、只读历史和设置；成功确认后立即清箱并显示400ms非阻塞 Toast；扫码中使用有界队列和忙碌反馈；原 UUID/草稿在 POST 前加密保存。源码已提交，效果仍需编译与真机视觉验收。
 
 Visual Studio 2026 请打开根目录 `StockCount.slnx`（不是后端专用的 `StockCount.Backend.slnx`），右键 `StockCount.Pad` 设置为启动项目并选择 Android 真机/模拟器。安装 MAUI Android workload 后才可编译；详见 [VS HTTP + 双 UI 调试指南](../../docs/VISUAL_STUDIO_HTTP_DEBUG.md)。
 
@@ -50,7 +50,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 ## 已有页面
 
 - `CountListPage`：可分页的全部已有盘点单列表，支持服务端搜索，不按状态隐藏单据。
-- `CountingPage`：按 HTML 原型改成三段 Grid，底部固定数量与提交；扫码确认后展示只读箱信息；先显示1000ms成功蒙层后清箱，不清单号/名称/库位；支持草稿防覆盖、未确认结果查询/同UUID重试。
+- `CountingPage`：按 HTML 原型改成三段 Grid，底部固定数量与提交；扫码确认后展示只读箱信息；确认成功后立即清箱并显示400ms灰色半透明 Toast，不清单号/名称/库位；支持草稿防覆盖、未确认结果查询/同UUID重试。
 - `HistoryPage`：通过 `GET /api/v1/inventory-counts/{countNumber}/items` 读取真实已盘记录、分页、只读，不使用演示假数据。
 - `SettingsPage`：原型式连接卡片与 Test/Production 切换；正式帐套首次切换确认；存在未确认提交时阻止变更环境/服务器/密钥，设备密钥保存在 SecureStorage。
 - `Platforms/Android/MainActivity.cs`：前台动态注册扫描广播，默认 Action 为 `com.service.scanner.data`、Extra 为 `ScanCode`。**现在可在 APK「设置 → 硬件扫码诊断」修改这两个参数并立即生效**，无需重新编译；具体取值必须通过真实海康 PDA 的 SDK/设备广播测试核验。
@@ -102,3 +102,5 @@ Debug 与 Release 的盘点页面均不显示模拟扫码入口，盘点库位�
 显式 `LC.` 标签只走库位校验；无前缀且满足库位格式的短码先查 STOLOC，明确不存在时可转箱码查询；其他符合 QR 长度与字符约束的扫描值直接查询 `XLABELDTL.QRCOD_0`，不要求 `ID.` 开头或包含 `@@`。未确认库位时禁止查询箱标签；箱码只以数据库匹配结果为准，不以显示箱号或二维码数量代替完整原文。保留原始码，仅去除扫码结束 CR/LF。
 
 现场箱码由 API 统一解析：先精确查询 QRCOD_0，零匹配时提取结构化 ID. 字段查询 PID_0；多条匹配拒绝，查询异常不降级。扫码和提交事务使用同一后端规则，保留扫码原文及请求 UUID，不修改标签数据。需更新后台 API。
+
+2026-11-25 真机反馈：取消成功全屏蒙层与一秒等待；本地已确认草稿清理后立即开放下一箱扫描，Toast 仅视觉反馈，不拦截输入。仍保留未确认请求保护及错误弹窗。
