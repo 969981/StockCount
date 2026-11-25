@@ -74,7 +74,9 @@
     <PropertyGroup>
       <_StockCountPublishRoot>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::GetFullPath('$(PublishDir)', '$(MSBuildProjectDirectory)'))))</_StockCountPublishRoot>
       <_StockCountApiProject>$(MSBuildProjectDirectory)/../StockCount.Api/StockCount.Api.csproj</_StockCountApiProject>
-      <_StockCountApiStage>$(MSBuildProjectDirectory)/obj/stockcount-api-publish/$([System.Guid]::NewGuid().ToString('N'))/</_StockCountApiStage>
+      <_StockCountApiWork>$(MSBuildProjectDirectory)/obj/stockcount-api-publish/$([System.Guid]::NewGuid().ToString('N'))/</_StockCountApiWork>
+      <_StockCountApiStage>$(_StockCountApiWork)publish/</_StockCountApiStage>
+      <_StockCountApiArtifacts>$(_StockCountApiWork)artifacts/</_StockCountApiArtifacts>
       <_StockCountDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</_StockCountDotNetHost>
       <_StockCountDotNetHost Condition="'$(_StockCountDotNetHost)' == ''">dotnet</_StockCountDotNetHost>
     </PropertyGroup>
@@ -94,17 +96,21 @@
            Text="Unexpected desktop publish dependencies: @(_StockCountUnexpectedDesktopFiles)" />
     <Message Importance="high" Text="Publishing independent StockCount API sidecar (win-x64)..." />
     <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
-          Command="&quot;$(_StockCountDotNetHost)&quot; publish &quot;$(_StockCountApiProject)&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=embedded -o &quot;$(_StockCountApiStage)&quot;" />
+          Command="&quot;$(_StockCountDotNetHost)&quot; publish &quot;$(_StockCountApiProject)&quot; --disable-build-servers --artifacts-path &quot;$(_StockCountApiArtifacts)&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=embedded -o &quot;$(_StockCountApiStage)&quot;" />
+    <!-- ASP.NET SDK emits a static-web-assets endpoint manifest even without
+         static asset routes. Swagger UI and its custom JS are embedded resources;
+         the current managed sidecar does not call MapStaticAssets or UseStaticFiles.
+         Ignore only this known metadata file, never DLLs or arbitrary assets. -->
     <ItemGroup>
       <_StockCountUnexpectedApiFiles Include="$(_StockCountApiStage)**/*"
-          Exclude="$(_StockCountApiStage)StockCount.Api.exe;$(_StockCountApiStage)appsettings.json;$(_StockCountApiStage)web.config;$(_StockCountApiStage)**/*.pdb" />
+          Exclude="$(_StockCountApiStage)StockCount.Api.exe;$(_StockCountApiStage)appsettings.json;$(_StockCountApiStage)web.config;$(_StockCountApiStage)StockCount.Api.staticwebassets.endpoints.json;$(_StockCountApiStage)**/*.pdb" />
     </ItemGroup>
     <Error Condition="!Exists('$(_StockCountApiStage)StockCount.Api.exe')" Text="API bundle missing." />
     <Error Condition="'@(_StockCountUnexpectedApiFiles)' != ''"
            Text="Unexpected unbundled API dependencies: @(_StockCountUnexpectedApiFiles)" />
     <Copy SourceFiles="$(_StockCountApiStage)StockCount.Api.exe"
           DestinationFiles="$(_StockCountPublishRoot)StockCount.Api.exe" />
-    <RemoveDir Directories="$(_StockCountApiStage)" />
+    <RemoveDir Directories="$(_StockCountApiWork)" />
     <Message Importance="high" Text="StockCount portable: Desktop and API EXEs in $(_StockCountPublishRoot)" />
   </Target>
 </Project>

@@ -90,3 +90,11 @@ Debug/F5 保留原来的 API 项目引用与调试资产复制。Release 不再�
 参考 [Microsoft .NET 单文件部署](https://learn.microsoft.com/zh-cn/dotnet/core/deploying/single-file/overview)。
 
 实际 Windows 编译、窗口启动、API 健康检查及文件大小以 CI 和现场验收为准。
+
+## 7. 发布故障排查（2026-11-25）
+
+- Unexpected unbundled API dependencies: StockCount.Api.staticwebassets.endpoints.json：ASP.NET SDK 自动生成的端点清单，当前 API 未使用静态文件路由，Swagger UI 及本地化 JS 为嵌入资源。新版仅将此已知清单纳入临时目录允许列表，不随便携包分发；其他未打包依赖仍报错。
+- MSB3026：Core/Contracts DLL 无法覆盖，提示用户映射区域占用。新版将子 API 的 bin/obj 和发布目录隔离到独立构建工作区，并禁用子构建服务器缓存。若其他进程仍占用文件，关闭 Visual Studio 的调试会话及旧版管理器/API 后执行 dotnet build-server shutdown，再重新发布；不要强制终止不明进程，不要删除运行目录的配置及日志。
+- AVLN5001：Watermark 弃用警告，不是本次发布失败原因。
+
+旧源码 ZIP 不会自动更新，请重新下载修复后的源码。发布命令仍与第1节相同；仅成功退出后才能部署两个 EXE。
