@@ -205,6 +205,7 @@ public partial class MainViewModel : ObservableObject
             {
                 await StartAsync();
                 if (_runtime.IsRunning) Message = savedMessage + " API 已启动。";
+                else Message = savedMessage + " " + Message;
             }
         }
         catch (Exception ex) { Message = "保存失败：" + ex.Message; }
