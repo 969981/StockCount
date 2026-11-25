@@ -78,6 +78,13 @@
       <_StockCountDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</_StockCountDotNetHost>
       <_StockCountDotNetHost Condition="'$(_StockCountDotNetHost)' == ''">dotnet</_StockCountDotNetHost>
     </PropertyGroup>
+    <!-- The pre-publish guard rejects pre-existing loose files, so any PDB here
+         was emitted by this publish. Native package symbols are not runtime
+         dependencies and cannot be embedded by DebugType=embedded. -->
+    <ItemGroup>
+      <_StockCountPublishedSymbols Include="$(_StockCountPublishRoot)**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_StockCountPublishedSymbols)" />
     <ItemGroup>
       <_StockCountUnexpectedDesktopFiles Include="$(_StockCountPublishRoot)**/*"
           Exclude="$(_StockCountPublishRoot)StockCount.Server.Desktop.exe;$(_StockCountPublishRoot)StockCount.Api.exe" />
