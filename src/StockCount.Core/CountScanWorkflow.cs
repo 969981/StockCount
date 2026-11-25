@@ -130,7 +130,7 @@ public sealed class CountScanWorkflow(
             }
 
             if (string.IsNullOrWhiteSpace(Location))
-                return new CountScanFeedback("Error", "当前扫描的是箱码，请先扫描盘点库位！");
+                return new CountScanFeedback("Error", "请先扫描盘点库位！");
 
             ClearBox();
             var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, ct);
