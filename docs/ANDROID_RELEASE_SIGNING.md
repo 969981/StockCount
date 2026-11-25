@@ -8,6 +8,8 @@ tags: [StockCount, Android, Release, MAUI, Signing, GitHubActions]
 
 # Android 双版本 APK：Debug 与 Release
 
+> 仅做性能测试或内部试装、不自行创建正式 JKS 时，参见 [Release QA 编译发布与 ADB 安装手册（默认调试签名）](StockCount-Release-QA-APK-ADB-Guide.md)。Release QA 不属于正式签名发布包。
+
 > 完整 Windows 本地编译、正式签名、ADB 安装升级与真机性能验收步骤：[StockCount PDA Release APK 编译与 ADB 安装手册](StockCount-Release-APK-ADB-Guide.md)。
 
 > 重要：Debug 和 Release 是两种 **.NET MAUI 编译配置**；Release APK 只有使用长期保留的私有 keystore 签名后，才是可持续更新的可安装版本。构建脚本不会把无签名 APK、临时签名 APK 或 Debug 签名包冒充 Release。
