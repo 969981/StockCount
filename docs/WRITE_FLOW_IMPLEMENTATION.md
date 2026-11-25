@@ -54,7 +54,7 @@ GET /api/v1/submissions/{requestId}?countNumber=COUNT-DEMO-001 要携带同一�
 
 ## 客户端流程
 
-MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码、预检查重复和提交：未扫库位扫箱 → 弹窗“请先扫描盘点库位！”；重复 → 弹窗“该箱号已扫描！”且不填充；数量留空不能提交；成功 → “提交成功！”约一秒后清箱数据及数量，不清单号、名称、库位。网络结果未知时保留内容与请求 UUID，通过 GET 查询。
+MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码、预检查重复和提交：未扫库位扫箱 → 弹窗“请先扫描盘点库位！”；重复 → 弹窗“该箱号已扫描！”且不填充；数量留空不能提交；成功 → 确认成功立即清箱数据及数量，显示400ms灰色半透明非阻塞 Toast，不清单号、名称、库位。网络结果未知时保留内容与请求 UUID，通过 GET 查询。
 
 **尚未覆盖**：Android 系统杀进程后的草稿/UUID 持久恢复、实际海康设备广播参数与 MAUI 真机验证；网络外部老 PDA/X3 写入渠道与本 API 的并发一致性也需现场测试。
 
@@ -78,5 +78,7 @@ MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码�
 **验收状态**：XTEST / COB 双帐套写入代码已提交；实际编译、真机运行、两套 SQL Server 的写入/回滚、多个 PDA 并发测试和正式业务验收均待执行。
 
 现场确认依据：[2026-11-25 盘点单位映射研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
+
+2026-11-25 PDA 成功反馈调整：服务端确认提交后立即完成本地草稿清理，显示400ms Toast，不等待提示消失；下一箱扫码可立即继续。未知结果保护与重复箱弹窗保持不变。
 
 2026-11-25：所有 CUNSTA_0 状态均允许提交，含已结束/未知状态；事务仍核对 XCOUTH 存在及站点、仓库上下文，不修改表头状态。
