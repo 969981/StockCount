@@ -22,6 +22,7 @@ public partial class SettingsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        RefreshPerformanceReport();
         ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
         ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
         ScannerActionInput.Text = ScanFeed.AndroidBroadcastAction;
@@ -176,6 +177,29 @@ public partial class SettingsPage : ContentPage
             TestConnectionButton.IsEnabled = true;
             SaveButton.IsEnabled = true;
         }
+    }
+
+    private static string BuildPerformanceReport()
+    {
+#if DEBUG
+        const string build = "Debug";
+#else
+        const string build = "Release/非Debug";
+#endif
+        return "构建：" + build + "\n" + ClientPerformance.Shared.FormatReport();
+    }
+
+    private void RefreshPerformanceReport() => PerformanceText.Text = BuildPerformanceReport();
+    private void RefreshPerformance_Clicked(object sender, EventArgs e) => RefreshPerformanceReport();
+    private async void CopyPerformance_Clicked(object sender, EventArgs e)
+    {
+        try { await Clipboard.Default.SetTextAsync(BuildPerformanceReport()); }
+        catch (Exception error) { await DisplayAlertAsync("复制失败", error.Message, "OK"); }
+    }
+    private void ClearPerformance_Clicked(object sender, EventArgs e)
+    {
+        ClientPerformance.Shared.Clear();
+        RefreshPerformanceReport();
     }
 
     private async void Back_Clicked(object sender, EventArgs e) =>
