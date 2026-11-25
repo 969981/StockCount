@@ -29,25 +29,19 @@ try {
     $common = @('-c',$Configuration,'-r','win-x64','--self-contained','true',
         '-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true',
         '-p:PublishTrimmed=false','-p:DebugType=embedded')
-    $apiStage = Join-Path $stage 'api'
     $uiStage = Join-Path $stage 'desktop'
-    dotnet publish src/StockCount.Api/StockCount.Api.csproj @common -o $apiStage
-    if ($LASTEXITCODE -ne 0) { throw 'API publish failed.' }
+    # The desktop project owns the API publish target; exactly one publish invocation.
     dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj @common -o $uiStage
-    if ($LASTEXITCODE -ne 0) { throw 'Avalonia desktop publish failed.' }
-    # API has always used environment-based configuration supplied by the manager;
-    # standalone default appsettings and IIS web.config were not shipped previously.
-    # Fail on any other loose runtime asset; never silently drop native dependencies.
-    foreach ($item in @(@{Path=$uiStage;Exe=$names[0];Optional=@()},@{Path=$apiStage;Exe=$names[1];Optional=@('appsettings.json','web.config')})) {
-        $exe = Join-Path $item.Path $item.Exe
+    if ($LASTEXITCODE -ne 0) { throw 'Avalonia desktop + API publish failed.' }
+    foreach ($name in $names) {
+        $exe = Join-Path $uiStage $name
         if (!(Test-Path -LiteralPath $exe -PathType Leaf) -or (Get-Item -LiteralPath $exe).Length -lt 1MB) {
             throw "Single-file executable missing or suspiciously small: $exe"
         }
-        $extras = @(Get-ChildItem -LiteralPath $item.Path -Recurse -File -Force | Where-Object {
-            $relative = [IO.Path]::GetRelativePath($item.Path,$_.FullName)
-            $relative -ne $item.Exe -and $relative -notin $item.Optional -and $_.Extension -ne '.pdb'
-        })
-        if ($extras.Count) { throw "Unexpected unbundled publish dependency: $($extras[0].FullName)" }
+    }
+    $files = @(Get-ChildItem -LiteralPath $uiStage -Force)
+    if ($files.Count -ne 2 -or @($files | Where-Object { $_.PSIsContainer -or $_.Name -notin $names }).Count) {
+        throw 'Expected exactly two bundled EXEs from desktop publish.'
     }
     New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
     $changed = [Collections.Generic.List[string]]::new()
@@ -56,7 +50,7 @@ try {
             $target = Join-Path $OutputDirectory $name
             if (Test-Path -LiteralPath $target) { Copy-Item -LiteralPath $target -Destination (Join-Path $stage "old-$name") }
             $changed.Add($name)
-            $source = Join-Path $(if ($name -eq $names[0]) { $uiStage } else { $apiStage }) $name
+            $source = Join-Path $uiStage $name
             Copy-Item -LiteralPath $source -Destination $target -Force
             if ((Get-FileHash $source).Hash -ne (Get-FileHash $target).Hash) { throw "Bundle copy hash mismatch: $name" }
         }
