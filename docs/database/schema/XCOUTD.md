@@ -3,7 +3,7 @@ title: "XCOUTD — 库存盘点明细表完整字段字典"
 aliases:
   - "StockCount · docs / database / schema / XCOUTD"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -52,6 +52,80 @@ up: "[[docs/database/00-数据库知识地图]]"
 - 数字字段的精度、scale 已在列类型中明确；`CUNTYP_0` 在不同 Schema 可能有类型差异（此前 `UNION ALL` 导致 INT1 溢出），跨环境统一映射为字符串。
 - **最新 V1 规则**：一次人工实盘数同时写入 `QTYSTU_0` 与 `QTYPCU_0`，两者同值；`PCUSTUCOE_0`/`PCU_0` 与 X3 服务的兼容性仍待验证，不得擅自生产裸 INSERT。
 - 已知正式表没有 `CUNNUM_0 + BOXNUM_0` 复合唯一约束，历史曾存在同单重复。
+
+## 业务数据查询 SQL（中文别名）
+
+2026-11-25 补充。以下均为只读，默认抽样 TOP (20)，字段使用 `中文业务别名（物理字段名）`；说明性别名不等于 X3 官方字典标题。原始码值和 CASE 翻译并列，转换不代表业务准入。切换 Schema 前核实真实列和菜单。
+
+### 1. 常用业务字段
+
+```sql
+SELECT TOP (20)
+    T.CUNNUM_0 AS [盘点单号（CUNNUM_0）],
+    T.PALNUM_0 AS [托盘号/识别码1（PALNUM_0）],
+    T.BOXNUM_0 AS [箱码（BOXNUM_0）],
+    T.ITMREF_0 AS [产品编码（ITMREF_0）],
+    T.LOT_0 AS [批号（LOT_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.QTYPCU_0 AS [包装单位数量（QTYPCU_0）],
+    T.PCUSTUCOE_0 AS [包装/存货单位系数（PCUSTUCOE_0）],
+    T.QTYSTU_0 AS [实盘存货单位数量（QTYSTU_0）],
+    T.PDAID_0 AS [PDA标识（PDAID_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）]
+FROM sagex3.COB.XCOUTD AS T
+ORDER BY CREDATTIM_0 DESC, ROWID DESC;
+```
+
+### 2. 全部 19 个物理字段（静态 SQL）
+
+以下按已实测 COB 物理字段顺序展开，CASE 为附加显示列，不替换原始值。
+
+```sql
+SELECT TOP (20)
+    T.UPDTICK_0 AS [更新计数（UPDTICK_0）],
+    T.CUNNUM_0 AS [盘点单号（CUNNUM_0）],
+    T.PALNUM_0 AS [托盘号/识别码1（PALNUM_0）],
+    T.BOXNUM_0 AS [箱码（BOXNUM_0）],
+    T.ITMREF_0 AS [产品编码（ITMREF_0）],
+    T.LOT_0 AS [批号（LOT_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.ECCVALMAJ_0 AS [ECCVALMAJ（含义待核）（ECCVALMAJ_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.QTYPCU_0 AS [包装单位数量（QTYPCU_0）],
+    T.PCUSTUCOE_0 AS [包装/存货单位系数（PCUSTUCOE_0）],
+    T.QTYSTU_0 AS [实盘存货单位数量（QTYSTU_0）],
+    T.PDAID_0 AS [PDA标识（PDAID_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）],
+    T.AUUID_0 AS [唯一识别码（AUUID_0）],
+    T.CREUSR_0 AS [创建用户（CREUSR_0）],
+    T.UPDUSR_0 AS [修改用户（UPDUSR_0）],
+    T.ROWID AS [系统行标识（ROWID）]
+FROM sagex3.COB.XCOUTD AS T
+ORDER BY CREDATTIM_0 DESC, ROWID DESC;
+```
+
+### 3. 码值字典与核验
+
+已归档 19 列没有非零本地菜单号；不把数量、托盘号、批次、PDA 标识或系统行号当作枚举。若环境字典变化，以以下查询为准。
+
+```sql
+SELECT DISTINCT
+    Z.CODZONE_0 AS [字段代码], Z.NOLIB_0 AS [本地菜单编号],
+    M.LANNUM_0 AS [码值], M.LAN_0 AS [语言],
+    M.LANMES_0 AS [状态含义]
+FROM sagex3.COB.ATABZON Z
+LEFT JOIN sagex3.COB.APLSTD M
+    ON M.LANCHP_0 = Z.NOLIB_0
+   AND M.LAN_0 IN (N'CHI', N'ENG') AND M.LANNUM_0 > 0
+WHERE Z.CODFIC_0 = N'XCOUTD'
+  AND Z.CODTYP_0 = N'M' AND Z.NOLIB_0 > 0
+ORDER BY Z.CODZONE_0, Z.NOLIB_0, M.LANNUM_0, M.LAN_0;
+```
+
+全部菜单的动态 CASE（包括尚未手工核实的枚举）使用 [select_table_with_enum_aliases.sql](../../../sql/read_only/select_table_with_enum_aliases.sql)，将 `@TableName` 设为 `XCOUTD`。脚本仅按现场非空且无冲突的中文字典生成 CASE，不使用菜单第0项；未知码值保留原值并标明未知。SQL 尚未在企业数据库执行验收，不提交实际业务数据。
+
 
 ---
 
