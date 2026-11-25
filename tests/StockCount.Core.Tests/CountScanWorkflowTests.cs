@@ -61,6 +61,7 @@ public sealed class CountScanWorkflowTests
     }
 
     [Theory]
+    [InlineData("ID.1234567890123|1@@WO.DEMO01261000001@@LN.1000@@MT.P00000001@@QT.100@@LT.L260101")]
     [InlineData("1794814541901|1")]
     [InlineData("MT.DEMO@@ID.BOX-001@@QT.99")]
     [InlineData("BOX-DEMO-ALT")]
