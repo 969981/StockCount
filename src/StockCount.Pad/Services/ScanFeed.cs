@@ -15,10 +15,11 @@ public static class ScanFeed
     private const string ActionKey = "StockCount.Scanner.BroadcastAction";
     private const string ExtraKey = "StockCount.Scanner.BarcodeExtra";
 
-    public static string AndroidBroadcastAction =>
-        Preferences.Default.Get(ActionKey, DefaultAction);
-    public static string AndroidBarcodeExtra =>
-        Preferences.Default.Get(ExtraKey, DefaultExtra);
+    private sealed record ScannerConfig(string Action, string Extra);
+    private static ScannerConfig _config = new(Preferences.Default.Get(ActionKey, DefaultAction),
+        Preferences.Default.Get(ExtraKey, DefaultExtra));
+    public static string AndroidBroadcastAction => Volatile.Read(ref _config).Action;
+    public static string AndroidBarcodeExtra => Volatile.Read(ref _config).Extra;
 
     public sealed record ScanDiagnostic(DateTimeOffset ObservedAt, string Kind, int Length, string Shape);
 
@@ -43,6 +44,7 @@ public static class ScanFeed
 
         Preferences.Default.Set(ActionKey, action);
         Preferences.Default.Set(ExtraKey, extra);
+        Volatile.Write(ref _config, new ScannerConfig(action, extra));
         LatestDiagnostic = null;
         ScannerConfigurationChanged?.Invoke();
     }
@@ -63,15 +65,25 @@ public static class ScanFeed
         if (string.IsNullOrWhiteSpace(value)) return;
         var normalized = value.TrimEnd('\r', '\n');
         if (string.IsNullOrWhiteSpace(normalized)) return;
-        var diagnostic = new ScanDiagnostic(DateTimeOffset.Now,
-            CountScanWorkflow.LooksLikeBoxQr(normalized) ? "待查询箱码" : "待校验库位/其他码",
-            normalized.Length,
-            $"原始长度 {value.Length}；ID. 开头：{(normalized.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) ? "是" : "否")}；" +
-            $"@@ 分隔符：{Regex.Matches(normalized, "@@").Count}；" +
-            $"控制/不可见字符：{DescribeInvisible(normalized)}；" +
-            $"首字符 U+{(int)normalized[0]:X4} / 尾字符 U+{(int)normalized[^1]:X4}");
-        LatestDiagnostic = diagnostic;
-        ScanObserved?.Invoke(diagnostic);
+        // Full code-point analysis is only needed on the settings diagnostic screen.
+        var observers = ScanObserved;
+        if (observers is not null)
+        {
+            var diagnostic = new ScanDiagnostic(DateTimeOffset.Now,
+                CountScanWorkflow.LooksLikeBoxQr(normalized) ? "待查询箱码" : "待校验库位/其他码",
+                normalized.Length,
+                $"原始长度 {value.Length}；ID. 开头：{(normalized.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) ? "是" : "否")}；" +
+                $"@@ 分隔符：{Regex.Matches(normalized, "@@").Count}；" +
+                $"控制/不可见字符：{DescribeInvisible(normalized)}；" +
+                $"首字符 U+{(int)normalized[0]:X4} / 尾字符 U+{(int)normalized[^1]:X4}");
+            LatestDiagnostic = diagnostic;
+            observers.Invoke(diagnostic);
+        }
+        else
+        {
+            LatestDiagnostic = new ScanDiagnostic(DateTimeOffset.Now, "已接收扫码", normalized.Length,
+                "详细字符诊断仅在设置页开启，请在此页重新扫码。");
+        }
         ScanReceived?.Invoke(normalized);
     }
 }

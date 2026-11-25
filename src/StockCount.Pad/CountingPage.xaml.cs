@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics;
 using StockCount.Contracts;
 using StockCount.Core;
 using StockCount.Pad.Services;
@@ -11,7 +12,14 @@ public partial class CountingPage : ContentPage
     private readonly StockCountApiClient _api;
     private readonly InventoryCountDto _selected;
     private readonly CountScanWorkflow _workflow;
-    private readonly Queue<string> _scanQueue = new();
+    private readonly Queue<(string Raw, long ReceivedAt)> _scanQueue = new();
+    private static readonly Color ConfirmedGreen = Color.FromArgb("#287348");
+    private static readonly Color MutedGray = Color.FromArgb("#667687");
+    private static readonly Color LocationBlue = Color.FromArgb("#154A87");
+    private static readonly Color BoxGray = Color.FromArgb("#627181");
+    private bool _rendered;
+    private string? _renderedLocation;
+    private BoxScanData? _renderedBox;
     private bool _busy;
     private bool _draining;
     private bool _submitting;
@@ -38,6 +46,7 @@ public partial class CountingPage : ContentPage
         EnvironmentLabel.Text = production ? "正式 · COB" : "测试 · XTEST";
         EnvironmentLabel.TextColor = Color.FromArgb(production ? "#9B5C11" : "#31537C");
         EnvironmentBanner.BackgroundColor = Color.FromArgb(production ? "#FFF5E6" : "#F0F4F9");
+        RenderReadOnlyPermission();
         RefreshScreen();
     }
 
@@ -82,7 +91,8 @@ public partial class CountingPage : ContentPage
 
     private void OnScannerReceived(string raw)
     {
-        MainThread.BeginInvokeOnMainThread(() =>
+        var receivedAt = Stopwatch.GetTimestamp();
+        void Enqueue()
         {
             if (!_pageVisible) return;
             if ((_submitting && !_workflow.IsSuccessAwaitingDismiss) ||
@@ -96,11 +106,13 @@ public partial class CountingPage : ContentPage
                 ConnectionStateText.Text = "扫码过快，请重新扫描最后一箱";
                 return;
             }
-            _scanQueue.Enqueue(raw);
+            _scanQueue.Enqueue((raw, receivedAt));
             // A confirmed commit may still be clearing its persisted draft.
             // Queue scans during that short cleanup, not during the toast.
             if (!_submitting) _ = DrainScanQueueAsync();
-        });
+        }
+        if (MainThread.IsMainThread) Enqueue();
+        else MainThread.BeginInvokeOnMainThread(Enqueue);
     }
 
     private async Task DrainScanQueueAsync()
@@ -111,8 +123,10 @@ public partial class CountingPage : ContentPage
         {
             while (_scanQueue.Count > 0)
             {
-                var raw = _scanQueue.Dequeue();
-                await ProcessScanAsync(raw);
+                var (raw, receivedAt) = _scanQueue.Dequeue();
+                ClientPerformance.Shared.RecordSince(ClientPerfStage.ScanQueue, receivedAt);
+                try { await ProcessScanAsync(raw); }
+                finally { ClientPerformance.Shared.RecordSince(ClientPerfStage.ScanTotal, receivedAt); }
             }
         }
         finally
@@ -162,7 +176,9 @@ public partial class CountingPage : ContentPage
         var focusQuantity = false;
         try
         {
-            var result = await _workflow.HandleScanAsync(raw);
+            CountScanFeedback result;
+            using (ClientPerformance.Shared.Measure(ClientPerfStage.ScanWorkflow))
+                result = await _workflow.HandleScanAsync(raw);
             if (result.Kind is "BoxResolved" or "LocationUpdated" or "Duplicate")
                 QuantityInput.Text = "";
             RefreshScreen();
@@ -181,7 +197,10 @@ public partial class CountingPage : ContentPage
             BusyIndicator.IsVisible = false;
             RefreshScreen();
             if (focusQuantity && _pageVisible && QuantityInput.IsEnabled)
+            {
+                using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.QuantityFocus);
                 QuantityInput.Focus();
+            }
         }
     }
 
@@ -210,6 +229,7 @@ public partial class CountingPage : ContentPage
     private async Task SubmitCurrentAsync()
     {
         if (_busy || _draining) return;
+        using var total = ClientPerformance.Shared.Measure(ClientPerfStage.SubmitTotal);
         _busy = true;
         _submitting = true;
         ConnectionStateText.Text = "正在提交…";
@@ -218,7 +238,9 @@ public partial class CountingPage : ContentPage
         RefreshScreen();
         try
         {
-            var feedback = await _workflow.SubmitAsync();
+            CountScanFeedback feedback;
+            using (ClientPerformance.Shared.Measure(ClientPerfStage.SubmitWorkflow))
+                feedback = await _workflow.SubmitAsync();
             // Clear confirmed data immediately; the toast is independent.
             await ShowFeedbackAsync(feedback);
             if (feedback.Kind != "Submitted")
@@ -247,6 +269,7 @@ public partial class CountingPage : ContentPage
     private async void Check_Clicked(object sender, EventArgs e)
     {
         if (_busy || _draining) return;
+        using var total = ClientPerformance.Shared.Measure(ClientPerfStage.CheckTotal);
         _busy = true;
         _submitting = true;
         ConnectionStateText.Text = "正在查询结果…";
@@ -281,7 +304,8 @@ public partial class CountingPage : ContentPage
             {
                 // Retire the confirmed request and clear the old box before
                 // displaying any feedback. Do not await the toast lifetime.
-                await _workflow.AcknowledgeSuccessAsync();
+                using (ClientPerformance.Shared.Measure(ClientPerfStage.ConfirmCleanup))
+                    await _workflow.AcknowledgeSuccessAsync();
                 QuantityInput.Text = "";
                 QuantityInput.Unfocus();
                 RefreshScreen();
@@ -343,49 +367,74 @@ public partial class CountingPage : ContentPage
 
     private void QuantityInput_TextChanged(object sender, TextChangedEventArgs e)
     {
-        QuantityErrorText.IsVisible = false;
+        if (QuantityErrorText.IsVisible) QuantityErrorText.IsVisible = false;
         UpdateSubmitButton();
     }
 
     private void UpdateSubmitButton()
     {
-        SubmitButton.IsEnabled = _selected.CanSubmit && !_busy && !_draining &&
+        var enabled = _selected.CanSubmit && !_busy && !_draining &&
             !_workflow.HasUnresolvedSubmission &&
             !_workflow.IsSuccessAwaitingDismiss &&
             _workflow.Box is not null && _workflow.Location is not null &&
             TryGetQuantity(out _);
+        if (SubmitButton.IsEnabled != enabled) SubmitButton.IsEnabled = enabled;
     }
 
+    // Compare the last rendered domain state before touching native controls.
+    // Only the dynamic busy/pending/input state is evaluated on each pass.
     private void RefreshScreen()
     {
-        var located = !string.IsNullOrWhiteSpace(_workflow.Location);
-        LocationText.Text = _workflow.Location ?? "—";
-        LocationStatusText.Text = located ? "✓ 已确认" : "未扫描";
-        LocationStatusText.TextColor = Color.FromArgb(located ? "#287348" : "#667687");
-        LocationText.TextColor = Color.FromArgb(located ? "#154A87" : "#667687");
-        LocationHintText.Text = located ? "重扫可切换" : "请扫描库位";
-        BoxEmptyTitleText.Text = located ? "请扫描箱码" : "请先扫描库位";
-        BoxEmptyHintText.Text = "使用 PDA 实体扫码键";
-
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.UiRefresh);
+        var location = _workflow.Location;
+        var located = !string.IsNullOrWhiteSpace(location);
+        if (!_rendered || !string.Equals(location, _renderedLocation, StringComparison.Ordinal))
+        {
+            LocationText.Text = location ?? "—";
+            LocationStatusText.Text = located ? "✓ 已确认" : "未扫描";
+            LocationStatusText.TextColor = located ? ConfirmedGreen : MutedGray;
+            LocationText.TextColor = located ? LocationBlue : MutedGray;
+            LocationHintText.Text = located ? "重扫可切换" : "请扫描库位";
+            BoxEmptyTitleText.Text = located ? "请扫描箱码" : "请先扫描库位";
+            _renderedLocation = location;
+        }
         var box = _workflow.Box;
-        BoxFields.IsVisible = box is not null;
-        BoxEmptyPanel.IsVisible = box is null;
-        BoxStateText.Text = box is null ? "等待扫码" : "已读取";
-        BoxStateText.TextColor = Color.FromArgb(box is null ? "#627181" : "#287348");
-        BoxNumberText.Text = box?.BoxNumber ?? "";
-        ItemCodeText.Text = box?.ItemCode ?? "";
-        ItemNameText.Text = box?.ItemName ?? "";
-        SpecificationText.Text = box?.Specification ?? "";
-        LotText.Text = box?.LotNumber ?? "";
-        StockUnitText.Text = box?.StockUnit ?? "";
-        QuantityUnitText.Text = box?.StockUnit ?? "—";
-        if (box is null && !_workflow.IsSuccessAwaitingDismiss)
+        if (!_rendered || !Equals(box, _renderedBox))
+        {
+            BoxFields.IsVisible = box is not null;
+            BoxEmptyPanel.IsVisible = box is null;
+            BoxStateText.Text = box is null ? "等待扫码" : "已读取";
+            BoxStateText.TextColor = box is null ? BoxGray : ConfirmedGreen;
+            BoxNumberText.Text = box?.BoxNumber ?? "";
+            ItemCodeText.Text = box?.ItemCode ?? "";
+            ItemNameText.Text = box?.ItemName ?? "";
+            SpecificationText.Text = box?.Specification ?? "";
+            LotText.Text = box?.LotNumber ?? "";
+            StockUnitText.Text = box?.StockUnit ?? "";
+            QuantityUnitText.Text = box?.StockUnit ?? "—";
+            _renderedBox = box;
+        }
+        _rendered = true;
+        if (box is null && !_workflow.IsSuccessAwaitingDismiss &&
+            !string.IsNullOrEmpty(QuantityInput.Text))
             QuantityInput.Text = "";
 
         var pending = _workflow.HasUnresolvedSubmission;
-        PendingPanel.IsVisible = pending;
-        QuantityInput.IsEnabled = _selected.CanSubmit && box is not null &&
+        if (PendingPanel.IsVisible != pending) PendingPanel.IsVisible = pending;
+        var enabled = _selected.CanSubmit && box is not null &&
             !pending && !_busy && !_workflow.IsSuccessAwaitingDismiss;
+        if (QuantityInput.IsEnabled != enabled) QuantityInput.IsEnabled = enabled;
+        string? status = pending ? "提交结果待确认" :
+            !_busy && !_workflow.IsSuccessAwaitingDismiss
+                ? (box is null ? (located ? "等待扫描箱码" : "等待扫描库位") : "等待人工数量")
+                : null;
+        if (status is not null && ConnectionStateText.Text != status)
+            ConnectionStateText.Text = status;
+        UpdateSubmitButton();
+    }
+
+    private void RenderReadOnlyPermission()
+    {
         ReadOnlyWarning.IsVisible = !_selected.CanSubmit;
         ReadOnlyText.Text = _selected.CannotSubmitReason is null
             ? "当前盘点单暂不允许提交，请联系管理员。"
@@ -397,12 +446,6 @@ public partial class CountingPage : ContentPage
                 "COUNT_NOT_WRITABLE" => $"盘点单状态 {_selected.StatusCode} 不允许提交。",
                 _ => $"当前盘点单暂不允许提交：{_selected.CannotSubmitReason}"
             };
-        if (pending) ConnectionStateText.Text = "提交结果待确认";
-        else if (!_busy && !_workflow.IsSuccessAwaitingDismiss)
-            ConnectionStateText.Text = box is null
-                ? (located ? "等待扫描箱码" : "等待扫描库位")
-                : "等待人工数量";
-        UpdateSubmitButton();
     }
 
     private async void History_Clicked(object sender, EventArgs e) =>
