@@ -106,7 +106,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 - `StockCount.Pad` Android MAUI 页面/扫码广播源码已添加，尚需实际 Android SDK 编译与海康 PDA 真机联调。
 - `XTEST`/`COB` 的真实库结构核验、只读 SQL 联调与两环境差异测试。
 - 真实 XTEST / COB 插入适配器均已编码，**现场仍需分别确认** X3 原生服务与直接 INSERT 的适配差异、ROWID IDENTITY、审计字段/触发器和 SQL Server 事务；不符合条件必须拒绝。
-- 同单同箱锁与 SQL Server 原有 XCOUTD 请求识别码已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及单位 1:1 验证；STU/PCU 两列强制同值。
+- 同单同箱锁与 SQL Server 原有 XCOUTD 请求识别码已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及现场存货单位写入验证；STU/PCU 两列强制同值。
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
@@ -122,3 +122,5 @@ API 启动后，浏览器打开 `http://127.0.0.1:5080` 自动跳转中文 Swagg
 ### 库位一致性校验（可选）
 
 独立环境变量：`STOCKCOUNT_XTEST_CHECK_SITE`、`STOCKCOUNT_XTEST_CHECK_WAREHOUSE`、`STOCKCOUNT_COB_CHECK_SITE`、`STOCKCOUNT_COB_CHECK_WAREHOUSE`，值为 `true` 时启用，默认 `false`。扫码和提交事务内复核共用相同参数化查询。只校验已启用的维度，库位必须存在，两个维度同时启用时保留精确范围重复检查；写入授权、事务、幂等、标签/数量等规则不变。配置在 API 启动时读取；变更后重启 API。
+
+2026-11-25：盘点单位取标签 STU，明细系数固定1，两数量取人工实盘值；不再限制标签 PCU 或 PCUSTUCOE。详见 [盘点单位研究](../../docs/database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
