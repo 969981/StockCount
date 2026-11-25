@@ -38,6 +38,14 @@ public sealed class ServerSettings
 
     public ServerSettings Copy() => (ServerSettings)MemberwiseClone();
 
+    public void CopyLocationValidationFrom(ServerSettings source)
+    {
+        TestCheckSite = source.TestCheckSite;
+        TestCheckWarehouse = source.TestCheckWarehouse;
+        ProductionCheckSite = source.ProductionCheckSite;
+        ProductionCheckWarehouse = source.ProductionCheckWarehouse;
+    }
+
     public void CopyWriteApprovalsFrom(ServerSettings source)
     {
         SchemaReviewed = source.SchemaReviewed;
