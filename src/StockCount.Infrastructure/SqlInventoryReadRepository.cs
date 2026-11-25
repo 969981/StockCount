@@ -104,10 +104,7 @@ public sealed class SqlInventoryReadRepository(string connectionString,
                    I.YITMDES4_0 AS ItemName,I.ITMDES2_0 AS Specification,
                    L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit,
                    L.QTY_0 AS LabelQty,CAST(L.STA_0 AS int) AS LabelStatusCode,
-                   CAST(CASE WHEN EXISTS (
-                     SELECT 1 FROM {schema}.[XCOUTD] D
-                     WHERE D.CUNNUM_0=@CountNumber AND D.BOXNUM_0=L.PID_0
-                   ) THEN 1 ELSE 0 END AS bit) AS AlreadyRecordedInCount
+                   {BoxDuplicateQuery.LabelProjection(environment)}
             FROM {schema}.[XLABELDTL] L
             LEFT JOIN {schema}.[ITMMASTER] I ON I.ITMREF_0=L.ITMREF_0
             """;
@@ -115,7 +112,7 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         async Task<LabelRecord[]> QueryAsync(string predicate, string value) =>
             (await connection.QueryAsync<LabelRecord>(
                 new CommandDefinition(sql + predicate,
-                    new { CountNumber=countNumber, Value=value },
+                    new { Value=value },
                     cancellationToken:cancellationToken))).ToArray();
 
         var labels = await LabelLookupPolicy.FindAsync(fullQr,
