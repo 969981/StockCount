@@ -36,6 +36,15 @@ public sealed class ServerSettings
     public string EffectiveX3AuditUser => string.IsNullOrWhiteSpace(X3AuditUser)
         ? DefaultAuditUser : X3AuditUser.Trim();
 
+    // First-use UI defaults only. Missing fields in existing JSON retain the
+    // previous conservative defaults; explicit saved false values stay false.
+    public static ServerSettings CreateFirstUseDefaults() => new()
+    {
+        AllowLan = true,
+        AllowKeylessLan = true,
+        TrustServerCertificate = true
+    };
+
     public ServerSettings Copy() => (ServerSettings)MemberwiseClone();
 
     public void CopyLocationValidationFrom(ServerSettings source)
