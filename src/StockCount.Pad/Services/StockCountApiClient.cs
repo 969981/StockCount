@@ -22,6 +22,7 @@ public sealed class StockCountApiClient : ICountScanGateway
     private Endpoint _endpoint = ReadEndpoint();
     private readonly SemaphoreSlim _configurationGate = new(1, 1);
     private bool _keyLoaded;
+    private bool _configurationFaulted;
     private string? _cachedKey;
 
     private static Endpoint ReadEndpoint()
@@ -39,7 +40,7 @@ public sealed class StockCountApiClient : ICountScanGateway
     {
         if (!_keyLoaded)
         {
-            _cachedKey = await SecureStorage.Default.GetAsync("StockCountDeviceKey").ConfigureAwait(false);
+            _cachedKey = await Task.Run(() => SecureStorage.Default.GetAsync("StockCountDeviceKey")).ConfigureAwait(false);
             _keyLoaded = true;
         }
         return _cachedKey;
@@ -63,6 +64,13 @@ public sealed class StockCountApiClient : ICountScanGateway
             Preferences.Default.Set("StockCountApiUrl",normalized);
             Preferences.Default.Set("StockCountEnvironment",environment);
             Volatile.Write(ref _endpoint, new Endpoint(normalized, environment));
+            _configurationFaulted = false;
+        }
+        catch
+        {
+            // A partial persistence failure must not send a mismatched key/endpoint.
+            _configurationFaulted = true;
+            throw;
         }
         finally { _configurationGate.Release(); }
     }
@@ -76,6 +84,8 @@ public sealed class StockCountApiClient : ICountScanGateway
         await _configurationGate.WaitAsync().ConfigureAwait(false);
         try
         {
+            if (_configurationFaulted)
+                throw new InvalidOperationException("连接配置保存未完成，请在设置中重新保存后再操作。");
             endpoint = Volatile.Read(ref _endpoint);
             key = await ReadKeyLockedAsync().ConfigureAwait(false);
         }
@@ -238,7 +248,11 @@ public sealed class StockCountApiClient : ICountScanGateway
     public async Task<bool> HasDeviceKeyAsync()
     {
         await _configurationGate.WaitAsync().ConfigureAwait(false);
-        try { return !string.IsNullOrWhiteSpace(await ReadKeyLockedAsync().ConfigureAwait(false)); }
+        try
+        {
+            if (_configurationFaulted) throw new InvalidOperationException("连接配置保存未完成。");
+            return !string.IsNullOrWhiteSpace(await ReadKeyLockedAsync().ConfigureAwait(false));
+        }
         finally { _configurationGate.Release(); }
     }
 
