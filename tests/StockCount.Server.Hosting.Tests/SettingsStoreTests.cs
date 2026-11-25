@@ -38,6 +38,45 @@ public sealed class SettingsStoreTests
     }
 
     [Fact]
+    public void FirstUseDefaultsPreselectLanAndCertificateTrustWithoutGrantingWrites()
+    {
+        var settings = ServerSettings.CreateFirstUseDefaults();
+        Assert.True(settings.AllowLan);
+        Assert.True(settings.AllowKeylessLan);
+        Assert.True(settings.TrustServerCertificate);
+        Assert.True(settings.EncryptSql);
+        Assert.False(settings.EnableTestWrites || settings.EnableProductionWrites);
+        Assert.False(settings.SchemaReviewed || settings.ProductionSchemaReviewed);
+        Assert.False(settings.TestCheckSite || settings.TestCheckWarehouse ||
+                     settings.ProductionCheckSite || settings.ProductionCheckWarehouse);
+    }
+
+    [Theory]
+    [InlineData("{\"allowLan\":false,\"trustServerCertificate\":false}", false, false)]
+    [InlineData("{}", false, false)]
+    [InlineData("{\"allowLan\":true,\"trustServerCertificate\":true}", true, true)]
+    [InlineData("{\"allowLan\":true,\"trustServerCertificate\":false}", true, false)]
+    public void ExistingJsonPreservesLanAndCertificateTrust(string json, bool lan, bool trust)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "stockcount-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var store = new SettingsStore(dir);
+            File.WriteAllText(store.SettingsPath, json);
+            var settings = store.Load();
+            Assert.Equal(lan, settings.AllowLan);
+            Assert.Equal(trust, settings.TrustServerCertificate);
+            Assert.True(settings.EncryptSql);
+            Assert.False(settings.EnableProductionWrites);
+            store.Save(settings);
+            Assert.Equal(lan, store.Load().AllowLan);
+            Assert.Equal(trust, store.Load().TrustServerCertificate);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
     public void NewWriteDraftPreselectsFourWithoutChangingEffectiveSettings()
     {
         var saved = new ServerSettings();

@@ -23,7 +23,7 @@ public sealed class SettingsStore
         if (File.Exists(SettingsPath)) return Parse(SettingsPath);
         var old = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "StockCount", "ServerHost", "server-settings.json");
-        if (!File.Exists(old)) return new ServerSettings { AllowKeylessLan = true };
+        if (!File.Exists(old)) return ServerSettings.CreateFirstUseDefaults();
 
         // Check old JSON before copying. Only migration reads AppData.
         var content = File.ReadAllText(old, Encoding.UTF8);

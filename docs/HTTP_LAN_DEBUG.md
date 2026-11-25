@@ -23,7 +23,7 @@ Windows Avalonia / Tauri 2 管理器 → ASP.NET Core 10 Sidecar → SQL Server
                        └─ 5081 HTTP：始终仅监听 localhost，内部管理用途
 ```
 
-默认仍为 `allowLan=false`，只有 Windows 本机可连。开启「允许通过受控局域网向 PDA 提供 HTTP API」后才开放 5080；Avalonia 可明确启用可信局域网免密模式，此时 `/api/v1` 与 `/ready` 仅允许直接内网 IPv4 或回环来源；旧版密钥模式仍要求设备鉴权。XTEST 和 COB 写入**默认均关闭**，变更传输协议不等于获得数据库写权限。
+Avalonia 首次配置默认预选 `allowLan=true`，首次保存前不自动启动 API；已有 JSON 的选择与缺失字段的旧默认保持不变。旧 Tauri 与独立 API 默认仍不开放局域网。仅保存并启动启用了 LAN 的配置后才开放 5080；Avalonia 可明确启用可信局域网免密模式，此时 `/api/v1` 与 `/ready` 仅允许直接内网 IPv4 或回环来源；旧版密钥模式仍要求设备鉴权。XTEST 和 COB 写入**默认均关闭**，变更传输协议不等于获得数据库写权限。
 
 Android Manifest 已启用 `android:usesCleartextTraffic="true"`。StockCount 客户端校验 API 地址：仅允许 `http://10.x.x.x`、`http://172.16~31.x.x`、`http://192.168.x.x`、localhost/loopback，或 HTTPS；拒绝通过 HTTP 连接公网 IP/域名。建议直接填写电脑的 RFC1918 局域网 IPv4 地址。
 
