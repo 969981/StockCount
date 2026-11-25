@@ -32,7 +32,7 @@ POST /api/v1/inventory-counts/COUNT-DEMO-001/items
 
 箱内数量改成 nullable decimal，**未填写会返回 400 COUNT_QUANTITY_REQUIRED**，人工输入99时保存 QTYSTU_0=QTYPCU_0=99，不会从二维码 QT.100 带入。数量为0当前允许，负数或 numeric(28,13) 超出范围拒绝；PCS 整数要求尚待业务确认。标签 STA_0 无任何白名单限制。
 
-写入前后端重查盘点单（当前仅 CUNSTA_0=0 允许）、库位、完整二维码及箱号；只支持物料标签 STU=PCU、系数=1 的 1:1 单位场景，其他返回 409 UNIT_MAPPING_UNSUPPORTED。不能自动换算两数量列。
+写入前后端重查盘点单（当前仅 CUNSTA_0=0 允许）、库位、完整二维码及箱号；按标签 STU 盘点：XCOUTD.PCU_0=XLABELDTL.STU_0，PCUSTUCOE_0=1，两数量列均为人工实盘数。不再限制原标签 PCU 或系数；仅 STU 无效返回 409 UNIT_MAPPING_UNSUPPORTED。不能自动换算两数量列。
 
 ## 原子事务、重复与幂等
 
@@ -67,7 +67,7 @@ MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码�
 | 409 | BOX_ALREADY_RECORDED | 当前单箱码已盘 |
 | 409 | IDEMPOTENCY_PAYLOAD_MISMATCH | 同 UUID 不同请求 |
 | 409 | COUNT_NOT_WRITABLE | 该状态不允许写入 |
-| 409 | UNIT_MAPPING_UNSUPPORTED | 单位系数不兼容 |
+| 409 | UNIT_MAPPING_UNSUPPORTED | 标签存货单位无效（兼容原错误码） |
 | 403 | PRODUCTION_WRITE_DISABLED | COB 端未开启独立写入开关 |
 | 503 | ERP_WRITE_UNAVAILABLE | 未启用 XTEST 写入 |
 | 503 | SCHEMA_NOT_APPROVED | 现场尚未核准字段/单位与写入逻辑 |
@@ -76,3 +76,5 @@ MAUI 的 CountScanWorkflow 与 CountingPage 已接入海康广播、API 扫码�
 | 404 | SUBMISSION_NOT_FOUND | 无已提交记录，不能生成新 UUID 盲重试 |
 
 **验收状态**：XTEST / COB 双帐套写入代码已提交；实际编译、真机运行、两套 SQL Server 的写入/回滚、多个 PDA 并发测试和正式业务验收均待执行。
+
+现场确认依据：[2026-11-25 盘点单位映射研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
