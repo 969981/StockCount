@@ -210,3 +210,6 @@ up: "[[docs/development/00-研发规范地图]]"
 
 ### 2026-11-25 现场写入调整
 不再依赖辅助幂等表。新提交在原有 XCOUTD.AUUID_0 存储请求 UUID（SQL Server binary(16) 转换），同帐套、同单号、同 UUID 且 PDAID_0=StockCount 查询原记录。重放核对箱号、库位及两数量列，不再保存完整请求哈希。正常新扫码及事务内仍按 CUNNUM_0 + BOXNUM_0 拒绝重复。旧版随机 AUUID 的记录无法按旧请求 UUID 追溯，仍受同单同箱防重保护。无需执行旧迁移脚本。
+
+### 2026-11-25 盘点计量单位
+提交以标签 STU 为唯一计量单位，XCOUTD.PCU_0=STU，PCUSTUCOE_0=1，QTYSTU_0=QTYPCU_0=人工输入数量。不再校验原标签 PCU 或系数。保留 409 UNIT_MAPPING_UNSUPPORTED 兼容码，仅用于存货单位无效。详见 [历史研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
