@@ -133,8 +133,8 @@ public sealed class CountScanWorkflowTests
         var result=await workflow.SubmitAsync();
         Assert.Equal("Submitted",result.Kind);
         Assert.Equal("提交成功！",result.Message);
-        Assert.Equal(1000,result.AutoDismissMs);
-        // The approved UI waits for its 1000 ms success display before clearing.
+        Assert.Equal(400,result.AutoDismissMs);
+        // The UI acknowledges immediately; the toast lifetime is not a workflow gate.
         Assert.True(workflow.IsSuccessAwaitingDismiss);
         Assert.NotNull(workflow.Box);
         Assert.Equal(99m, workflow.ManualQuantity);
@@ -145,6 +145,11 @@ public sealed class CountScanWorkflowTests
         Assert.Equal("LOC-DEMO01",workflow.Location);
         Assert.Equal("COUNT-DEMO-001",workflow.CountNumber);
         Assert.Equal(99m,fake.LastSubmittedQuantity);
+        // No delay is needed before the next scan.
+        Assert.Equal("BoxResolved", (await workflow.HandleScanAsync(Qr)).Kind);
+        Assert.False(workflow.IsSuccessAwaitingDismiss);
+        Assert.NotNull(workflow.Box);
+        Assert.Null(workflow.ManualQuantity);
     }
 
     [Fact]
