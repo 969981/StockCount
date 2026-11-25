@@ -35,9 +35,6 @@ public partial class CountingPage : ContentPage
         EnvironmentBanner.BackgroundColor = Color.FromArgb(production ? "#FFF5E6" : "#EDF3FF");
         EnvironmentBanner.Stroke = new SolidColorBrush(
             Color.FromArgb(production ? "#F3DEBA" : "#DCE8FF"));
-#if DEBUG
-        DebugScanPanel.IsVisible = true;
-#endif
         RefreshScreen();
     }
 
@@ -111,15 +108,6 @@ public partial class CountingPage : ContentPage
             _draining = false;
             UpdateSubmitButton();
         }
-    }
-
-    private async void Scan_Clicked(object sender, EventArgs e)
-    {
-        var raw = ScanInput.Text ?? "";
-        ScanInput.Text = "";
-        if (_submitting) return;
-        _scanQueue.Enqueue(raw);
-        await DrainScanQueueAsync();
     }
 
     private async Task ProcessScanAsync(string raw)
@@ -368,7 +356,14 @@ public partial class CountingPage : ContentPage
         ReadOnlyWarning.IsVisible = !_selected.CanSubmit;
         ReadOnlyText.Text = _selected.CannotSubmitReason is null
             ? "当前盘点单暂不允许提交，请联系管理员。"
-            : $"当前盘点单暂不允许提交：{_selected.CannotSubmitReason}";
+            : _selected.CannotSubmitReason switch
+            {
+                "ERP_WRITE_UNAVAILABLE" => "测试环境尚未启用写入，请在后台保存 XTEST 写入授权后重新进入盘点单。",
+                "PRODUCTION_WRITE_DISABLED" => "正式环境尚未启用写入，请联系管理员保存 COB 写入授权。",
+                "SCHEMA_NOT_APPROVED" => "当前帐套尚未完成结构核验，请联系管理员。",
+                "COUNT_NOT_WRITABLE" => $"盘点单状态 {_selected.StatusCode} 不允许提交。",
+                _ => $"当前盘点单暂不允许提交：{_selected.CannotSubmitReason}"
+            };
         if (pending) ConnectionStateText.Text = "提交结果待确认";
         else if (!_busy && !_workflow.IsSuccessAwaitingDismiss)
             ConnectionStateText.Text = box is null

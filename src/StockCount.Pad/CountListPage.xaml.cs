@@ -14,7 +14,6 @@ public partial class CountListPage : ContentPage
     private string? _cursor;
     private Guid? _lastPromptedRequestId;
     private bool _busy;
-    private string? _lastEnvironment;
 
     public CountListPage(StockCountApiClient api, IPendingSubmissionStore pendingStore)
     {
@@ -27,11 +26,8 @@ public partial class CountListPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        var environmentChanged = _lastEnvironment != _api.EnvironmentName;
-        _lastEnvironment = _api.EnvironmentName;
         RefreshEnvironment();
-        if (environmentChanged || _counts.Count == 0)
-            await LoadAsync(true);
+        await LoadAsync(true);
 
         try
         {
@@ -127,7 +123,18 @@ public partial class CountListPage : ContentPage
         if (e.CurrentSelection.FirstOrDefault() is not InventoryCountDto selected)
             return;
         CountList.SelectedItem = null;
-        await Navigation.PushAsync(new CountingPage(_api, selected, _pendingStore));
+        if (_busy) return;
+        _busy = true;
+        try
+        {
+            var details = await _api.GetCountDetailsAsync(selected.CountNumber);
+            await Navigation.PushAsync(new CountingPage(_api, details.Count, _pendingStore));
+        }
+        catch (Exception error)
+        {
+            await DisplayAlertAsync("无法读取盘点单", error.Message, "OK");
+        }
+        finally { _busy = false; }
     }
 
     private async void RecoverPending_Clicked(object sender, EventArgs e)
@@ -155,7 +162,6 @@ public partial class CountListPage : ContentPage
             if (saved.Environment != _api.EnvironmentName)
             {
                 await _api.ConfigureAsync(_api.BaseUrl, saved.Environment, "");
-                _lastEnvironment = null;
                 RefreshEnvironment();
             }
 

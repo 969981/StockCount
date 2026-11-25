@@ -20,23 +20,21 @@ public partial class MainViewModel : ObservableObject
     private PortOwner? _confirmedExternalApi;
     private int _externalPort;
 
-    [ObservableProperty] private ServerSettings settings = new();
-    [ObservableProperty] private ServerSettings writeDraft = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SavedWriteAuthorization))]
+    private ServerSettings settings = new();
+    public string SavedWriteAuthorization => $"写入策略：XTEST {(Settings.EnableTestWrites && Settings.SchemaReviewed ? "已启用" : "未启用")} · COB {(Settings.EnableProductionWrites && Settings.ProductionSchemaReviewed ? "已启用" : "未启用")}";
     [ObservableProperty] private ServerSettings locationDraft = new();
     [ObservableProperty] private string sqlPasswordInput = "";
     [ObservableProperty] private string certPasswordInput = "";
     [ObservableProperty] private string logSearch = "";
     [ObservableProperty] private int logCleanupDays = 7;
     [ObservableProperty] private bool confirmLogCleanupPending;
-    [ObservableProperty] private bool confirmAllWriteGatesPending;
 
     public IReadOnlyList<int> LogCleanupOptions { get; } = new[] { 1, 3, 7, 14, 30 };
     public string CleanupButtonText => ConfirmLogCleanupPending
         ? $"确认删除 {LogCleanupDays} 天前日志"
         : "清理旧日志";
-    public string WriteGatesButtonText => ConfirmAllWriteGatesPending
-        ? "确认双帐套已核验并全选"
-        : "已核验？集中勾选四项";
 
     partial void OnLogCleanupDaysChanged(int value)
     {
@@ -46,8 +44,6 @@ public partial class MainViewModel : ObservableObject
 
     partial void OnConfirmLogCleanupPendingChanged(bool value) =>
         OnPropertyChanged(nameof(CleanupButtonText));
-    partial void OnConfirmAllWriteGatesPendingChanged(bool value) =>
-        OnPropertyChanged(nameof(WriteGatesButtonText));
     [ObservableProperty] private string message = "准备就绪。";
     [ObservableProperty] private string serviceState = "未启动";
     [ObservableProperty] private string portOwners = "尚未检查监听端口。";
@@ -99,7 +95,6 @@ public partial class MainViewModel : ObservableObject
             _settingsInvalid = true;
             Message = "配置加载失败，已阻止覆盖： " + ex.Message;
         }
-        WriteDraft = Settings.CreateWriteDraft();
         LocationDraft = Settings.Copy();
         ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
         RefreshSqlCredentialState();
@@ -132,31 +127,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void SelectAllWriteGates()
-    {
-        if (_settingsInvalid) { Message = "配置文件无效，禁止修改写入权限。"; return; }
-        if (!ConfirmAllWriteGatesPending)
-        {
-            ConfirmAllWriteGatesPending = true;
-            Message = "仅在 XTEST 与 COB 已分别完成 DBA 前检、幂等迁移和现场授权后，再点击一次确认勾选四项；不会自动保存。";
-            return;
-        }
-        ConfirmAllWriteGatesPending = false;
-        WriteDraft.SchemaReviewed = true;
-        WriteDraft.EnableTestWrites = true;
-        WriteDraft.ProductionSchemaReviewed = true;
-        WriteDraft.EnableProductionWrites = true;
-        OnPropertyChanged(nameof(WriteDraft));
-        Message = "已勾选四项（尚未生效），请确认对应帐套已核验后保存；操作员编码留空使用 PDA。更换数据库身份会重置授权。";
-    }
-
-    [RelayCommand]
-    private Task SaveSettingsAsync() => SaveAsync(saveWriteApprovals: false);
-
-    [RelayCommand]
-    private Task SaveWriteSettingsAsync() => SaveAsync(saveWriteApprovals: true);
-
-    private async Task SaveAsync(bool saveWriteApprovals)
+    private async Task SaveSettingsAsync()
     {
         if (_closing || !await _settingsSaveGate.WaitAsync(0)) return;
         try
@@ -166,20 +137,8 @@ public partial class MainViewModel : ObservableObject
             var next = Settings.Copy();
             next.CopyLocationValidationFrom(old);
             var newSqlPassword = !string.IsNullOrEmpty(SqlPasswordInput);
-            var identityChanged = next.DatabaseIdentityChangedFrom(old, newSqlPassword);
-            if (saveWriteApprovals)
-            {
-                if (identityChanged)
-                    throw new InvalidOperationException("请先保存数据库连接，再核验对应帐套并保存写入授权。");
-                next.CopyWriteApprovalsFrom(WriteDraft);
-                next.X3AuditUser = next.EffectiveX3AuditUser;
-            }
-            else
-            {
-                // A connection save never activates an unsaved write draft.
-                next.CopyWriteApprovalsFrom(old);
-                if (identityChanged) next.RevokeWriteApprovals();
-            }
+            next.ApplyApprovedFieldWrites();
+            next.X3AuditUser = next.EffectiveX3AuditUser;
             next.Validate();
             // Validate before stopping the currently running, owned API.
             var wasRunning = _runtime.IsRunning;
@@ -188,20 +147,16 @@ public partial class MainViewModel : ObservableObject
             if (!string.IsNullOrEmpty(CertPasswordInput)) _vault.Write("cert-password", CertPasswordInput);
             _store.Save(next);
             Settings = _store.Load();
-            if (saveWriteApprovals || identityChanged)
-                WriteDraft = Settings.CreateWriteDraft();
-            ConfirmAllWriteGatesPending = false;
             SqlPasswordInput = "";
             CertPasswordInput = "";
             RefreshSqlCredentialState();
-            var savedMessage = saveWriteApprovals ? "写入授权已保存。" :
-                identityChanged ? "连接已保存；数据库身份变化，旧写入授权已撤销。" :
-                "连接已保存；未保存的写入授权草稿不影响连接。";
+            var savedMessage = "配置已保存；XTEST 与 COB 写入授权已启用。";
             Message = savedMessage;
             if ((wasRunning || Settings.AutoStartApi) && !string.IsNullOrWhiteSpace(Settings.SqlServer))
             {
                 await StartAsync();
                 if (_runtime.IsRunning) Message = savedMessage + " API 已启动。";
+                else Message = savedMessage + " " + Message;
             }
         }
         catch (Exception ex) { Message = "保存失败：" + ex.Message; }

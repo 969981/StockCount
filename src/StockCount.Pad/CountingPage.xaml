@@ -138,14 +138,6 @@
                  TextColor="#9B5C11" FontSize="12"/>
         </Border>
 
-        <!-- Debug simulator is never available in release APK. -->
-        <HorizontalStackLayout x:Name="DebugScanPanel" Spacing="8"
-                               IsVisible="False" Margin="0,6,0,0">
-          <Entry x:Name="ScanInput" Placeholder="调试：输入完整二维码或库位"
-                 HorizontalOptions="FillAndExpand" FontSize="12"/>
-          <Button Text="模拟扫码" Style="{StaticResource SecondaryAction}"
-                  Clicked="Scan_Clicked"/>
-        </HorizontalStackLayout>
       </VerticalStackLayout>
     </ScrollView>
 

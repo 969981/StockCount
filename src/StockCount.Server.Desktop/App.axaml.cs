@@ -14,7 +14,7 @@ public sealed partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            var settings = new SettingsStore();
+            var settings = new SettingsStore(approvedFieldWrites: true);
             var vault = new WindowsCredentialVault();
             var runtime = new ServerRuntime(settings, vault);
             desktop.MainWindow = new MainWindow

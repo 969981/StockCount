@@ -55,7 +55,7 @@ dotnet build src/StockCount.Pad/StockCount.Pad.csproj -f net10.0-android -c Debu
 - `SettingsPage`：原型式连接卡片与 Test/Production 切换；正式帐套首次切换确认；存在未确认提交时阻止变更环境/服务器/密钥，设备密钥保存在 SecureStorage。
 - `Platforms/Android/MainActivity.cs`：前台动态注册扫描广播，默认 Action 为 `com.service.scanner.data`、Extra 为 `ScanCode`。**现在可在 APK「设置 → 硬件扫码诊断」修改这两个参数并立即生效**，无需重新编译；具体取值必须通过真实海康 PDA 的 SDK/设备广播测试核验。
 
-生产 Release 构建隐藏手工扫码调试输入，盘点库位只能由扫描服务事件写入。开发 Debug 模式允许使用模拟扫码框进行无设备联调。页面实际扫码状态由 Core 的 `CountScanWorkflow` 控制，纯 .NET 单测覆盖重复箱不填充、数量必填、状态未知保留 UUID、成功后清箱不清库位。
+Debug 与 Release 的盘点页面均不显示模拟扫码入口，盘点库位只能由扫描服务事件写入。返回列表和选择单据时重新查询服务端授权状态。页面实际扫码状态由 Core 的 `CountScanWorkflow` 控制，纯 .NET 单测覆盖重复箱不填充、数量必填、状态未知保留 UUID、成功后清箱不清库位。
 
 ## 与 API 对接
 
