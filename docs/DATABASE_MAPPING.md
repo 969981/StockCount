@@ -46,7 +46,7 @@ ITMMASTER (产品主数据; 品名/规格)
 | `WRH_0` | nvarchar(5) | 仓库 | `warehouseCode` |
 | `LOC_0` | nvarchar(20) | 表头库位；不代表现场每箱实盘库位 | `headerLocationCode` |
 | `CUNDAT_0` | datetime | 盘点日期 | `countDate` |
-| `CUNSTA_0` | tinyint | 单据状态；0可盘点、中文名称未确定 | `statusCode` |
+| `CUNSTA_0` | tinyint | 单据状态；菜单2722，状态0正式名称未确定；所有状态均可提交 | `statusCode` |
 | `CUNTYP_0` | nvarchar(10) | 盘点类型；**按字符串传输** | `countType` |
 | `PDAID_0` | nvarchar(50) | PDA 标识；业务含义仍待核 | 不必对用户展示 |
 | `CREDATTIM_0` | datetime | 创建日期时间 | `createdAt` |

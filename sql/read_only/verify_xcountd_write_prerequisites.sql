@@ -56,7 +56,7 @@ GROUP BY D.CUNNUM_0,D.BOXNUM_0
 HAVING COUNT_BIG(*)>1
 ORDER BY COUNT_BIG(*) DESC;
 
--- 6. Header states are raw codes; only 0 is enabled by this version's writer.
+-- 6. Header states are informational; all existing headers are eligible.
 SELECT H.CUNSTA_0 AS [盘点单原始状态],COUNT_BIG(*) AS [单据数量]
 FROM [XTEST].[XCOUTH] H
 GROUP BY H.CUNSTA_0

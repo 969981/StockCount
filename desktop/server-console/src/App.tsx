@@ -363,9 +363,9 @@ export default function App() {
               <div style={{ flex: 1 }}>
                 <strong style={{ display: "block", marginBottom: 8 }}>XTEST 实盘数据写入（受控测试）</strong>
                 <p style={{ marginBottom: 11, lineHeight: 1.6 }}>
-                  启用前请由数据库管理员执行 sql/migrations/001_stockcount_submission.sql，
-                  核对 XTEST 的 XCOUTD.ROWID 为 IDENTITY、全部非空字段、Sage X3 触发器及 1:1 单位规则。
-                  当前仅允许 CUNSTA_0=0 的已有盘点单提交。XTEST/COB 的启用开关彼此独立。
+                  无需创建额外幂等表；启用前请由数据库管理员
+                  核对 XTEST 的 XCOUTD.ROWID 为 IDENTITY、全部非空字段、Sage X3 触发器及存货单位盘点写入规则。
+                  已有盘点单不限 CUNSTA_0 状态，包含已结束单据。XTEST/COB 的启用开关彼此独立。
                 </p>
                 <label className="field" style={{ marginBottom: 13 }}>X3 审计用户编码（最大5字符）
                   <input disabled={status.running || busy} maxLength={5}

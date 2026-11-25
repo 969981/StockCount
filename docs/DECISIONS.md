@@ -30,7 +30,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | D-007 | **人工输入一次 STU 实盘数，同值保存 `XCOUTD.QTYSTU_0` 和 `XCOUTD.QTYPCU_0`** | **2026-11-23 用户明确补充：两列完全相等**；与标签当前 `QTY_0` / QR 原始 QT 分开 |
 | D-008 | **先扫实际库位再扫箱码** | 没库位时先扫箱必须阻止并提示 |
 | D-009 | **保存成功保留单号/名称/库位、清空当前箱表单** | 只有服务器确认保存成功才清 |
-| D-010 | **`XCOUTH.CUNSTA_0=0` 允许提交** | 其他码值的写入准入需要进一步确认；列表展示不受影响 |
+| D-010 | **所有 `XCOUTH.CUNSTA_0` 状态均允许提交（2026-11-25 更新）** | 状态仅供参考；包括已结束及未知状态；其他授权和校验保留 |
 | D-011 | **.NET 10/C# 的 MAUI Android + ASP.NET Core API** | 后端统一访问 ERP/SQL，PDA 不直接连数据库 |
 
 **D-012（2026-11-23）**：Windows 后端管理界面选用 **Tauri 2 + React/TypeScript + Rust + .NET 10 API Sidecar**，不使用 WPF。现场人员可从桌面 UI 读取/编辑 SQL Server 配置，DB/证书密码及设备密钥保存到 Windows Credential Manager；日志用 SQLite。PDA 自身可配置 API 地址/环境/设备密钥，但不可读取数据库账号/密码。此决策不代表 API 业务写入已经验收。
@@ -53,7 +53,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 | ID | 级别 | 尚待确认的问题 | 在批准前的处理 |
 | --- | --- | --- | --- |
-| U-001 | **生产写入阻断** | `XCOUTH.CUNSTA_0` 除0以外哪些状态可提交；关闭状态如何识别 | 全部展示，但非已批准状态不放行写入 |
+| U-001 | **已确认** | 所有盘点单状态均可提交 | 不以状态拒绝写入；不修改表头状态 |
 | U-002 | **生产写入阻断** | **两数量列同值已确定**；尚需确认 `PCUSTUCOE_0` / `PCU_0` 与这一规则在 Sage X3 服务中的兼容性 | XTEST 验证之前不能执行生产写入；不得将数值变成不同值 |
 | U-003 | **生产写入阻断** | `ROWID/AUUID_0/UPDTICK_0`、审计时间与用户字段如何生成；是否经 X3 业务服务写入 | 不直接拼裸 INSERT |
 | U-004 | **生产写入阻断** | 同单同箱重复是否禁止、合法复盘例外及授权机制 | 仅保留“建议同单去重”，先调查历史重复 |
@@ -88,3 +88,5 @@ up: "[[docs/development/00-研发规范地图]]"
 - 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+
+**2026-11-25 状态准入决议**：用户明确取消 XCOUTH.CUNSTA_0 校验，XTEST/COB 一致执行。菜单2722的原始状态及名称仍保留，详见 [XCOUTH 字段字典](database/schema/XCOUTH.md)。
