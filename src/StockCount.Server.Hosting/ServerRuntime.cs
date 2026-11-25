@@ -41,6 +41,10 @@ public sealed class ServerRuntime(SettingsStore store, WindowsCredentialVault va
         Put("STOCKCOUNT_SQL_PASSWORD", vault.Read("sql-password") ?? "");
         Put("STOCKCOUNT_SQL_NO_ENCRYPT", (!settings.EncryptSql).ToString());
         Put("STOCKCOUNT_SQL_TRUST_CERT", settings.TrustServerCertificate.ToString());
+        Put("STOCKCOUNT_XTEST_CHECK_SITE", settings.TestCheckSite.ToString());
+        Put("STOCKCOUNT_XTEST_CHECK_WAREHOUSE", settings.TestCheckWarehouse.ToString());
+        Put("STOCKCOUNT_COB_CHECK_SITE", settings.ProductionCheckSite.ToString());
+        Put("STOCKCOUNT_COB_CHECK_WAREHOUSE", settings.ProductionCheckWarehouse.ToString());
         Put("STOCKCOUNT_ENABLE_TEST_WRITES", settings.EnableTestWrites.ToString());
         Put("STOCKCOUNT_ENABLE_PRODUCTION_WRITES", settings.EnableProductionWrites.ToString());
         Put("STOCKCOUNT_XTEST_SCHEMA_REVIEWED", settings.SchemaReviewed.ToString());

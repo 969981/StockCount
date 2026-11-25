@@ -21,6 +21,10 @@ public sealed class ServerSettings
     public string SqlUser { get; set; } = "";
     public bool EncryptSql { get; set; } = true;
     public bool TrustServerCertificate { get; set; }
+    public bool TestCheckSite { get; set; }
+    public bool TestCheckWarehouse { get; set; }
+    public bool ProductionCheckSite { get; set; }
+    public bool ProductionCheckWarehouse { get; set; }
     public bool EnableTestWrites { get; set; }
     public bool EnableProductionWrites { get; set; }
     public bool SchemaReviewed { get; set; }

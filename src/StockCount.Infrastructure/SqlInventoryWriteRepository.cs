@@ -14,7 +14,8 @@ public sealed class CountWriteException(int statusCode, string code, string mess
 }
 
 public sealed record CountWriteOptions(bool EnableTestWrites, bool EnableProductionWrites,
-    string AuditUser, bool TestSchemaReviewed, bool ProductionSchemaReviewed)
+    string AuditUser, bool TestSchemaReviewed, bool ProductionSchemaReviewed,
+    LocationValidationOptions? LocationValidation = null)
 {
     public bool IsEnabled(SelectedEnvironment environment) =>
         environment.Name == "Test" ? EnableTestWrites :
@@ -190,18 +191,15 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(409, "COUNT_NOT_WRITABLE",
                     "盘点单当前状态尚未获批准写入。");
 
-            var locSql = $"""
-                SELECT COUNT_BIG(*) FROM {schema}.[STOLOC] S
-                WHERE S.STOFCY_0=@Site AND S.WRH_0=@Warehouse AND S.LOC_0=@Location;
-                """;
-            var locationCount = await connection.ExecuteScalarAsync<long>(
-                new CommandDefinition(locSql, new {
-                    Site=header.SiteCode, Warehouse=header.WarehouseCode,
-                    Location=request.CountedLocation
-                }, transaction, cancellationToken:ct));
-            if (locationCount != 1)
-                throw new CountWriteException(422, "LOCATION_INVALID",
-                    "当前站点和仓库下找不到唯一有效盘点库位。");
+            var scope = (options.LocationValidation ?? new LocationValidationOptions()).For(environment.Name);
+            var matches = await connection.QuerySingleAsync<LocationLookup>(
+                new CommandDefinition(LocationLookupQuery.Sql(schema),
+                    LocationLookupQuery.Parameters(scope, header.SiteCode, header.WarehouseCode, request.CountedLocation),
+                    transaction, cancellationToken:ct));
+            var locationError = scope.Classify(matches.TotalMatches, matches.ScopedMatches);
+            if (locationError is not null)
+                throw new CountWriteException(locationError == "LOCATION_NOT_FOUND" ? 404 :
+                    locationError == "LOCATION_AMBIGUOUS" ? 409 : 422, locationError, scope.Describe(locationError));
 
             var labelSql = $"""
                 SELECT L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,

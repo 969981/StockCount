@@ -84,6 +84,10 @@ var app = ApiApplication.Build(args, builder =>
     // server-side write approval switches. Defaults fail closed.
     var configuration = new Dictionary<string, string?>
     {
+        ["StockCount:Location:TestCheckSite"] = Enabled("STOCKCOUNT_XTEST_CHECK_SITE").ToString(),
+        ["StockCount:Location:TestCheckWarehouse"] = Enabled("STOCKCOUNT_XTEST_CHECK_WAREHOUSE").ToString(),
+        ["StockCount:Location:ProductionCheckSite"] = Enabled("STOCKCOUNT_COB_CHECK_SITE").ToString(),
+        ["StockCount:Location:ProductionCheckWarehouse"] = Enabled("STOCKCOUNT_COB_CHECK_WAREHOUSE").ToString(),
         ["StockCount:EnableTestWrites"] = Enabled("STOCKCOUNT_ENABLE_TEST_WRITES").ToString(),
         ["StockCount:EnableProductionWrites"] = Enabled("STOCKCOUNT_ENABLE_PRODUCTION_WRITES").ToString(),
         ["StockCount:Write:TestSchemaReviewed"] = Enabled("STOCKCOUNT_XTEST_SCHEMA_REVIEWED").ToString(),
