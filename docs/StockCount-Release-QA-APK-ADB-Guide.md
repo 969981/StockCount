@@ -62,6 +62,46 @@ if ($LASTEXITCODE -ne 0) { throw 'Core 测试失败' }
 
 ## 4. 推荐：直接编译 Release QA
 
+### 4.1 最简操作：单行 PowerShell 命令（推荐直接复制）
+
+在 StockCount 源码根目录执行。每个代码块是一条独立命令；上一条成功后再执行下一条。源码 ZIP 解压目录也适用，不需要 Git 工作区。
+
+如果终端出现 `>>`，表示 PowerShell 正在等待续行输入，并非编译已经开始。先按 Ctrl+C 取消，再完整复制下面的单行命令（不要把参数单独执行，也不要添加行尾反引号）。
+
+**编译 Release QA APK：**
+
+~~~powershell
+dotnet build .\src\StockCount.Pad\StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
+~~~
+
+确认构建成功，再查询本次生成的已签名 APK：
+
+~~~powershell
+Get-ChildItem .\src\StockCount.Pad\bin\Release\net10.0-android -Filter "*-Signed.apk"
+~~~
+
+**检查设备：**
+
+~~~powershell
+adb devices
+~~~
+
+**覆盖安装：**
+
+~~~powershell
+adb install -r ".\src\StockCount.Pad\bin\Release\net10.0-android\com.dreamer.stockcount.pad-Signed.apk"
+~~~
+
+若查询结果的文件名不同，应将安装命令中的路径改为本次实际生成的 Signed APK 路径。多台设备连接时使用 adb -s 目标序列号 install -r APK路径。只有安装成功后才启动应用：
+
+~~~powershell
+adb shell monkey -p com.dreamer.stockcount.pad -c android.intent.category.LAUNCHER 1
+~~~
+
+覆盖安装要求签名兼容、版本号不低于已安装版本。签名不匹配时不要直接卸载或清除应用数据，先处理所有待确认盘点请求。首次构建和正式测试建议同时按第6节验证签名和文件哈希。
+
+### 4.2 多行命令及参数说明
+
 这是现有 Android CI 使用的无正式签名密钥编译方式。
 
 ~~~powershell
@@ -87,6 +127,14 @@ if ($LASTEXITCODE -ne 0) { throw 'Release QA 编译失败' }
 ## 5. 可选：dotnet publish 发布方式
 
 与 build 二选一。此处“发布”指本地生成可安装产物，不是上传 GitHub Releases 或应用商店。
+
+单行发布命令（可直接复制）：
+
+~~~powershell
+dotnet publish .\src\StockCount.Pad\StockCount.Pad.csproj -f net10.0-android -c Release -p:AndroidPackageFormats=apk -p:AndroidKeyStore=false
+~~~
+
+下方为等效的多行写法：
 
 ~~~powershell
 dotnet publish .\src\StockCount.Pad\StockCount.Pad.csproj `
