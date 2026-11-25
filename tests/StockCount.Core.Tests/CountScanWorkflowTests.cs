@@ -20,13 +20,11 @@ public sealed class CountScanWorkflowTests
     }
 
     [Theory]
-    [InlineData("01234567890")]
     [InlineData("LC.01234567890")]
     [InlineData("LC.")]
     [InlineData("LC.LC.DEMO")]
     [InlineData("LC.A@@MT.B")]
-    [InlineData("MT.DEMO")]
-    [InlineData("LOC\t001")]
+    [InlineData("LC.LOC\t001")]
     public async Task InvalidLocationFormatDoesNotQueryDatabase(string raw)
     {
         var fake = new FakeGateway();
@@ -49,17 +47,51 @@ public sealed class CountScanWorkflowTests
     {
         var fake = new FakeGateway { LocationError = code };
         var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
-        var initial = await workflow.HandleScanAsync("UNKNOWN");
+        var initial = await workflow.HandleScanAsync("LC.UNKNOWN");
         Assert.Equal("Error", initial.Kind);
         Assert.Contains(expected, initial.Message);
         Assert.Null(workflow.Location);
         await workflow.HandleScanAsync("LOC-DEMO01");
         await workflow.HandleScanAsync(Qr);
-        var later = await workflow.HandleScanAsync("UNKNOWN");
+        var later = await workflow.HandleScanAsync("LC.UNKNOWN");
         Assert.Equal("Error", later.Kind);
         Assert.Contains(expected, later.Message);
         Assert.Equal("LOC-DEMO01", workflow.Location);
         Assert.NotNull(workflow.Box);
+    }
+
+    [Theory]
+    [InlineData("ID.1234567890123|1@@WO.DEMO01261000001@@LN.1000@@MT.P00000001@@QT.100@@LT.L260101")]
+    [InlineData("1794814541901|1")]
+    [InlineData("MT.DEMO@@ID.BOX-001@@QT.99")]
+    [InlineData("BOX-DEMO-ALT")]
+    [InlineData("SHORTBOX")]
+    public async Task NonLegacyQrResolvesByOriginalValue(string qr)
+    {
+        var fake = new FakeGateway();
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        var before = await workflow.HandleScanAsync(qr);
+        Assert.Equal("请先扫描盘点库位！", before.Message);
+        Assert.Equal(0, fake.LabelRequests);
+        await workflow.HandleScanAsync("LC.LOC-DEMO01");
+        Assert.Equal("BoxResolved", (await workflow.HandleScanAsync(qr + "\r\n")).Kind);
+        Assert.Equal(qr, fake.LastLabelQr);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+        Assert.Null(workflow.ManualQuantity);
+    }
+
+    [Fact]
+    public async Task UnmatchedBoxQrDoesNotBecomeLocationOrPopulateBox()
+    {
+        var fake = new FakeGateway { LabelMissing = true };
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试");
+        await workflow.HandleScanAsync("LC.LOC-DEMO01");
+        var result = await workflow.HandleScanAsync("1794814541901|1");
+        Assert.StartsWith("未找到该箱标签！", result.Message);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+        Assert.Null(workflow.Box);
+        Assert.Equal(1, fake.LocationRequests);
+        Assert.Equal(1, fake.LabelRequests);
     }
 
     [Fact]
@@ -265,6 +297,10 @@ public sealed class CountScanWorkflowTests
     private sealed class FakeGateway : ICountScanGateway
     {
         public bool Duplicate { get; set; }
+        public bool LabelMissing { get; set; }
+        public string? ExpectedLabelQr { get; set; }
+        public string? LastSubmittedQr { get; private set; }
+        public string? LastLabelQr { get; private set; }
         public bool RejectDuplicateAtCommit { get; set; }
         public bool ThrowDuringSubmit { get; set; }
         public int LabelRequests { get; private set; }
@@ -285,6 +321,9 @@ public sealed class CountScanWorkflowTests
         public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct)
         {
             LabelRequests++;
+            LastLabelQr = qr;
+            if (LabelMissing || (ExpectedLabelQr is not null && qr != ExpectedLabelQr))
+                return Task.FromResult<BoxScanData?>(null);
             return Task.FromResult<BoxScanData?>(new BoxScanData("BOX-DEMO-001",
                 "ITM-DEMO-01","示例物料","DEMO-SPEC","LOT-01","PCS",Duplicate));
         }
@@ -293,6 +332,7 @@ public sealed class CountScanWorkflowTests
             string boxNumber,string location,decimal qty,CancellationToken ct)
         {
             LastRequestId=requestId;
+            LastSubmittedQr=qr;
             LastSubmittedLocation=location;
             if (RejectDuplicateAtCommit)
                 throw new ScanCommitRejectedException("BOX_ALREADY_RECORDED","该箱号已扫描！");

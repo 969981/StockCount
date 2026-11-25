@@ -100,7 +100,7 @@ public sealed class SqlInventoryReadRepository(string connectionString,
     {
         var schema = EnvironmentSelector.TablePrefix(environment);
         var sql = $"""
-            SELECT L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
+            SELECT TOP (2) L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
                    I.YITMDES4_0 AS ItemName,I.ITMDES2_0 AS Specification,
                    L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit,
                    L.QTY_0 AS LabelQty,CAST(L.STA_0 AS int) AS LabelStatusCode,
@@ -110,13 +110,21 @@ public sealed class SqlInventoryReadRepository(string connectionString,
                    ) THEN 1 ELSE 0 END AS bit) AS AlreadyRecordedInCount
             FROM {schema}.[XLABELDTL] L
             LEFT JOIN {schema}.[ITMMASTER] I ON I.ITMREF_0=L.ITMREF_0
-            WHERE L.QRCOD_0=@FullQr;
             """;
         await using var connection = await OpenAsync(cancellationToken);
-        // Fail on ambiguous matching QR rather than silently selecting an arbitrary label.
-        return await connection.QuerySingleOrDefaultAsync<LabelRecord>(
-            new CommandDefinition(sql,new { CountNumber=countNumber, FullQr=fullQr },
-                cancellationToken:cancellationToken));
+        async Task<LabelRecord[]> QueryAsync(string predicate, string value) =>
+            (await connection.QueryAsync<LabelRecord>(
+                new CommandDefinition(sql + predicate,
+                    new { CountNumber=countNumber, Value=value },
+                    cancellationToken:cancellationToken))).ToArray();
+
+        var labels = await LabelLookupPolicy.FindAsync(fullQr,
+            value => QueryAsync(" WHERE L.QRCOD_0=@Value;", value),
+            value => QueryAsync(" WHERE L.PID_0=@Value;", value));
+        if (labels.Length > 1)
+            throw new CountWriteException(409, "LABEL_AMBIGUOUS",
+                "二维码或箱号对应多条标签记录，请联系管理员核查。");
+        return labels.SingleOrDefault();
     }
 
     public async Task<IReadOnlyList<CountItemDto>> GetItemsAsync(

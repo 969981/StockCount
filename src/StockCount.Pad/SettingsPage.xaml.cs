@@ -58,7 +58,7 @@ public partial class SettingsPage : ContentPage
         ScannerStatusText.TextColor = Color.FromArgb(
             diagnostic is null ? "#7F91AA" : "#19805B");
         LastScanText.Text = diagnostic is null ? "尚未收到扫码广播"
-            : $"{diagnostic.ObservedAt:HH:mm:ss} · {diagnostic.Kind} · {diagnostic.Length} 字符";
+            : $"{diagnostic.ObservedAt:HH:mm:ss} · {diagnostic.Kind} · {diagnostic.Length} 字符\n{diagnostic.Shape}";
     }
 
     private async void SaveScanner_Clicked(object sender, EventArgs e)
