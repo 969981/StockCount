@@ -3,7 +3,7 @@ title: "XCOUTH — 库存盘点单表头完整字段字典"
 aliases:
   - "StockCount · docs / database / schema / XCOUTH"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -50,6 +50,97 @@ up: "[[docs/database/00-数据库知识地图]]"
 
 
 - **最新 V1 规则**：盘点单列表展示所有 `CUNSTA_0` 状态；是否允许提交需另行定义；V1 不创建、不关闭盘点单。
+
+## 业务数据查询 SQL（中文别名）
+
+2026-11-25 补充。以下均为只读，默认抽样 TOP (20)，字段使用 `中文业务别名（物理字段名）`；说明性别名不等于 X3 官方字典标题。原始码值和 CASE 翻译并列，转换不代表业务准入。切换 Schema 前核实真实列和菜单。
+
+### 1. 常用业务字段
+
+```sql
+SELECT TOP (20)
+    T.CUNNUM_0 AS [盘点单号（CUNNUM_0）],
+    T.CUNDES_0 AS [盘点名称（CUNDES_0）],
+    T.STOFCY_0 AS [库存站点（STOFCY_0）],
+    T.WRH_0 AS [仓库（WRH_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.CUNDAT_0 AS [盘点日期（CUNDAT_0）],
+    T.CUNTYP_0 AS [盘点类型（CUNTYP_0）],
+    T.CUNSTA_0 AS [盘点状态码（CUNSTA_0）],
+    CASE T.CUNSTA_0
+        WHEN 0 THEN N'状态0（正式名称待核）'
+        WHEN 1 THEN N'创建中'
+        WHEN 2 THEN N'待盘点'
+        WHEN 3 THEN N'已结束'
+        ELSE N'未知或未命名码值'
+    END AS [盘点状态（CUNSTA_0）],
+    T.PDAID_0 AS [PDA标识（PDAID_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）]
+FROM sagex3.COB.XCOUTH AS T
+ORDER BY CUNDAT_0 DESC, CUNNUM_0;
+```
+
+### 2. 全部 16 个物理字段（静态 SQL）
+
+以下按已实测 COB 物理字段顺序展开，CASE 为附加显示列，不替换原始值。
+
+```sql
+SELECT TOP (20)
+    T.UPDTICK_0 AS [更新计数（UPDTICK_0）],
+    T.CUNNUM_0 AS [盘点单号（CUNNUM_0）],
+    T.STOFCY_0 AS [库存站点（STOFCY_0）],
+    T.CUNDAT_0 AS [盘点日期（CUNDAT_0）],
+    T.CUNSTA_0 AS [盘点状态码（CUNSTA_0）],
+    CASE T.CUNSTA_0
+        WHEN 0 THEN N'状态0（正式名称待核）'
+        WHEN 1 THEN N'创建中'
+        WHEN 2 THEN N'待盘点'
+        WHEN 3 THEN N'已结束'
+        ELSE N'未知或未命名码值'
+    END AS [盘点状态（CUNSTA_0）],
+    T.CUNDES_0 AS [盘点名称（CUNDES_0）],
+    T.PDAID_0 AS [PDA标识（PDAID_0）],
+    T.CUNTYP_0 AS [盘点类型（CUNTYP_0）],
+    T.WRH_0 AS [仓库（WRH_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）],
+    T.AUUID_0 AS [唯一识别码（AUUID_0）],
+    T.CREUSR_0 AS [创建用户（CREUSR_0）],
+    T.UPDUSR_0 AS [修改用户（UPDUSR_0）],
+    T.ROWID AS [系统行标识（ROWID）]
+FROM sagex3.COB.XCOUTH AS T
+ORDER BY CUNDAT_0 DESC, CUNNUM_0;
+```
+
+### 3. 码值字典与核验
+
+| 字段 | 菜单 | 码值 | 含义 |
+| --- | ---: | ---: | --- |
+| CUNSTA_0 | 2722 | 0 | 菜单第0项 `123` 是结构信息，正式业务名称未确认 |
+| CUNSTA_0 | 2722 | 1 | 创建中 / In creation |
+| CUNSTA_0 | 2722 | 2 | 待盘点 / To be counted |
+| CUNSTA_0 | 2722 | 3 | 已结束 / Closed |
+
+COB 实测 2026-11-19；XTEST 需单独确认。CUNTYP_0 为业务类型编码，不是已证实的本地菜单；不猜测 1–5 类型名称。V1 列表仍展示所有状态，不因 CASE 文字改变权限。
+
+```sql
+SELECT DISTINCT
+    Z.CODZONE_0 AS [字段代码], Z.NOLIB_0 AS [本地菜单编号],
+    M.LANNUM_0 AS [码值], M.LAN_0 AS [语言],
+    M.LANMES_0 AS [状态含义]
+FROM sagex3.COB.ATABZON Z
+LEFT JOIN sagex3.COB.APLSTD M
+    ON M.LANCHP_0 = Z.NOLIB_0
+   AND M.LAN_0 IN (N'CHI', N'ENG') AND M.LANNUM_0 > 0
+WHERE Z.CODFIC_0 = N'XCOUTH'
+  AND Z.CODTYP_0 = N'M' AND Z.NOLIB_0 > 0
+ORDER BY Z.CODZONE_0, Z.NOLIB_0, M.LANNUM_0, M.LAN_0;
+```
+
+全部菜单的动态 CASE（包括尚未手工核实的枚举）使用 [select_table_with_enum_aliases.sql](../../../sql/read_only/select_table_with_enum_aliases.sql)，将 `@TableName` 设为 `XCOUTH`。脚本仅按现场非空且无冲突的中文字典生成 CASE，不使用菜单第0项；未知码值保留原值并标明未知。SQL 尚未在企业数据库执行验收，不提交实际业务数据。
+
 
 ---
 
