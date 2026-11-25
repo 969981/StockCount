@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > **状态：只读 API、XCOUTD 受控事务写入与 SQL Server 持久幂等查询的源码均已提交，写入默认关闭；尚未执行 Windows 编译、XTEST 真库写入及并发回滚联调。** 使用 ASP.NET Core 10；客户端只发送业务 DTO，不指定任意 SQL 表/Schema。最后修订：2026-11-23。
 
-> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。只有目标帐套单独启用写入、通过其 Schema 核验且目标单据状态为已批准的 0 时 `canSubmit=true`。XTEST 与 COB 使用相同的 API 与事务流程，但具有独立启用开关，二者默认均 false。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
+> **0.1 实现说明**：当前代码使用 Minimal API，`cursor` 为非负数字偏移量字符串；`nextCursor` 可供继续加载下一页。只有目标帐套单独启用写入、通过其 Schema 核验时 `canSubmit=true`。XTEST 与 COB 使用相同的 API 与事务流程，但具有独立启用开关，二者默认均 false。读取需要请求头 `X-StockCount-Environment: Test|Production`；`/health` 无需数据库，`/ready` 测试数据库连通。Windows 启动见 [RUN.md](../src/StockCount.Api/RUN.md)。
 
 
 ## 1. 基本约定
@@ -170,7 +170,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | 409 | `LABEL_AMBIGUOUS` | 完整二维码或回退箱号匹配多条标签，拒绝任意选取 |
 | 422 | `LOCATION_INVALID` | 库位不存在/不属于允许范围/超长 |
 | 422 | `BOX_NUMBER_TOO_LONG` | PID 无法安全写入 BOXNUM(20) |
-| 409 | `COUNT_NOT_WRITABLE` | 单据可浏览但不允许该状态提交 |
+| 409 | `COUNT_NOT_WRITABLE` | 旧版兼容错误码；新版不按单据状态拒绝 |
 | 409 | `BOX_ALREADY_RECORDED` | 同单箱号重复，按批准规则 |
 | 409 | `IDEMPOTENCY_PAYLOAD_MISMATCH` | 同 RequestId 重试不同载荷 |
 | 403 | `PRODUCTION_WRITE_DISABLED` | COB 写入尚未由管理员在本机启用 |
@@ -213,3 +213,5 @@ up: "[[docs/development/00-研发规范地图]]"
 
 ### 2026-11-25 盘点计量单位
 提交以标签 STU 为唯一计量单位，XCOUTD.PCU_0=STU，PCUSTUCOE_0=1，QTYSTU_0=QTYPCU_0=人工输入数量。不再校验原标签 PCU 或系数。保留 409 UNIT_MAPPING_UNSUPPORTED 兼容码，仅用于存货单位无效。详见 [历史研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
+
+2026-11-25：`statusCode` 保留原始 ERP 状态；`canSubmit` 不再依赖状态，所有现有单据（含已结束）可在帐套授权后提交。提交不修改表头状态。
