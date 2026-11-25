@@ -20,7 +20,10 @@ public partial class MainViewModel : ObservableObject
     private PortOwner? _confirmedExternalApi;
     private int _externalPort;
 
-    [ObservableProperty] private ServerSettings settings = new();
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SavedWriteAuthorization))]
+    private ServerSettings settings = new();
+    public string SavedWriteAuthorization => $"已保存授权：XTEST {(Settings.EnableTestWrites && Settings.SchemaReviewed ? "已启用" : "未启用")} · COB {(Settings.EnableProductionWrites && Settings.ProductionSchemaReviewed ? "已启用" : "未启用")}";
     [ObservableProperty] private ServerSettings writeDraft = new();
     [ObservableProperty] private ServerSettings locationDraft = new();
     [ObservableProperty] private string sqlPasswordInput = "";
@@ -99,7 +102,7 @@ public partial class MainViewModel : ObservableObject
             _settingsInvalid = true;
             Message = "配置加载失败，已阻止覆盖： " + ex.Message;
         }
-        WriteDraft = Settings.CreateWriteDraft();
+        WriteDraft = Settings.Copy();
         LocationDraft = Settings.Copy();
         ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
         RefreshSqlCredentialState();
@@ -189,14 +192,14 @@ public partial class MainViewModel : ObservableObject
             _store.Save(next);
             Settings = _store.Load();
             if (saveWriteApprovals || identityChanged)
-                WriteDraft = Settings.CreateWriteDraft();
+                WriteDraft = Settings.Copy();
             ConfirmAllWriteGatesPending = false;
             SqlPasswordInput = "";
             CertPasswordInput = "";
             RefreshSqlCredentialState();
             var savedMessage = saveWriteApprovals ? "写入授权已保存。" :
                 identityChanged ? "连接已保存；数据库身份变化，旧写入授权已撤销。" :
-                "连接已保存；未保存的写入授权草稿不影响连接。";
+                "连接已保存；未保存的写入授权不影响连接。";
             Message = savedMessage;
             if ((wasRunning || Settings.AutoStartApi) && !string.IsNullOrWhiteSpace(Settings.SqlServer))
             {
