@@ -165,7 +165,7 @@ public sealed class ChineseSchemaFilter : ISchemaFilter
         ["count"]="盘点单", ["rawCode"]="原始库位码", ["locationCode"]="库位", ["isValid"]="是否有效",
         ["message"]="提示信息", ["rawQrCode"]="完整原始二维码", ["boxNumber"]="箱号", ["itemCode"]="物料编码",
         ["itemName"]="品名", ["specification"]="规格", ["lotNumber"]="批号", ["stockUnit"]="存货单位",
-        ["labelQty"]="标签数量（不是实盘数量）", ["labelStatusCode"]="标签状态", ["alreadyRecordedInCount"]="本盘点单是否已扫描",
+        ["labelQty"]="标签数量（不是实盘数量）", ["labelStatusCode"]="标签状态", ["alreadyRecordedInCount"]="当前帐套任意盘点单是否已扫描（兼容原字段名）",
         ["detailId"]="明细标识", ["packageUnit"]="包装单位", ["quantityPcu"]="包装单位数量", ["quantityStu"]="存货单位数量",
         ["createdAt"]="创建时间", ["countedLocation"]="实盘库位", ["countedQtyStu"]="人工录入实盘数量，必填",
         ["savedQtyStu"]="已保存存货单位数量", ["savedQtyPcu"]="已保存包装单位数量", ["requestId"]="幂等请求 UUID",
