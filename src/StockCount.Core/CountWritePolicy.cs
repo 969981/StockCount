@@ -38,6 +38,16 @@ public static class CountWritePolicy
     // Counting is performed in the label's stock unit, not its package unit.
     public const decimal CountUnitFactor = 1m;
 
+    public sealed record CountUnits(string PackageUnit, decimal UnitFactor, decimal QuantityStu, decimal QuantityPcu);
+
+    // No original packaging data is accepted by this mapping function.
+    public static CountUnits MapCountUnits(string stockUnit, decimal manualQuantity)
+    {
+        if (!IsValidStockUnit(stockUnit))
+            throw new ArgumentException("Invalid stock unit.", nameof(stockUnit));
+        return new CountUnits(stockUnit, CountUnitFactor, manualQuantity, manualQuantity);
+    }
+
     public static bool IsValidStockUnit(string? stockUnit) =>
         !string.IsNullOrWhiteSpace(stockUnit) &&
         stockUnit.Length <= 3 &&
