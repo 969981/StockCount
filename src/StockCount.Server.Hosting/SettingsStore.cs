@@ -49,7 +49,7 @@ public sealed class SettingsStore
             catch (IOException) when (File.Exists(SettingsPath)) { /* another instance won */ }
         }
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
-        return Parse(SettingsPath); // Never erase or modify old AppData file.
+        return ApplyPolicy(Parse(SettingsPath)); // Never erase or modify old AppData file.
     }
 
     public void Save(ServerSettings settings)
