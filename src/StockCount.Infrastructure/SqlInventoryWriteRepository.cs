@@ -229,7 +229,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (duplicate != 0)
                 throw new CountWriteException(409, "BOX_ALREADY_RECORDED", "该箱号已扫描！");
 
-            var qty = request.CountedQtyStu.Value;
+            var units = CountWritePolicy.MapCountUnits(label.StockUnit, request.CountedQtyStu.Value);
+            var qty = units.QuantityStu;
             // Every mandatory XCOUTD field is assigned explicitly except
             // ROWID, which the preflight above requires SQL Server IDENTITY to generate.
             // Unmapped optional business strings are blank (not SQL NULL).
@@ -253,7 +254,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             insert.Parameters.Add("@ItemCode", SqlDbType.NVarChar, 20).Value=label.ItemCode;
             insert.Parameters.Add("@LotNumber", SqlDbType.NVarChar, 30).Value=label.LotNumber;
             insert.Parameters.Add("@Location", SqlDbType.NVarChar, 10).Value=request.CountedLocation;
-            insert.Parameters.Add("@StockUnit", SqlDbType.NVarChar, 3).Value=label.StockUnit;
+            insert.Parameters.Add("@StockUnit", SqlDbType.NVarChar, 3).Value=units.PackageUnit;
             insert.Parameters.Add("@AuditUser", SqlDbType.NVarChar, 5).Value=options.AuditUser;
             insert.Parameters.Add("@RequestId", SqlDbType.UniqueIdentifier).Value=requestId;
             var amount = insert.Parameters.Add("@Quantity", SqlDbType.Decimal);
@@ -263,7 +264,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             var ratio = insert.Parameters.Add("@UnitFactor", SqlDbType.Decimal);
             ratio.Precision=18;
             ratio.Scale=7;
-            ratio.Value=CountWritePolicy.CountUnitFactor;
+            ratio.Value=units.UnitFactor;
             var detailId = (string?)await insert.ExecuteScalarAsync(ct);
             if (string.IsNullOrWhiteSpace(detailId))
                 throw new CountWriteException(503, "ERP_WRITE_FAILED", "XCOUTD 未返回新建 ROWID。");
@@ -271,7 +272,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             stage = "提交 SQL 事务";
             await transaction.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
-                detailId,qty,qty,label.StockUnit,requestId,"Committed",false);
+                detailId,units.QuantityStu,units.QuantityPcu,units.PackageUnit,requestId,"Committed",false);
         }
         catch (CountWriteException error)
         {
