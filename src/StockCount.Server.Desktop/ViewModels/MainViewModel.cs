@@ -12,6 +12,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ServerRuntime _runtime;
     private readonly LogReader _logs;
     private readonly SemaphoreSlim _refreshGate = new(1, 1);
+    private readonly SemaphoreSlim _settingsSaveGate = new(1, 1);
     private bool _settingsInvalid;
     private bool _initialized;
     private bool _closing;
@@ -21,6 +22,7 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty] private ServerSettings settings = new();
     [ObservableProperty] private ServerSettings writeDraft = new();
+    [ObservableProperty] private ServerSettings locationDraft = new();
     [ObservableProperty] private string sqlPasswordInput = "";
     [ObservableProperty] private string certPasswordInput = "";
     [ObservableProperty] private string logSearch = "";
@@ -98,6 +100,7 @@ public partial class MainViewModel : ObservableObject
             Message = "配置加载失败，已阻止覆盖： " + ex.Message;
         }
         WriteDraft = Settings.CreateWriteDraft();
+        LocationDraft = Settings.Copy();
         ApiUrl = "http://127.0.0.1:" + Settings.ApiPort;
         RefreshSqlCredentialState();
     }
@@ -155,11 +158,13 @@ public partial class MainViewModel : ObservableObject
 
     private async Task SaveAsync(bool saveWriteApprovals)
     {
+        if (_closing || !await _settingsSaveGate.WaitAsync(0)) return;
         try
         {
             if (_settingsInvalid) throw new InvalidOperationException("配置文件无效，请先修复或备份并移走原文件。");
             var old = _store.Load();
             var next = Settings.Copy();
+            next.CopyLocationValidationFrom(old);
             var newSqlPassword = !string.IsNullOrEmpty(SqlPasswordInput);
             var identityChanged = next.DatabaseIdentityChangedFrom(old, newSqlPassword);
             if (saveWriteApprovals)
@@ -200,6 +205,36 @@ public partial class MainViewModel : ObservableObject
             }
         }
         catch (Exception ex) { Message = "保存失败：" + ex.Message; }
+        finally { _settingsSaveGate.Release(); }
+        await RefreshStatusAsync();
+    }
+
+    [RelayCommand]
+    private async Task SaveLocationSettingsAsync()
+    {
+        if (_closing || !await _settingsSaveGate.WaitAsync(0)) return;
+        try
+        {
+            if (_settingsInvalid) throw new InvalidOperationException("配置文件无效，禁止修改。");
+            if (!System.IO.File.Exists(_store.SettingsPath))
+                throw new InvalidOperationException("请先保存数据库配置，再单独保存盘点校验规则。");
+            var next = _store.Load();
+            next.CopyLocationValidationFrom(LocationDraft);
+            next.Validate();
+            var wasRunning = _runtime.IsRunning;
+            if (wasRunning) await _runtime.StopAsync();
+            _store.Save(next);
+            Settings.CopyLocationValidationFrom(next);
+            LocationDraft = next.Copy();
+            Message = "盘点校验规则已保存，下次启动 API 生效；外部 API 不会自动重启。";
+            if (wasRunning)
+            {
+                await _runtime.StartAsync(next);
+                Message = "盘点校验规则已保存，API 已重新启动。";
+            }
+        }
+        catch (Exception ex) { Message = "保存盘点校验规则或重启失败：" + ex.Message; }
+        finally { _settingsSaveGate.Release(); }
         await RefreshStatusAsync();
     }
 
