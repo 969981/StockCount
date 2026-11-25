@@ -141,6 +141,47 @@ public sealed class SettingsStoreTests
         Assert.Throws<InvalidOperationException>(() => settings.Validate());
     }
 
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"enableTestWrites\":false,\"enableProductionWrites\":false,\"schemaReviewed\":false,\"productionSchemaReviewed\":false}")]
+    public void ApprovedAvaloniaDeploymentEnablesBothEnvironmentsForLegacySettings(string json)
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "stockcount-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var store = new SettingsStore(dir, approvedFieldWrites: true);
+            File.WriteAllText(store.SettingsPath, json);
+            var loaded = store.Load();
+            Assert.True(loaded.EnableTestWrites && loaded.SchemaReviewed);
+            Assert.True(loaded.EnableProductionWrites && loaded.ProductionSchemaReviewed);
+            Assert.False(loaded.TestCheckSite || loaded.TestCheckWarehouse ||
+                         loaded.ProductionCheckSite || loaded.ProductionCheckWarehouse);
+            var changed = new ServerSettings { SqlServer = "SERVER-B" };
+            store.Save(changed);
+            var saved = new SettingsStore(dir).Load();
+            Assert.True(saved.EnableTestWrites && saved.SchemaReviewed);
+            Assert.True(saved.EnableProductionWrites && saved.ProductionSchemaReviewed);
+            Assert.Equal("SERVER-B", saved.SqlServer);
+        }
+        finally { Directory.Delete(dir, recursive: true); }
+    }
+
+    [Fact]
+    public void ApprovedFieldPolicyKeepsAuditAndLocationSettings()
+    {
+        var settings = ServerSettings.CreateFirstUseDefaults();
+        settings.X3AuditUser = "USR1";
+        settings.TestCheckSite = true;
+        settings.ApplyApprovedFieldWrites();
+        settings.Validate();
+        Assert.True(settings.EnableTestWrites && settings.SchemaReviewed);
+        Assert.True(settings.EnableProductionWrites && settings.ProductionSchemaReviewed);
+        Assert.True(settings.TestCheckSite);
+        Assert.False(settings.ProductionCheckWarehouse);
+        Assert.Equal("USR1", settings.EffectiveX3AuditUser);
+    }
+
     [Fact]
     public void ReadingMalformedLocalJsonIsAnErrorNotSilentDefaults()
     {
