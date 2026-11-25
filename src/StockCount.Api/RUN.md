@@ -84,7 +84,7 @@ dotnet publish src/StockCount.Api/StockCount.Api.csproj -c Release -r win-x64 --
 
 ## 7. 受控 XTEST 写入启用步骤
 
-运行前先由 DBA 执行只读前检 [verify_xcountd_write_prerequisites.sql](../../sql/read_only/verify_xcountd_write_prerequisites.sql)，并检查 XTEST.XCOUTD.ROWID 是 IDENTITY，旧 ERP 触发器/字段/审计语义兼容。然后在批准窗口执行 [001_stockcount_submission.sql](../../sql/migrations/001_stockcount_submission.sql) 一次性建立同事务幂等表。
+运行前先由 DBA 执行只读前检 [verify_xcountd_write_prerequisites.sql](../../sql/read_only/verify_xcountd_write_prerequisites.sql)，并检查 XTEST.XCOUTD.ROWID 是 IDENTITY，旧 ERP 触发器/字段/审计语义兼容。新版使用 XCOUTD 原有 AUUID_0 保存请求识别码，不再需要幂等表迁移。
 
 推荐由 Tauri 管理器填写审计用户编码，并根据现场批准分别启用 XTEST/COB 写入（不能从 PDA 开启）。独立 CLI 模式可使用以下配置选项，但只能在已验证的测试库使用：
 
@@ -106,7 +106,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 - `StockCount.Pad` Android MAUI 页面/扫码广播源码已添加，尚需实际 Android SDK 编译与海康 PDA 真机联调。
 - `XTEST`/`COB` 的真实库结构核验、只读 SQL 联调与两环境差异测试。
 - 真实 XTEST / COB 插入适配器均已编码，**现场仍需分别确认** X3 原生服务与直接 INSERT 的适配差异、ROWID IDENTITY、审计字段/触发器和 SQL Server 事务；不符合条件必须拒绝。
-- 同单同箱锁与 SQL Server 同事务幂等表已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及单位 1:1 验证；STU/PCU 两列强制同值。
+- 同单同箱锁与 SQL Server 原有 XCOUTD 请求识别码已编码，尚未完成两个 PDA 的并发测试、历史复盘规则审批及单位 1:1 验证；STU/PCU 两列强制同值。
 - 编译、单测、API 自动化测试和真实设备/SQL Server 集成测试：**本次未执行，不能标为通过**。
 
 相关文件：[根需求](../../requirements.md)、[API 契约](../../docs/API_CONTRACT.md)、[环境安全](../../docs/SECURITY_AND_ENVIRONMENTS.md)、[字段映射](../../docs/DATABASE_MAPPING.md)。
