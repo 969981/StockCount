@@ -137,6 +137,41 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-l
 
 ### 只编译 Avalonia Windows 原生管理器及 Portable ZIP
 
+不使用发布脚本、直接执行 dotnet 命令：见 [Avalonia 双 EXE 单行 dotnet publish 手册](StockCount-Avalonia-SingleFile-Publish-Guide.md)。
+
+一条命令发布完整后台（管理器 csproj 自动发布 API 并汇总两个 EXE）：
+
+~~~powershell
+dotnet publish .\src\StockCount.Server.Desktop\StockCount.Server.Desktop.csproj -c Release -r win-x64 -o .\publish\avalonia-portable
+~~~
+
+仅在命令成功退出后使用输出目录。不要指向实际安装目录。
+
+**推荐单行 PowerShell 命令**（一键编译、发布和压缩，无需 Git、Node.js 或 Rust）：
+
+~~~powershell
+pwsh -NoProfile -File .\scripts\package-avalonia-portable.ps1 -Build
+~~~
+
+编译输出默认在 publish/avalonia-desktop，只有两个 EXE，ZIP 默认在 dist/local 下，另附原有启动 CMD 与说明 TXT。解压后直接运行 StockCount.Server.Desktop.exe；API EXE 由管理器启动，无需手动运行。
+
+首次从旧版升级构建工具时，如果 publish/avalonia-desktop 已有旧 DLL，先将该**构建输出目录**改名备份，或使用新目录（不要处理实际部署目录）：
+
+~~~powershell
+pwsh -NoProfile -File .\scripts\package-avalonia-portable.ps1 -Build -InputDirectory publish/avalonia-singlefile
+~~~
+
+只需生成两个 EXE、不需要 ZIP：
+
+~~~powershell
+pwsh -NoProfile -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release -OutputDirectory publish/avalonia-singlefile
+~~~
+
+默认禁用裁剪，保留 Avalonia XAML、SQL Client、SQLite 及原生依赖。采用 .NET PublishSingleFile 与 IncludeNativeLibrariesForSelfExtract。自包含 EXE 可能比旧单个 AppHost 大，不代表整个发布包变大；尚需实际 CI 核验产物大小与运行。
+
+**旧安装升级**：保留现有部署脚本，自动备份被替换的程序文件，但不自动删除旧版目录内 DLL。若希望彻底去除旧 DLL，在停止管理器及 API、确认数据库关闭后，将新版解压到新的可写目录，再备份和迁移原 server-settings.json、server-logs.db 及存在的 WAL/SHM（同一关闭状态下作为一组），保持同一 Windows 用户的 Credential Manager。旧目录完整保留供回退，不要同时启动两个管理器。正式部署仍需检查端口、SQL 连接、日志与 API 启停。
+
+
 ```powershell
 # .NET 10，不需要 Node.js、npm、Rust 或 WebView2
 pwsh -File .\scripts\build-local.ps1 -Target Avalonia -Version 0.2.0-local
@@ -146,7 +181,7 @@ pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release
 pwsh -File .\scripts\package-avalonia-portable.ps1 -Version 0.2.0-local
 ```
 
-Avalonia 的 Portable ZIP 含 `StockCount.Api.exe`、.NET DLL 与原生依赖，不能只复制两份 EXE。`Assets/server.ico` 已随 Git 与源码 ZIP 分发，直接注入 Windows EXE 和窗口；无需在编译期间生成。
+Avalonia Release 现在采用两个自包含单文件 EXE：`StockCount.Server.Desktop.exe` 和 `StockCount.Api.exe`，不再分发零散 DLL。运行时原生库可能首次运行解包到当前用户临时 .NET 缓存。`Assets/server.ico` 已随 Git 与源码 ZIP 分发，直接注入 Windows EXE 和窗口；无需在编译期间生成。
 ### Android 同时构建 Debug + 正式签名 Release APK
 
 注意：**Release APK 必须使用项目长期保管的 JKS**。先阅读 [Android Release 签名手册](ANDROID_RELEASE_SIGNING.md)，将 keystore 放在仓库之外，并在当前终端设置签名口令环境变量（不得把密码写在命令行或仓库里）。
@@ -213,7 +248,7 @@ pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
   -Destination D:\Apps\StockCount-Avalonia -Launch
 ```
 
-Avalonia Portable 使用独立目录，避免与 Tauri 混用 EXE/配置；启动前检查 API 端口，不能同时启动两个后台。升级前必须退出两个管理器与 API。脚本校验 ZIP 条目、完整复制 .NET 依赖、逐文件核对 SHA256，并备份被替换的旧文件，失败时尽力回滚。
+Avalonia Portable 使用独立目录，避免与 Tauri 混用 EXE/配置；启动前检查 API 端口，不能同时启动两个后台。升级前必须退出两个管理器与 API。脚本校验 ZIP 条目、完整复制两个单文件 EXE 与辅助说明、逐文件核对 SHA256，并备份被替换的旧文件，失败时尽力回滚。
 
 **现场数据不由升级程序覆盖**：`server-settings.json`、`server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 保持原位；Credential Manager 凭据保持不变。若发布目录混入这些数据或 JKS/PFX/密钥，打包脚本会拒绝创建 ZIP。Avalonia 当前为自包含 Portable，Windows NSIS Setup 仍为 Tauri。两套 ERP 写入门禁保持独立且默认禁止。
 ### Windows Setup 正常安装
@@ -318,7 +353,7 @@ Get-FileHash ".\dist\source\StockCount-Source-$short.zip" -Algorithm SHA256
 | npm 或 Tauri 找不到命令 | 安装 Node.js 22+、Rust，先 npm install，再运行构建 |
 | Portable 无法启动 API 或保存设置 | 确认解压后的 `StockCount.Api.exe` 与主 EXE 同目录，`server-settings.json` 和 `server-logs.db` 均可在当前用户可写的目录中创建、WebView2 已安装 |
 | Avalonia GenerateAvaloniaResourcesTask 找不到 server.ico | 旧源码包遗漏了被忽略的 ICO；更新仓库并重新归档，或将新版已提交的 `src/StockCount.Server.Desktop/Assets/server.ico` 复制到旧源码包同一相对路径。 |
-| Avalonia Portable 缺少依赖 | 使用 package-avalonia-portable.ps1 打包完整 publish 目录；Avalonia 无需 WebView2，Tauri 则需要 |
+| Avalonia Portable 缺少依赖 | 使用 package-avalonia-portable.ps1 -Build 重新生成两个自包含单文件 EXE，不能手工删 DLL 来冒充单文件；Avalonia 无需 WebView2，Tauri 则需要 |
 | Avalonia 升级被拒绝 | 先关闭 StockCount.Server.Desktop、Tauri 和 StockCount.Api，确认 ZIP 不含现场设置、SQLite 或签名私钥 |
 | Obsidian / Markdown 检查失败 | 执行 `python scripts/check_obsidian_links.py`，目录不能使用 `variants/` 这类相对链接，应链接具体文件或 GitHub 目录 URL |
 | SQLite 文件锁或 Windows 文件被占用 | 停止 API 并退出管理器，再运行 deploy-local；不要手工删 WAL/SHM |

@@ -3,7 +3,7 @@
 .SYNOPSIS
   Package the Avalonia Windows self-contained build and API as a Portable ZIP.
 .DESCRIPTION
-  Copies the entire .NET publish output (not only two EXEs), refuses to ship
+  Requires exactly two single-file self-contained EXEs, refuses to ship
   adjacent user settings, logs or signing secrets, and verifies the ZIP.
   Does not replace the existing Tauri Setup / Portable release.
 .EXAMPLE
@@ -47,11 +47,9 @@ if (!(Test-Path -LiteralPath $inputPath -PathType Container)) {
 }
 $files = @(Get-ChildItem -LiteralPath $inputPath -Recurse -File -Force)
 if ($files.Count -eq 0) { throw "Avalonia publish output is empty: $inputPath" }
-# The Avalonia Windows AppHost can be a small (~150 KB) EXE even when
-# self-contained: the framework runtime lives alongside it in DLLs.
-# The API is intentionally published as a single-file self-contained sidecar.
+# Both executables must contain the self-contained runtime.
 $required = @{
-  'StockCount.Server.Desktop.exe' = 4096
+  'StockCount.Server.Desktop.exe' = 1048576
   'StockCount.Api.exe' = 1048576
 }
 foreach ($name in $required.Keys) {
@@ -61,9 +59,7 @@ foreach ($name in $required.Keys) {
     throw "Required Windows EXE missing or suspicious: $exe"
   }
 }
-if (@($files | Where-Object { $_.Extension -eq '.dll' }).Count -eq 0) {
-  throw 'Avalonia published .NET dependencies are missing; do not ship EXEs alone.'
-}
+
 
 # User data, credentials and signing material never belong in a distributable
 # ZIP. Fail closed rather than silently copying a developer's live settings.
@@ -76,6 +72,14 @@ foreach ($file in $files) {
   if ($file.Attributes.HasFlag([IO.FileAttributes]::ReparsePoint)) {
     throw "Refusing to package symbolic link: $relative"
   }
+}
+
+# Validate the full tree; do not accept stale loose dependencies or subdirectories.
+$unexpected = @(Get-ChildItem -LiteralPath $inputPath -Force | Where-Object {
+    $_.PSIsContainer -or $_.Name -notin $required.Keys
+})
+if ($files.Count -ne 2 -or $unexpected.Count -ne 0) {
+    throw 'Expected exactly two bundled EXEs. Rebuild into a clean publish directory; do not package loose files.'
 }
 
 $folder = "StockCount-Avalonia-v$Version-Windows-x64-Portable"
@@ -100,12 +104,14 @@ StockCount Avalonia Windows Portable v$Version
 ===============================================
 1. Extract ALL files to a user-writable folder, not Program Files.
 2. Launch Start-StockCount-Avalonia.cmd or StockCount.Server.Desktop.exe.
-3. Keep all published .NET dependencies and StockCount.Api.exe beside the UI EXE.
+3. Keep the two self-contained EXEs together; no separate DLLs or .NET installation required.
+   Native runtime files may be extracted to the per-user temporary .NET cache on first run.
 4. server-settings.json and server-logs.db live BESIDE the UI EXE.
 5. Old settings migrate from LocalAppData only if the adjacent JSON is absent.
 6. Passwords and PDA device keys remain in Windows Credential Manager;
    they cannot be moved to another Windows user account with this ZIP.
 7. Stop the UI and API before upgrades; preserve SQLite WAL/SHM files.
+   Upgrading an old loose-file install does not automatically delete legacy DLLs. Use a fresh folder and migrate settings/logs safely if desired.
 8. To upgrade safely use scripts/deploy-local.ps1 -Target AvaloniaPortable.
 9. XTEST/COB write permissions remain default-deny until independently verified.
 10. HTTP LAN access is only for trusted isolated PDA subnets, not the internet.

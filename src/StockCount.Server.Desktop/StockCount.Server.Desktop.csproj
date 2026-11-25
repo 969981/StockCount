@@ -9,6 +9,15 @@
     <ApplicationIcon>Assets/server.ico</ApplicationIcon>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
   </PropertyGroup>
+  <!-- Release publish with -r win-x64 automatically bundles both processes.
+       Keep ordinary Debug/F5 builds framework-dependent. -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(RuntimeIdentifier)' == 'win-x64'">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishTrimmed>false</PublishTrimmed>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
   <ItemGroup>
     <AvaloniaResource Include="Assets/server.ico" />
     <PackageReference Include="Avalonia" Version="12.1.6" />
@@ -18,7 +27,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <ProjectReference Include="../StockCount.Server.Hosting/StockCount.Server.Hosting.csproj" />
     <!-- Build the API before the desktop app; do not import the API into UI code. -->
-    <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../StockCount.Api/StockCount.Api.csproj" ReferenceOutputAssembly="false" Condition="'$(Configuration)' == 'Debug' and '$(PublishSingleFile)' != 'true'" />
   </ItemGroup>
   <!-- The tracked native icon is a source resource. Visual Studio design-time
        builds and extracted source ZIPs must not depend on npm or generated files. -->
@@ -27,10 +36,10 @@
            Text="Missing tracked Assets/server.ico. Restore it from the complete StockCount source archive." />
   </Target>
   <!-- Visual Studio F5: place the framework-dependent API and its runtime assets beside
-       the Debug Avalonia EXE. Release/Portable uses build-avalonia-desktop.ps1 instead. -->
+       the Debug Avalonia EXE. Single-file publish stages the independent API below. -->
   <Target Name="StageApiForVisualStudioDebug"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' and '$(DesignTimeBuild)' != 'true' and '$(OS)' == 'Windows_NT'">
+          Condition="'$(Configuration)' == 'Debug' and '$(PublishSingleFile)' != 'true' and '$(DesignTimeBuild)' != 'true' and '$(OS)' == 'Windows_NT'">
     <ItemGroup>
       <_StockCountApiDebugRuntime Include="$(MSBuildThisFileDirectory)..\StockCount.Api\bin\Debug\net10.0\**\*.*"
         Exclude="$(MSBuildThisFileDirectory)..\StockCount.Api\bin\Debug\net10.0\win-*\**\*.*" />
@@ -42,5 +51,60 @@
           SkipUnchangedFiles="true" />
     <Error Condition="!Exists('$(TargetDir)StockCount.Api.exe')"
            Text="未找到复制后的 StockCount.Api.exe，无法从 Avalonia 管理器启动服务。" />
+  </Target>
+  <!-- Only a publish of the desktop application triggers the sidecar publish.
+       Do not propagate the desktop TFM or PublishDir into the web SDK project. -->
+  <Target Name="ValidateStockCountBundlePublish" BeforeTargets="PrepareForPublish"
+          Condition="'$(PublishSingleFile)' == 'true' and '$(RuntimeIdentifier)' == 'win-x64'">
+    <Error Condition="'$(OS)' != 'Windows_NT' or '$(SelfContained)' != 'true' or '$(IncludeNativeLibrariesForSelfExtract)' != 'true' or '$(PublishTrimmed)' == 'true'"
+           Text="StockCount portable publish requires Windows, self-contained win-x64, native bundling and no trimming." />
+    <PropertyGroup>
+      <_StockCountPublishRoot>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::GetFullPath('$(PublishDir)', '$(MSBuildProjectDirectory)'))))</_StockCountPublishRoot>
+    </PropertyGroup>
+    <ItemGroup>
+      <_StockCountOldPublishFiles Include="$(_StockCountPublishRoot)**/*"
+          Exclude="$(_StockCountPublishRoot)StockCount.Server.Desktop.exe;$(_StockCountPublishRoot)StockCount.Api.exe" />
+    </ItemGroup>
+    <Error Condition="'@(_StockCountOldPublishFiles)' != ''"
+           Text="Publish directory contains existing loose files or user data. Use a clean build output directory: $(_StockCountPublishRoot)" />
+  </Target>
+
+  <Target Name="PublishStockCountApiSidecar" AfterTargets="Publish"
+          Condition="'$(PublishSingleFile)' == 'true' and '$(RuntimeIdentifier)' == 'win-x64' and '$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_StockCountPublishRoot>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::GetFullPath('$(PublishDir)', '$(MSBuildProjectDirectory)'))))</_StockCountPublishRoot>
+      <_StockCountApiProject>$(MSBuildProjectDirectory)/../StockCount.Api/StockCount.Api.csproj</_StockCountApiProject>
+      <_StockCountApiStage>$(MSBuildProjectDirectory)/obj/stockcount-api-publish/$([System.Guid]::NewGuid().ToString('N'))/</_StockCountApiStage>
+      <_StockCountDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</_StockCountDotNetHost>
+      <_StockCountDotNetHost Condition="'$(_StockCountDotNetHost)' == ''">dotnet</_StockCountDotNetHost>
+    </PropertyGroup>
+    <!-- The pre-publish guard rejects pre-existing loose files, so any PDB here
+         was emitted by this publish. Native package symbols are not runtime
+         dependencies and cannot be embedded by DebugType=embedded. -->
+    <ItemGroup>
+      <_StockCountPublishedSymbols Include="$(_StockCountPublishRoot)**/*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(_StockCountPublishedSymbols)" />
+    <ItemGroup>
+      <_StockCountUnexpectedDesktopFiles Include="$(_StockCountPublishRoot)**/*"
+          Exclude="$(_StockCountPublishRoot)StockCount.Server.Desktop.exe;$(_StockCountPublishRoot)StockCount.Api.exe" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_StockCountPublishRoot)StockCount.Server.Desktop.exe')" Text="Desktop bundle missing." />
+    <Error Condition="'@(_StockCountUnexpectedDesktopFiles)' != ''"
+           Text="Unexpected desktop publish dependencies: @(_StockCountUnexpectedDesktopFiles)" />
+    <Message Importance="high" Text="Publishing independent StockCount API sidecar (win-x64)..." />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
+          Command="&quot;$(_StockCountDotNetHost)&quot; publish &quot;$(_StockCountApiProject)&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=embedded -o &quot;$(_StockCountApiStage)&quot;" />
+    <ItemGroup>
+      <_StockCountUnexpectedApiFiles Include="$(_StockCountApiStage)**/*"
+          Exclude="$(_StockCountApiStage)StockCount.Api.exe;$(_StockCountApiStage)appsettings.json;$(_StockCountApiStage)web.config;$(_StockCountApiStage)**/*.pdb" />
+    </ItemGroup>
+    <Error Condition="!Exists('$(_StockCountApiStage)StockCount.Api.exe')" Text="API bundle missing." />
+    <Error Condition="'@(_StockCountUnexpectedApiFiles)' != ''"
+           Text="Unexpected unbundled API dependencies: @(_StockCountUnexpectedApiFiles)" />
+    <Copy SourceFiles="$(_StockCountApiStage)StockCount.Api.exe"
+          DestinationFiles="$(_StockCountPublishRoot)StockCount.Api.exe" />
+    <RemoveDir Directories="$(_StockCountApiStage)" />
+    <Message Importance="high" Text="StockCount portable: Desktop and API EXEs in $(_StockCountPublishRoot)" />
   </Target>
 </Project>

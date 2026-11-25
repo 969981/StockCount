@@ -49,8 +49,7 @@ try {
         throw 'Previous API binary backup is invalid'
     }
 
-    # Simulate a fully self-contained Avalonia portable (large fake EXEs and
-    # an extra dependency) without requiring a real .NET compilation.
+    # Simulate two bundled EXEs without requiring a real .NET compilation.
     $avaloniaFake = Join-Path $temp 'avalonia-publish'
     $avaloniaDest = Join-Path $temp 'deployed-Avalonia'
     $avaloniaPackages = Join-Path $temp 'avalonia-zips'
@@ -60,8 +59,6 @@ try {
     [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Server.Desktop.exe'), $bytes)
     [Array]::Fill($bytes, [byte]66)
     [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Api.exe'), $bytes)
-    New-Item -ItemType Directory -Force -Path (Join-Path $avaloniaFake 'runtimes/win-x64/native') | Out-Null
-    'managed-dependency-v1' | Set-Content (Join-Path $avaloniaFake 'runtimes/win-x64/native/host.dll')
     $version = '0.2.0-local'
     & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
     $avaloniaZip = Join-Path $avaloniaPackages "StockCount-Avalonia-v$version-Windows-x64-Portable.zip"
@@ -74,11 +71,14 @@ try {
     'shm preserved' | Set-Content (Join-Path $avaloniaDest 'server-logs.db-shm')
     [Array]::Fill($bytes, [byte]67)
     [IO.File]::WriteAllBytes((Join-Path $avaloniaFake 'StockCount.Api.exe'), $bytes)
-    'managed-dependency-v2' | Set-Content (Join-Path $avaloniaFake 'runtimes/win-x64/native/host.dll')
     & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
     & (Join-Path $repo 'scripts/deploy-local.ps1') -Target AvaloniaPortable -PackagePath $avaloniaZip -Destination $avaloniaDest
-    if ((Get-Content (Join-Path $avaloniaDest 'runtimes/win-x64/native/host.dll') -Raw) -notmatch 'v2') {
-      throw 'Avalonia upgrade lost one of the nested .NET runtime dependencies'
+    if ((Get-FileHash (Join-Path $avaloniaDest 'StockCount.Api.exe')).Hash -ne
+        (Get-FileHash (Join-Path $avaloniaFake 'StockCount.Api.exe')).Hash) {
+        throw 'Avalonia upgrade did not install the new API bundle'
+    }
+    if (@(Get-ChildItem -LiteralPath $avaloniaDest -File -Filter '*.dll' -Recurse).Count) {
+        throw 'Single-file portable deployment unexpectedly contains loose DLLs'
     }
     foreach ($name in @('server-settings.json','server-logs.db','server-logs.db-wal','server-logs.db-shm')) {
       if (!(Test-Path (Join-Path $avaloniaDest $name))) { throw "Avalonia upgrade deleted $name" }
@@ -88,9 +88,18 @@ try {
     }
     $backupsAvalonia = @(Get-ChildItem -LiteralPath $avaloniaDest -Directory -Filter 'backup-binaries-*')
     if ($backupsAvalonia.Count -ne 1) { throw 'Avalonia upgrade did not back up previous executable files' }
-    if (!(Test-Path (Join-Path $backupsAvalonia[0].FullName 'runtimes/win-x64/native/host.dll'))) {
-      throw 'Avalonia backup missing nested runtime dependency'
+    if (!(Test-Path (Join-Path $backupsAvalonia[0].FullName 'StockCount.Api.exe'))) {
+        throw 'Avalonia backup missing previous API bundle'
     }
+    'unexpected dependency' | Set-Content (Join-Path $avaloniaFake 'host.dll')
+    $rejectedLoose = $false
+    try {
+      & (Join-Path $repo 'scripts/package-avalonia-portable.ps1') -Version $version -InputDirectory $avaloniaFake -OutputDirectory $avaloniaPackages
+    } catch {
+      $rejectedLoose = $_.Exception.Message -match 'exactly two bundled EXEs'
+    }
+    Remove-Item (Join-Path $avaloniaFake 'host.dll') -Force
+    if (-not $rejectedLoose) { throw 'Packager accepted loose dependencies' }
     'must-not-ship' | Set-Content (Join-Path $avaloniaFake 'server-settings.json')
     $rejectedSensitive = $false
     try {

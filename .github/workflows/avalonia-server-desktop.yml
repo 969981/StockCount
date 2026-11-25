@@ -62,6 +62,35 @@ jobs:
       - name: Compile, test and stage standalone Avalonia desktop plus API
         shell: pwsh
         run: ./scripts/build-avalonia-desktop.ps1 -Configuration Release
+      - name: Assert exactly two standalone EXEs and smoke launch Avalonia UI
+        shell: pwsh
+        run: |
+          $dir = 'publish/avalonia-desktop'
+          $files = @(Get-ChildItem -LiteralPath $dir -Force)
+          if ($files.Count -ne 2 -or @($files | Where-Object { $_.PSIsContainer -or $_.Name -notin @('StockCount.Server.Desktop.exe','StockCount.Api.exe') }).Count) {
+            throw 'Expected precisely two executable bundles'
+          }
+          $fixture = Join-Path $env:RUNNER_TEMP ('avalonia-ui-smoke-' + [guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $fixture | Out-Null
+          $ui = $null
+          try {
+            Copy-Item -Path "$dir/*.exe" -Destination $fixture
+            $ui = Start-Process -FilePath (Join-Path $fixture 'StockCount.Server.Desktop.exe') -WorkingDirectory $fixture -PassThru
+            $deadline = [DateTime]::UtcNow.AddSeconds(45)
+            do {
+              Start-Sleep -Milliseconds 500
+              $ui.Refresh()
+              if ($ui.HasExited) { throw "Avalonia bundle exited before opening window: $($ui.ExitCode)" }
+            } until ($ui.MainWindowHandle -ne 0 -or [DateTime]::UtcNow -ge $deadline)
+            if ($ui.MainWindowHandle -eq 0) { throw 'Avalonia UI did not open a window' }
+            Write-Host 'Single-file Avalonia UI window opened'
+          } finally {
+            if ($null -ne $ui) {
+              if (-not $ui.HasExited) { $ui.Kill(); $null = $ui.WaitForExit(5000) }
+              $ui.Dispose()
+            }
+            Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+          }
       - name: Verify published API exits after manager process termination
         shell: pwsh
         run: ./tests/ApiManagerLifetime.Smoke.ps1
