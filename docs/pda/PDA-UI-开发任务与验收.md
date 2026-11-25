@@ -40,7 +40,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | PDA-UI-05 | 草稿保护：数量填好又扫另一箱/库位要确认 | CountScanWorkflow, ConfirmDiscardDraft | 默认继续当前箱；除用户确认，不覆盖已填数量 |
 | PDA-UI-06 | 提交成功1秒后才清除箱和数量 | CountScanWorkflow, CountingViewModel, SuccessPopup | API确认→显示1000ms→清箱；单号/名称/库位始终保留 |
 | PDA-UI-07 | 独立提交状态与原UUID持久化恢复 | IPendingSubmissionStore, Android secure storage, ViewModel | 超时/重启恢复同环境、同单号、箱、库位、数量、原UUID；不重复 INSERT |
-| PDA-UI-08 | 工业硬件扫码桥接、串行消费/可见排队 | IScannerService, Android BroadcastReceiver, MockScanner | no silent drop; Rx仅接收；真机验证Action/Extra/扫码键/CRLF；Debug模拟扫码可用，Release关闭 |
+| PDA-UI-08 | 工业硬件扫码桥接、串行消费/可见排队 | IScannerService, Android BroadcastReceiver, MockScanner | no silent drop; Rx仅接收；真机验证Action/Extra/扫码键/CRLF；Debug 与 Release 盘点页均无模拟扫码入口 |
 | PDA-UI-09 | 统一后端错误码和界面提示，含重复箱/数量空/网络未知 | ApiClient, AlertService, ErrorMapper | 指定文案精准一致，重复箱不填充，网络未知不清空；错误仅在用户确认后继续扫码 |
 | PDA-UI-10 | 设置页更换端点、密钥和帐套的保护 | SettingsPage, SettingsViewModel | Production进入提示一次；环境切换不串上下文；有未知UUID不能直接丢草稿；API地址和密钥安全保存 |
 | PDA-UI-11 | 真实 Android 编译、单元/UI/E2E验收 | tests, CI, Android 真机 | dotnet build成功、无XAML报错；端到端测试成功；仅受控帐套进行实际写入 |
