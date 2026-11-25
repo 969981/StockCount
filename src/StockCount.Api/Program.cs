@@ -6,6 +6,9 @@ using StockCount.Api.Logging;
 static string Env(string name) => Environment.GetEnvironmentVariable(name)?.Trim() ?? "";
 static bool Enabled(string name) => string.Equals(Env(name), "true", StringComparison.OrdinalIgnoreCase);
 
+// Standalone and legacy Tauri have no manager identity; managed Avalonia children do.
+using var manager = ManagerLifetime.Open(Env("STOCKCOUNT_MANAGER_PID"), Env("STOCKCOUNT_MANAGER_STARTED_UTC_TICKS"));
+
 var sqlServer = Env("STOCKCOUNT_SQL_SERVER");
 var database = Env("STOCKCOUNT_SQL_DATABASE");
 var connection = "";
@@ -111,5 +114,12 @@ var app = ApiApplication.Build(args, builder =>
     builder.Logging.AddProvider(sqlite);
 });
 
+using var managerWatchCancellation = new CancellationTokenSource();
+var managerWatch = manager?.WatchAsync(app.Lifetime, app.Logger, managerWatchCancellation.Token) ?? Task.CompletedTask;
 try { await app.RunAsync(); }
-finally { await app.DisposeAsync(); }
+finally
+{
+    managerWatchCancellation.Cancel();
+    await managerWatch;
+    await app.DisposeAsync();
+}

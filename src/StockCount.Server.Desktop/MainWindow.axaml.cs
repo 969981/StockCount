@@ -11,6 +11,7 @@ public sealed partial class MainWindow : Window
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(2) };
     private bool _shutdownComplete;
+    private bool _shutdownStarted;
 
     public MainWindow()
     {
@@ -24,16 +25,23 @@ public sealed partial class MainWindow : Window
                 await vm.RefreshLogsCommand.ExecuteAsync(null);
             };
             await vm.InitializeAsync();
-            if (!_shutdownComplete) _timer.Start();
+            if (!_shutdownStarted) _timer.Start();
         };
         Closing += async (_, args) =>
         {
             if (_shutdownComplete) return;
             args.Cancel = true;
+            if (_shutdownStarted) return;
+            _shutdownStarted = true;
+            IsEnabled = false;
             _timer.Stop();
             try
             {
                 if (DataContext is MainViewModel vm) await vm.CloseAsync();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Trace.TraceError("StockCount shutdown failed: " + ex.Message);
             }
             finally
             {
