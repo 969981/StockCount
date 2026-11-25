@@ -156,8 +156,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
             stage = "读取 XCOUTH 盘点单";
             var headerSql = $"""
-                SELECT H.STOFCY_0 AS SiteCode,H.WRH_0 AS WarehouseCode,
-                       CAST(H.CUNSTA_0 AS int) AS StatusCode
+                SELECT H.STOFCY_0 AS SiteCode,H.WRH_0 AS WarehouseCode
                 FROM {schema}.[XCOUTH] H WITH (UPDLOCK,HOLDLOCK)
                 WHERE H.CUNNUM_0=@CountNumber;
                 """;
@@ -166,11 +165,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                     transaction, cancellationToken:ct));
             if (header is null)
                 throw new CountWriteException(404, "COUNT_NOT_FOUND", "盘点单不存在。");
-            // Status 0 is the only currently approved write state.
-            // Read-only list/label queries still show all other states.
-            if (header.StatusCode != 0)
-                throw new CountWriteException(409, "COUNT_NOT_WRITABLE",
-                    "盘点单当前状态尚未获批准写入。");
+            // All existing header statuses are permitted by the 2026-11-25 business decision.
+            // The locked header still provides existence and site/warehouse context.
 
             stage = "核验盘点库位";
             var scope = (options.LocationValidation ?? new LocationValidationOptions()).For(environment.Name);
@@ -345,7 +341,6 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
     {
         public string SiteCode { get; set; } = "";
         public string WarehouseCode { get; set; } = "";
-        public int StatusCode { get; set; }
     }
 
     private sealed class LabelForWrite
