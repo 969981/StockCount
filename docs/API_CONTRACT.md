@@ -83,7 +83,7 @@ up: "[[docs/development/00-研发规范地图]]"
 }
 ```
 
-返回 `locationCode`、`siteCode`、`warehouseCode`、`isValid`、`message`。现场需求确认（2026-11-24）：识别 `LC.` 前缀并提取库位值，兼容直接传纯库位编码。长度约束针对提取值，最多 10 字符，不截断。返回 locationCode 为数据库库位值（不含协议前缀），最终写入 XCOUTD.LOC_0 同样使用该值。错误码：LOCATION_FORMAT_INVALID（422）、LOCATION_NOT_FOUND（404）、LOCATION_OUTSIDE_WAREHOUSE（422）、LOCATION_AMBIGUOUS（409）、LOCATION_LOOKUP_UNAVAILABLE（503）。
+返回 `locationCode`、`siteCode`、`warehouseCode`、`isValid`、`message`。现场需求确认（2026-11-24）：识别 `LC.` 前缀并提取库位值，兼容直接传纯库位编码。长度约束针对提取值，最多 10 字符，不截断。返回 locationCode 为数据库库位值（不含协议前缀），最终写入 XCOUTD.LOC_0 同样使用该值。站点和仓库一致性按 XTEST / COB 的后台配置独立开启，默认均关闭；库位仍须存在于对应帐套，扫码与最终提交使用相同规则。仅在两项均开启时保留精确范围内的重复库位拒绝；任一关闭时，只要满足启用条件的库位存在即可（明细仅保存编码）。siteCode、warehouseCode 仍为盘点表头信息，不表示库位唯一归属。错误码：LOCATION_FORMAT_INVALID（422）、LOCATION_NOT_FOUND（404）、LOCATION_OUTSIDE_WAREHOUSE（422）、LOCATION_AMBIGUOUS（409）、LOCATION_LOOKUP_UNAVAILABLE（503）。
 
 ### 3.3 扫描标签
 
