@@ -7,7 +7,7 @@ using StockCount.Core;
 
 namespace StockCount.Infrastructure;
 
-public sealed class CountWriteException(int statusCode, string code, string message) : Exception(message)
+public sealed class CountWriteException(int statusCode, string code, string message, Exception? innerException = null) : Exception(message, innerException)
 {
     public int StatusCode { get; } = statusCode;
     public string Code { get; } = code;
@@ -36,8 +36,8 @@ public interface IInventoryWriteRepository
 }
 
 /// <summary>
-/// Insert exactly one XCOUTD row and one dbo.StockCountSubmission journal row
-/// in the SAME SQL Server serializable transaction. Idempotency is durable.
+/// Insert exactly one XCOUTD row in a serializable transaction.
+/// New StockCount rows use their request UUID as AUUID_0; no auxiliary ERP table.
 /// Mutations are explicitly gated; no production writes by default.
 /// </summary>
 public sealed class SqlInventoryWriteRepository(string connectionString, CountWriteOptions options)
@@ -58,20 +58,10 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         if (string.IsNullOrWhiteSpace(countNumber) || countNumber.Length > 30 || requestId == Guid.Empty)
             throw new CountWriteException(400, "SUBMISSION_REQUEST_INVALID", "盘点单号或请求标识无效。");
 
-        const string query = """
-            SELECT S.Environment,S.CountNumber,S.RequestId,S.BoxNumber,
-                   CONVERT(nvarchar(40),S.DetailRowId) AS DetailId,
-                   S.StockUnit,S.QuantityStu AS SavedQtyStu,S.QuantityPcu AS SavedQtyPcu
-            FROM [dbo].[StockCountSubmission] S
-            WHERE S.Environment=@Environment AND S.CountNumber=@CountNumber
-              AND S.RequestId=@RequestId;
-            """;
+        var schema = EnvironmentSelector.TablePrefix(environment);
         await using var connection = await OpenAsync(ct);
-        var row = await connection.QuerySingleOrDefaultAsync<SubmissionRow>(
-            new CommandDefinition(query,
-                new { Environment=environment.Name, CountNumber=countNumber, RequestId=requestId },
-                cancellationToken:ct));
-        return row is null ? null : ToResult(row, false);
+        var row = await FindRequestAsync(connection, null, schema, countNumber, requestId, ct);
+        return row is null ? null : ToResult(row, environment.Name, countNumber, requestId, false);
     }
 
     public async Task<SaveCountItemResult> SubmitAsync(SelectedEnvironment environment,
@@ -110,12 +100,11 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 "需要配置1至5字符的专用 X3 审计用户编码。");
 
         var schema = EnvironmentSelector.TablePrefix(environment);
-        var payloadHash = CountWritePolicy.PayloadHash(environment.Name, countNumber,
-            request.RawQrCode, request.BoxNumber, request.CountedLocation, request.CountedQtyStu.Value);
 
         await using var connection = await OpenAsync(ct);
         await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(
             IsolationLevel.Serializable, ct);
+        var stage = "获取盘点事务锁";
         try
         {
             // Protect the same count+box across separate API processes.
@@ -137,33 +126,24 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(409, "COUNT_BUSY",
                     "当前箱码有其他设备正在提交，请稍后以相同请求ID重试。");
 
-            // Check idempotency BEFORE duplicate-box check, so a successful
-            // request replay returns its original response instead of a 409.
-            const string existingSql = """
-                SELECT S.Environment,S.CountNumber,S.RequestId,S.BoxNumber,
-                       CONVERT(nvarchar(40),S.DetailRowId) AS DetailId,
-                       S.StockUnit,S.QuantityStu AS SavedQtyStu,
-                       S.QuantityPcu AS SavedQtyPcu,S.PayloadHash
-                FROM [dbo].[StockCountSubmission] S WITH (UPDLOCK,HOLDLOCK)
-                WHERE S.Environment=@Environment
-                  AND S.CountNumber=@CountNumber AND S.RequestId=@RequestId;
-                """;
-            var existing = await connection.QuerySingleOrDefaultAsync<SubmissionRow>(
-                new CommandDefinition(existingSql,
-                    new { Environment=environment.Name, CountNumber=countNumber, RequestId=requestId },
-                    transaction, cancellationToken:ct));
+            // Recover only rows created by this app with the same native UUID.
+            stage = "查询 XCOUTD 原请求记录";
+            var existing = await FindRequestAsync(connection, transaction, schema, countNumber, requestId, ct);
             if (existing is not null)
             {
-                if (existing.PayloadHash is null ||
-                    !existing.PayloadHash.AsSpan().SequenceEqual(payloadHash))
+                if (!string.Equals(existing.BoxNumber, request.BoxNumber, StringComparison.Ordinal) ||
+                    !string.Equals(existing.LocationCode, request.CountedLocation, StringComparison.Ordinal) ||
+                    existing.SavedQtyStu != request.CountedQtyStu.Value ||
+                    existing.SavedQtyPcu != request.CountedQtyStu.Value)
                     throw new CountWriteException(409, "IDEMPOTENCY_PAYLOAD_MISMATCH",
-                        "同一个请求ID已经用于另一组盘点数据。");
+                        "同一请求ID对应的盘点箱号、库位或数量不一致，请核查盘点明细。");
                 await transaction.CommitAsync(ct);
-                return ToResult(existing, true);
+                return ToResult(existing, environment.Name, countNumber, requestId, true);
             }
 
             // Do not guess how Sage X3 creates ROWID. An identity-managed ROWID
             // is a prerequisite for this insertion adapter; fail closed otherwise.
+            stage = "检查 XCOUTD.ROWID";
             var identityCount = await connection.ExecuteScalarAsync<int>(
                 new CommandDefinition("""
                     SELECT COUNT(*) FROM sys.columns C
@@ -174,6 +154,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(503, "ERP_SCHEMA_UNSUPPORTED",
                     "XCOUTD.ROWID 不是已验证的数据库自增列，不允许直接插入。");
 
+            stage = "读取 XCOUTH 盘点单";
             var headerSql = $"""
                 SELECT H.STOFCY_0 AS SiteCode,H.WRH_0 AS WarehouseCode,
                        CAST(H.CUNSTA_0 AS int) AS StatusCode
@@ -191,6 +172,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(409, "COUNT_NOT_WRITABLE",
                     "盘点单当前状态尚未获批准写入。");
 
+            stage = "核验盘点库位";
             var scope = (options.LocationValidation ?? new LocationValidationOptions()).For(environment.Name);
             var matches = await connection.QuerySingleAsync<LocationLookup>(
                 new CommandDefinition(LocationLookupQuery.Sql(schema),
@@ -201,6 +183,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(locationError == "LOCATION_NOT_FOUND" ? 404 :
                     locationError == "LOCATION_AMBIGUOUS" ? 409 : 422, locationError, scope.Describe(locationError));
 
+            stage = "读取 XLABELDTL 箱标签";
             var labelSql = $"""
                 SELECT TOP (2) L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,
                        L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit,
@@ -236,6 +219,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 throw new CountWriteException(409, "UNIT_MAPPING_UNSUPPORTED",
                     "物料的包装单位/存货单位系数不是 1:1，不能在保证两数量列相等的前提下直接写入。");
 
+            stage = "检查 XCOUTD 重复箱号";
             var duplicateSql = $"""
                 SELECT COUNT_BIG(*) FROM {schema}.[XCOUTD] D WITH (UPDLOCK,HOLDLOCK)
                 WHERE D.CUNNUM_0=@CountNumber AND D.BOXNUM_0=@BoxNumber;
@@ -251,6 +235,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             // Every mandatory XCOUTD field is assigned explicitly except
             // ROWID, which the preflight above requires SQL Server IDENTITY to generate.
             // Unmapped optional business strings are blank (not SQL NULL).
+            stage = "插入 XCOUTD 盘点明细";
             var insertSql = $"""
                 INSERT INTO {schema}.[XCOUTD]
                     (UPDTICK_0,CUNNUM_0,PALNUM_0,BOXNUM_0,ITMREF_0,
@@ -262,7 +247,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                     (1,@CountNumber,N'',@BoxNumber,@ItemCode,
                      @LotNumber,@Location,N'',@StockUnit,@Quantity,@UnitFactor,
                      @Quantity,N'StockCount',GETDATE(),GETDATE(),
-                     CONVERT(binary(16),NEWID()),@AuditUser,@AuditUser);
+                     CONVERT(binary(16),@RequestId),@AuditUser,@AuditUser);
                 """;
             await using var insert = new SqlCommand(insertSql, connection, transaction);
             insert.Parameters.Add("@CountNumber", SqlDbType.NVarChar, 30).Value=countNumber;
@@ -272,6 +257,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             insert.Parameters.Add("@Location", SqlDbType.NVarChar, 10).Value=request.CountedLocation;
             insert.Parameters.Add("@StockUnit", SqlDbType.NVarChar, 3).Value=label.StockUnit;
             insert.Parameters.Add("@AuditUser", SqlDbType.NVarChar, 5).Value=options.AuditUser;
+            insert.Parameters.Add("@RequestId", SqlDbType.UniqueIdentifier).Value=requestId;
             var amount = insert.Parameters.Add("@Quantity", SqlDbType.Decimal);
             amount.Precision=28;
             amount.Scale=13;
@@ -284,41 +270,34 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (string.IsNullOrWhiteSpace(detailId))
                 throw new CountWriteException(503, "ERP_WRITE_FAILED", "XCOUTD 未返回新建 ROWID。");
 
-            const string journalSql = """
-                INSERT INTO [dbo].[StockCountSubmission]
-                    (Environment,CountNumber,RequestId,PayloadHash,BoxNumber,
-                     DetailRowId,StockUnit,QuantityStu,QuantityPcu)
-                VALUES
-                    (@Environment,@CountNumber,@RequestId,@PayloadHash,@BoxNumber,
-                     CONVERT(numeric(38,0),@DetailId),@StockUnit,@Quantity,@Quantity);
-                """;
-            await connection.ExecuteAsync(new CommandDefinition(journalSql, new {
-                Environment=environment.Name, CountNumber=countNumber,
-                RequestId=requestId, PayloadHash=payloadHash,
-                BoxNumber=label.BoxNumber, DetailId=detailId,
-                StockUnit=label.StockUnit, Quantity=qty
-            }, transaction, cancellationToken:ct));
-
+            stage = "提交 SQL 事务";
             await transaction.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
                 detailId,qty,qty,label.StockUnit,requestId,"Committed",false);
         }
-        catch (CountWriteException)
+        catch (CountWriteException error)
         {
-            await SafeRollbackAsync(transaction);
+            var rolledBack = await SafeRollbackAsync(transaction);
+            if (!rolledBack && error.Code != "SUBMISSION_OUTCOME_UNKNOWN")
+                throw new CountWriteException(503, "SUBMISSION_OUTCOME_UNKNOWN",
+                    "提交异常且回滚未确认，请查询原请求ID。", error);
             throw;
         }
         catch (SqlException error) when (error.Number is 2601 or 2627)
         {
             await SafeRollbackAsync(transaction);
             throw new CountWriteException(409, "IDEMPOTENCY_WRITE_CONFLICT",
-                "写入唯一记录发生冲突，请通过原 Idempotency-Key 查询已有提交结果，不要换新请求ID。");
+                "写入唯一记录发生冲突，请通过原 Idempotency-Key 查询已有提交结果，不要换新请求ID。", error);
         }
         catch (SqlException error) when (error.Number is 208 or 207 or 229 or 515 or 544 or 8101)
         {
-            await SafeRollbackAsync(transaction);
-            throw new CountWriteException(503,"ERP_SCHEMA_UNAVAILABLE",
-                "SQL Server 结构、权限或 ERP 必填字段不符合写入适配器要求；没有确认保存成功。");
+            var rolledBack = await SafeRollbackAsync(transaction);
+            if (!rolledBack)
+                throw new CountWriteException(503, "SUBMISSION_OUTCOME_UNKNOWN",
+                    "SQL 写入异常且回滚未确认，请查询原请求ID。", error);
+            throw new CountWriteException(503, "ERP_SCHEMA_UNAVAILABLE",
+                $"SQL Server 写入失败（{stage}，SQL 错误 {error.Number}）；事务已回滚，请联系管理员查看后台日志。",
+                error);
         }
         catch
         {
@@ -327,15 +306,40 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         }
     }
 
-    private static SaveCountItemResult ToResult(SubmissionRow row,bool replayed) =>
-        new(row.Environment,row.CountNumber,row.BoxNumber,row.DetailId,
-            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,row.RequestId,"Committed",replayed);
-
-    private static async Task SafeRollbackAsync(SqlTransaction tx)
+    // Use the same SQL Server binary conversion as the INSERT. Never equate
+    // another device's row with this UUID merely because its box number matches.
+    private static async Task<SubmissionRow?> FindRequestAsync(SqlConnection connection,
+        SqlTransaction? transaction, string schema, string countNumber, Guid requestId, CancellationToken ct)
     {
-        try { await tx.RollbackAsync(CancellationToken.None); }
-        catch (InvalidOperationException) { /* The server may have already completed the transaction. */ }
-        catch (SqlException) { /* Callers must query the original RequestId after an unknown outcome. */ }
+        var hint = transaction is null ? "" : " WITH (UPDLOCK,HOLDLOCK)";
+        var sql = $"""
+            SELECT TOP (2) D.BOXNUM_0 AS BoxNumber,D.LOC_0 AS LocationCode,
+                   CONVERT(nvarchar(40),D.ROWID) AS DetailId,
+                   D.PCU_0 AS StockUnit,D.QTYSTU_0 AS SavedQtyStu,D.QTYPCU_0 AS SavedQtyPcu
+            FROM {schema}.[XCOUTD] D{hint}
+            WHERE D.CUNNUM_0=@CountNumber
+              AND D.AUUID_0=CONVERT(binary(16),@RequestId)
+              AND D.PDAID_0=N'StockCount';
+            """;
+        var rows = (await connection.QueryAsync<SubmissionRow>(new CommandDefinition(sql,
+            new { CountNumber=countNumber, RequestId=requestId }, transaction,
+            cancellationToken:ct))).ToArray();
+        if (rows.Length > 1)
+            throw new CountWriteException(409, "SUBMISSION_AMBIGUOUS",
+                "同一请求识别码对应多条盘点明细，请管理员核查。");
+        return rows.SingleOrDefault();
+    }
+
+    private static SaveCountItemResult ToResult(SubmissionRow row, string environment,
+        string countNumber, Guid requestId, bool replayed) =>
+        new(environment,countNumber,row.BoxNumber,row.DetailId,
+            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,requestId,"Committed",replayed);
+
+    private static async Task<bool> SafeRollbackAsync(SqlTransaction tx)
+    {
+        try { await tx.RollbackAsync(CancellationToken.None); return true; }
+        catch (InvalidOperationException) { return false; }
+        catch (SqlException) { return false; }
     }
 
     private sealed class HeaderRow
@@ -357,13 +361,10 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
     private sealed class SubmissionRow
     {
-        public string Environment { get; set; } = "";
-        public string CountNumber { get; set; } = "";
         public string BoxNumber { get; set; } = "";
+        public string LocationCode { get; set; } = "";
         public string DetailId { get; set; } = "";
         public string StockUnit { get; set; } = "";
-        public Guid RequestId { get; set; }
-        public byte[]? PayloadHash { get; set; }
         public decimal SavedQtyStu { get; set; }
         public decimal SavedQtyPcu { get; set; }
     }

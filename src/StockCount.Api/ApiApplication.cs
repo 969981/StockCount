@@ -330,7 +330,7 @@ public static class ApiApplication
         });
         
         // Idempotent, transactional write. Actual mutation requires explicit
-        // server-side environment + schema-approval flags AND DBA journal migration.
+        // server-side environment + schema-approval flags; no auxiliary table.
         app.MapPost("/api/v1/inventory-counts/{countNumber}/items",
             async (HttpContext context, string countNumber, SaveCountItemRequest request,
                 IInventoryWriteRepository repository, ILogger<SqlInventoryWriteRepository> logger,
@@ -352,8 +352,8 @@ public static class ApiApplication
             }
             catch (CountWriteException error)
             {
-                logger.LogWarning("Count submit rejected: {Code}, {Environment}, {RequestId}",
-                    error.Code, environment.Name, requestId);
+                logger.LogWarning(error, "Count submit rejected: {Code}, {Environment}, {RequestId}, {Reason}",
+                    error.Code, environment.Name, requestId, error.Message);
                 return Error(error.StatusCode, error.Code, error.Message, environment.Name);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -397,7 +397,7 @@ public static class ApiApplication
                 logger.LogWarning(error, "Submission lookup failed: {Environment}, {RequestId}",
                     environment.Name, requestId);
                 return Error(503, "SUBMISSION_LOOKUP_UNAVAILABLE",
-                    "提交日志暂时不可查询，不能据此断言 ERP 未写入。", environment.Name);
+                    "盘点明细暂时不可查询，不能据此断言 ERP 未写入。", environment.Name);
             }
         });
         

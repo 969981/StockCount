@@ -36,18 +36,18 @@ POST /api/v1/inventory-counts/COUNT-DEMO-001/items
 
 ## 原子事务、重复与幂等
 
-后端使用一个 SQL Server Serializable 事务和 sp_getapplock 跨 API 进程锁定环境+盘点单+箱码；先查持久化请求，命中且载荷哈希相同就返回原结果（HTTP 200）；同 UUID 换了内容返回 409。之后在锁内再次查询 XCOUTD 的同单同箱记录，有重复即 409 BOX_ALREADY_RECORDED，提示“该箱号已扫描！”。
+后端使用一个 SQL Server Serializable 事务和 sp_getapplock 跨 API 进程锁定环境+盘点单+箱码；先查持久化请求，命中 XCOUTD.AUUID_0 且箱号、库位和两数量列一致就返回原结果（HTTP 200）；不一致返回 409。之后在锁内再次查询 XCOUTD 的同单同箱记录，有重复即 409 BOX_ALREADY_RECORDED，提示“该箱号已扫描！”。
 
-通过审核后 INSERT XCOUTD，再在**同一事务** INSERT dbo.StockCountSubmission 幂等记录，COMMIT 成功才返回 HTTP 201 status=Committed。ROWID 从数据库生成并作为字符串返回；所有 NOT NULL 业务列显式赋值、AUUID/时间在 SQL Server 生成。PALNUM_0 和 ECCVALMAJ_0 填空、PDAID_0 填 StockCount、审计用户由现场配置，**这些真实 X3 映射尚未现场审批**。若 XCOUTD.ROWID 不是 IDENTITY，接口返回 ERP_SCHEMA_UNSUPPORTED，禁止猜测 MAX(ROWID)+1。
+通过审核后仅 INSERT XCOUTD，COMMIT 成功才返回 HTTP 201 status=Committed。ROWID 从数据库生成并作为字符串返回；所有 NOT NULL 业务列显式赋值、AUUID 使用原请求 UUID 经 SQL Server binary(16) 转换，时间仍由 SQL Server 生成。PALNUM_0 和 ECCVALMAJ_0 填空、PDAID_0 填 StockCount、审计用户由现场配置，**这些真实 X3 映射尚未现场审批**。若 XCOUTD.ROWID 不是 IDENTITY，接口返回 ERP_SCHEMA_UNSUPPORTED，禁止猜测 MAX(ROWID)+1。
 
-幂等记录表必须与 ERP 表在同一 SQL Server 数据库：SQLite server-logs.db **只用于程序日志，不能用于原子提交幂等**。迁移为 [001_stockcount_submission.sql](../sql/migrations/001_stockcount_submission.sql)，仅 DBA 备份并授权后执行一次；API 不在启动时自动创建或改动表结构。
+不新增辅助幂等表；SQLite server-logs.db 仅用于程序日志。旧迁移脚本不再需要，保留为历史文件，不自动创建或删除任何数据库对象。
 
 GET /api/v1/submissions/{requestId}?countNumber=COUNT-DEMO-001 要携带同一环境/设备请求头：200 代表确认已保存，404 代表当前未查到已提交记录，503 代表结果无法确认。404 后重试也必须使用原 UUID；503 时绝不能据此推断保存失败。
 
 ## 启用 XTEST / COB 双帐套写入（各自默认关闭）
 
 1. DBA 在 XTEST 执行 [verify_xcountd_write_prerequisites.sql](../sql/read_only/verify_xcountd_write_prerequisites.sql) 只读检查，核对 19 列、ROWID IDENTITY、ERP 触发器、PCU/STU 和审计规则。
-2. 在授权维护窗口执行 SQL Server 幂等迁移 [001_stockcount_submission.sql](../sql/migrations/001_stockcount_submission.sql)，给 API 账号最小权限：XTEST 五表必要 SELECT + XTEST.XCOUTD INSERT + dbo.StockCountSubmission SELECT/INSERT；不要为测试账号赋 COB INSERT。
+2. 确认 API 账号具有必要的 SELECT 和 XCOUTD INSERT 权限，并在 XTEST 核验 AUUID_0 是否由触发器重写、ROWID 自增及重复箱号保护。无需创建其他表。
 3. Windows Tauri 后端管理器数据库设置页填写 X3 审计用户（1–5字符），独立勾选 XTEST 的结构已确认/允许写入。若要启用正式帐套，另外执行 [COB 只读前检](../sql/read_only/verify_cob_write_prerequisites.sql)、核验 COB 触发器/ROWID/单位/账号权限，并勾选 COB 结构已确认/允许写入。保存后停止并重新启动 C# Sidecar。
 4. 前台 MAUI 可选择 Test 或 Production，扫码与人工数量提交使用相同接口，服务端根据帐套独立开关决定是否写入 `XTEST.XCOUTD` 或 `COB.XCOUTD`。
 5. 先在 XTEST 验证 201/200/409/503、并发和失败回滚；在专门批准窗口再对 COB 使用受控单据做端到端验证。现场还需评估其他旧 ERP 写入渠道产生的并发冲突。

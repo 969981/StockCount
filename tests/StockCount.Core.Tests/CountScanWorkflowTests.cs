@@ -148,6 +148,25 @@ public sealed class CountScanWorkflowTests
     }
 
     [Fact]
+    public async Task ConfirmedSqlRejectionKeepsBoxAndQuantityButClearsPendingRequest()
+    {
+        var fake = new FakeGateway { RejectSchemaAtCommit = true };
+        var store = new MemoryStore();
+        var workflow = new CountScanWorkflow(fake, "COUNT-DEMO-001", "测试盘点单", "Test", store);
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        workflow.EnterManualQuantity(100m);
+        var result = await workflow.SubmitAsync();
+        Assert.Equal("Error", result.Kind);
+        Assert.Contains("SQL Server", result.Message);
+        Assert.Null(workflow.PendingRequestId);
+        Assert.Null(store.Draft);
+        Assert.NotNull(workflow.Box);
+        Assert.Equal(100m, workflow.ManualQuantity);
+        Assert.Equal("LOC-DEMO01", workflow.Location);
+    }
+
+    [Fact]
     public async Task UnknownOutcomePreservesDraftAndRequestId()
     {
         var fake=new FakeGateway { ThrowDuringSubmit=true };
@@ -302,6 +321,7 @@ public sealed class CountScanWorkflowTests
         public string? LastSubmittedQr { get; private set; }
         public string? LastLabelQr { get; private set; }
         public bool RejectDuplicateAtCommit { get; set; }
+        public bool RejectSchemaAtCommit { get; set; }
         public bool ThrowDuringSubmit { get; set; }
         public int LabelRequests { get; private set; }
         public int LocationRequests { get; private set; }
@@ -334,6 +354,8 @@ public sealed class CountScanWorkflowTests
             LastRequestId=requestId;
             LastSubmittedQr=qr;
             LastSubmittedLocation=location;
+            if (RejectSchemaAtCommit)
+                throw new ScanCommitRejectedException("ERP_SCHEMA_UNAVAILABLE", "SQL Server 写入失败，事务已回滚。");
             if (RejectDuplicateAtCommit)
                 throw new ScanCommitRejectedException("BOX_ALREADY_RECORDED","该箱号已扫描！");
             if (ThrowDuringSubmit) throw new IOException("Simulated dropped connection");

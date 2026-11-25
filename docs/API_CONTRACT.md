@@ -40,7 +40,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | POST | `/api/v1/labels/resolve` | 解析完整箱标签 QR，查物料等 | P0 |
 | GET | `/api/v1/inventory-counts/{countNumber}/items` | 本单明细分页查询与重复提示 | P1 / 防重可内部实现 |
 | POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | XTEST/COB 均已编码真实 SQL 事务，按帐套独立核验与显式启用 |
-| GET | `/api/v1/submissions/{requestId}?countNumber=...` | 查询数据库持久提交记录，避免超时双写 | 已编码，依赖 dbo.StockCountSubmission |
+| GET | `/api/v1/submissions/{requestId}?countNumber=...` | 查询数据库持久提交记录，避免超时双写 | 查询原有 XCOUTD.AUUID_0，无需附加表 |
 
 **没有** Create / Delete / Close / AdjustStock 端点；未来若追加须单独需求版本。
 
@@ -207,3 +207,6 @@ up: "[[docs/development/00-研发规范地图]]"
 
 ### 箱标签匹配策略（现场更新）
 扫码解析和提交事务共用 `LabelLookupPolicy`：优先以完整二维码匹配当前帐套 `XLABELDTL.QRCOD_0`；仅零匹配时提取唯一完整的 `ID.` 字段，以 `PID_0` 查询。ID 长度 1–20，仅允许 ASCII 字母数字及 `| - _ .`，不截断。多条匹配返回 409，数据库异常不触发回退；提交复核数据库返回箱号、重复箱、单位及实盘量，原扫码值及 UUID 保留。不按 STA_0 过滤。
+
+### 2026-11-25 现场写入调整
+不再依赖辅助幂等表。新提交在原有 XCOUTD.AUUID_0 存储请求 UUID（SQL Server binary(16) 转换），同帐套、同单号、同 UUID 且 PDAID_0=StockCount 查询原记录。重放核对箱号、库位及两数量列，不再保存完整请求哈希。正常新扫码及事务内仍按 CUNNUM_0 + BOXNUM_0 拒绝重复。旧版随机 AUUID 的记录无法按旧请求 UUID 追溯，仍受同单同箱防重保护。无需执行旧迁移脚本。

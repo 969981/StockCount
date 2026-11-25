@@ -168,7 +168,7 @@ public sealed class StockCountApiClient : ICountScanGateway
             "ERP_WRITE_UNAVAILABLE" or "SCHEMA_NOT_APPROVED" or
             "COUNT_QUANTITY_INVALID" or "COUNT_NOT_WRITABLE" or
             "UNIT_MAPPING_UNSUPPORTED" or "LOCATION_INVALID" or
-            "BOX_MISMATCH" or "LABEL_NOT_FOUND" or "LABEL_AMBIGUOUS" or "ERP_SCHEMA_UNSUPPORTED" or "AUDIT_USER_NOT_CONFIGURED")
+            "BOX_MISMATCH" or "LABEL_NOT_FOUND" or "LABEL_AMBIGUOUS" or "ERP_SCHEMA_UNSUPPORTED" or "ERP_SCHEMA_UNAVAILABLE" or "AUDIT_USER_NOT_CONFIGURED")
         {
             throw new ScanCommitRejectedException(error.Code,error.Message);
         }

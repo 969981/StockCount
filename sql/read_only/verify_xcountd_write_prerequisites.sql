@@ -34,13 +34,10 @@ JOIN sys.columns C ON C.object_id=IC.object_id AND C.column_id=IC.column_id
 WHERE IDX.object_id=OBJECT_ID(N'[XTEST].[XCOUTD]')
 ORDER BY IDX.name,IC.key_ordinal;
 
--- 3. Journal table and write privileges on THIS SQL Server user.
-SELECT OBJECT_ID(N'[dbo].[StockCountSubmission]',N'U') AS [幂等记录表ID],
-       HAS_PERMS_BY_NAME(N'XTEST.XCOUTD',N'OBJECT',N'INSERT') AS [允许测试明细写入],
+-- 3. Native detail identifiers and write permissions (no auxiliary table).
+SELECT HAS_PERMS_BY_NAME(N'XTEST.XCOUTD',N'OBJECT',N'INSERT') AS [允许测试明细写入],
        HAS_PERMS_BY_NAME(N'XTEST.XCOUTD',N'OBJECT',N'SELECT') AS [允许测试明细查询],
-       HAS_PERMS_BY_NAME(N'dbo.StockCountSubmission',N'OBJECT',N'INSERT') AS [允许写幂等记录],
-       HAS_PERMS_BY_NAME(N'dbo.StockCountSubmission',N'OBJECT',N'SELECT') AS [允许读幂等记录],
-       HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'INSERT') AS [生产写权限_建议为0];
+       COL_LENGTH(N'XTEST.XCOUTD',N'AUUID_0') AS [请求识别码字节长度];
 
 -- 4. Unit and quantity data: only 1:1 labels currently qualify for direct
 --    write where QTYSTU = QTYPCU and PCU = STU. No status STA filtering.

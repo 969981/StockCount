@@ -237,7 +237,7 @@ public sealed class CountScanWorkflow(
             catch (Exception)
             {
                 // Never clear or generate a new UUID after a possibly committed request.
-                return new CountScanFeedback("Unknown", "网络异常，提交结果待确认，请查询原请求ID。");
+                return new CountScanFeedback("Unknown", "提交结果尚未确认（连接或服务端异常），请查询原请求ID。");
             }
 
             _committedAwaitingUi = true;
