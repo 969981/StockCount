@@ -137,6 +137,8 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-l
 
 ### 只编译 Avalonia Windows 原生管理器及 Portable ZIP
 
+不使用发布脚本、直接执行 dotnet 命令：见 [Avalonia 双 EXE 单行 dotnet publish 手册](StockCount-Avalonia-SingleFile-Publish-Guide.md)。
+
 **推荐单行 PowerShell 命令**（一键编译、发布和压缩，无需 Git、Node.js 或 Rust）：
 
 ~~~powershell
