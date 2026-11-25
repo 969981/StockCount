@@ -64,9 +64,14 @@ public sealed class CountScanWorkflow(
     public bool HasUnsavedDraft => Box is not null || ManualQuantity.HasValue;
     public bool HasUnresolvedSubmission => PendingRequestId.HasValue && !_committedAwaitingUi;
 
+    private static bool HasExplicitLocationPrefix(string raw) =>
+        LocationScanPolicy.Normalize(raw).StartsWith("LC.", StringComparison.OrdinalIgnoreCase);
+
+    // This is only a routing hint, not a successful label identification.
     public static bool LooksLikeBoxQr(string raw) =>
-        raw.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) &&
-        raw.Contains("@@", StringComparison.Ordinal);
+        !HasExplicitLocationPrefix(raw) &&
+        !LocationScanPolicy.TryParse(raw, out _) &&
+        raw.Length is > 0 and <= 200 && !raw.Any(char.IsControl);
 
     public async Task<bool> RestorePendingAsync(CancellationToken ct = default)
     {
@@ -110,11 +115,15 @@ public sealed class CountScanWorkflow(
                 return new CountScanFeedback("DraftNeedsConfirmation",
                     "当前箱尚未提交，继续扫描会丢弃已输入数量。");
 
-            if (!LooksLikeBoxQr(raw))
+            var explicitLocation = HasExplicitLocationPrefix(raw);
+            var possibleLocation = LocationScanPolicy.TryParse(raw, out _);
+            if (explicitLocation && !possibleLocation)
+                return new CountScanFeedback("Error", LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"));
+
+            if (possibleLocation)
             {
-                if (!LocationScanPolicy.TryParse(raw, out _))
-                    return new CountScanFeedback("Error", LocationScanPolicy.Describe("LOCATION_FORMAT_INVALID"));
-                // Preserve the original scan so the server independently validates the protocol.
+                // For short, unprefixed values, verify the location before treating
+                // the same raw value as a possible label. Explicit LC is never a box.
                 var result = await gateway.ResolveLocationAsync(CountNumber, raw, ct);
                 var location = result.Location;
                 if (!string.IsNullOrWhiteSpace(location))
@@ -126,8 +135,14 @@ public sealed class CountScanWorkflow(
                     }
                     return new CountScanFeedback("LocationUpdated");
                 }
-                return new CountScanFeedback("Error", result.Message ?? LocationScanPolicy.Describe(result.ErrorCode ?? "LOCATION_LOOKUP_UNAVAILABLE"));
+                if (explicitLocation || result.ErrorCode != "LOCATION_NOT_FOUND")
+                    return new CountScanFeedback("Error", result.Message ?? LocationScanPolicy.Describe(result.ErrorCode ?? "LOCATION_LOOKUP_UNAVAILABLE"));
             }
+
+            // QRCOD_0 is the authority; do not require ID. or @@ in a box QR.
+            // Keep the original data (apart from scanner CR/LF terminators).
+            if (raw.Length > 200 || raw.Any(char.IsControl))
+                return new CountScanFeedback("Error", "二维码格式无效：长度不能超过 200 个字符，且不能含控制字符。");
 
             if (string.IsNullOrWhiteSpace(Location))
                 return new CountScanFeedback("Error", "请先扫描盘点库位！");
