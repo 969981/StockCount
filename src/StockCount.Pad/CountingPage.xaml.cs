@@ -30,13 +30,14 @@ public partial class CountingPage : ContentPage
             selected.Description, api.EnvironmentName, pendingStore);
         CountNumberText.Text = selected.CountNumber;
         CountNameText.Text = selected.Description;
-        WarehouseText.Text = selected.WarehouseCode;
+        WarehouseText.Text = string.Join(" / ", new[] { selected.SiteCode, selected.WarehouseCode }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+        PermissionText.Text = selected.CanSubmit ? "可提交" : "只读";
+        PermissionText.TextColor = Color.FromArgb(selected.CanSubmit ? "#276C43" : "#627181");
         var production = api.EnvironmentName == "Production";
         EnvironmentLabel.Text = production ? "正式 · COB" : "测试 · XTEST";
-        EnvironmentLabel.TextColor = Color.FromArgb(production ? "#9B5C11" : "#305CB6");
-        EnvironmentBanner.BackgroundColor = Color.FromArgb(production ? "#FFF5E6" : "#EDF3FF");
-        EnvironmentBanner.Stroke = new SolidColorBrush(
-            Color.FromArgb(production ? "#F3DEBA" : "#DCE8FF"));
+        EnvironmentLabel.TextColor = Color.FromArgb(production ? "#9B5C11" : "#31537C");
+        EnvironmentBanner.BackgroundColor = Color.FromArgb(production ? "#FFF5E6" : "#F0F4F9");
         RefreshScreen();
     }
 
@@ -158,6 +159,7 @@ public partial class CountingPage : ContentPage
         BusyIndicator.IsVisible = true;
         BusyIndicator.IsRunning = true;
         RefreshScreen();
+        var focusQuantity = false;
         try
         {
             var result = await _workflow.HandleScanAsync(raw);
@@ -165,8 +167,7 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Text = "";
             RefreshScreen();
             await ShowFeedbackAsync(result);
-            if (result.Kind == "BoxResolved")
-                QuantityInput.Focus();
+            focusQuantity = result.Kind == "BoxResolved";
         }
         catch (Exception error)
         {
@@ -179,6 +180,8 @@ public partial class CountingPage : ContentPage
             BusyIndicator.IsRunning = false;
             BusyIndicator.IsVisible = false;
             RefreshScreen();
+            if (focusQuantity && _pageVisible && QuantityInput.IsEnabled)
+                QuantityInput.Focus();
         }
     }
 
@@ -356,31 +359,26 @@ public partial class CountingPage : ContentPage
     private void RefreshScreen()
     {
         var located = !string.IsNullOrWhiteSpace(_workflow.Location);
-        LocationText.Text = _workflow.Location ?? "请先扫描盘点库位";
+        LocationText.Text = _workflow.Location ?? "—";
         LocationStatusText.Text = located ? "✓ 已确认" : "未扫描";
-        LocationStatusText.TextColor = Color.FromArgb(located ? "#19805B" : "#8C9BB1");
-        LocationText.TextColor = Color.FromArgb(located ? "#254D9E" : "#7489AA");
-        LocationCard.BackgroundColor = Color.FromArgb(located ? "#F0F5FF" : "#FFFFFF");
-        LocationCard.Stroke = new SolidColorBrush(
-            Color.FromArgb(located ? "#D5E3FF" : "#C7D5EB"));
-        LocationHintText.Text = located
-            ? "重新扫描有效库位即可切换"
-            : "按 PDA 实体扫码键，不支持手动修改";
-        BoxEmptyHintText.Text = located
-            ? "已确认库位，按下 PDA 实体扫码键"
-            : "先扫描库位，再扫描箱码";
+        LocationStatusText.TextColor = Color.FromArgb(located ? "#287348" : "#667687");
+        LocationText.TextColor = Color.FromArgb(located ? "#154A87" : "#667687");
+        LocationHintText.Text = located ? "重扫可切换" : "请扫描库位";
+        BoxEmptyTitleText.Text = located ? "请扫描箱码" : "请先扫描库位";
+        BoxEmptyHintText.Text = "使用 PDA 实体扫码键";
 
         var box = _workflow.Box;
         BoxFields.IsVisible = box is not null;
         BoxEmptyPanel.IsVisible = box is null;
-        BoxStateText.Text = box is null ? "等待扫码" : "✓ 读取完成";
+        BoxStateText.Text = box is null ? "等待扫码" : "已读取";
+        BoxStateText.TextColor = Color.FromArgb(box is null ? "#627181" : "#287348");
         BoxNumberText.Text = box?.BoxNumber ?? "";
         ItemCodeText.Text = box?.ItemCode ?? "";
         ItemNameText.Text = box?.ItemName ?? "";
         SpecificationText.Text = box?.Specification ?? "";
         LotText.Text = box?.LotNumber ?? "";
         StockUnitText.Text = box?.StockUnit ?? "";
-        QuantityUnitText.Text = box?.StockUnit ?? "STU";
+        QuantityUnitText.Text = box?.StockUnit ?? "—";
         if (box is null && !_workflow.IsSuccessAwaitingDismiss)
             QuantityInput.Text = "";
 
