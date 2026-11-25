@@ -129,6 +129,18 @@
           </VerticalStackLayout>
         </Border>
 
+        <Border BackgroundColor="White" Stroke="#E3E9F1" StrokeShape="RoundRectangle 12" Padding="15">
+          <VerticalStackLayout Spacing="8">
+            <Label Text="客户端性能诊断" Style="{StaticResource SectionTitle}"/>
+            <Label Text="最近512个阶段耗时，仅内存保留；不记录箱码、数量或密钥。" Style="{StaticResource SecondaryText}"/>
+            <Label x:Name="PerformanceText" Text="点击刷新查看采样" FontSize="12" LineBreakMode="WordWrap"/>
+            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="6">
+              <Button Text="刷新" Clicked="RefreshPerformance_Clicked" Style="{StaticResource SecondaryAction}"/>
+              <Button Grid.Column="1" Text="复制" Clicked="CopyPerformance_Clicked" Style="{StaticResource SecondaryAction}"/>
+              <Button Grid.Column="2" Text="清空" Clicked="ClearPerformance_Clicked" Style="{StaticResource SecondaryAction}"/>
+            </Grid>
+          </VerticalStackLayout>
+        </Border>
         <Border BackgroundColor="#EEF3FB" Stroke="#E1E9F6"
                 StrokeShape="RoundRectangle 10" Padding="13">
           <VerticalStackLayout Spacing="7">
