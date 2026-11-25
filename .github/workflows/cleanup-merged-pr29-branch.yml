@@ -40,13 +40,9 @@ jobs:
             fi
             if [ -n "$(git ls-remote --heads origin "$ref")" ]; then failed=1; fi
           done <<'BRANCHES'
-          feat/pda-compact-counting-layout fd5a286be370c1d88ce74afe2f13ad4b783772a7
-          fix/allow-all-count-statuses 03cf522057e0320858e122a9ee496200a646e83f
-          fix/box-qr-classification 113900640f9e486880c81bb91574238d67041827
-          fix/count-stock-unit-mapping 067ebe3ea19287d478de4a252a5748c7b45dbb29
-          fix/pda-nonblocking-success-toast fbec7ab819ef2b37108ad40b0ef7ef5d1947f473
-          fix/submit-sql-diagnostics-and-log-copy 38a8b652c4042db6f29397eb67fec69f8d2d24b7
-          perf/pda-client-hotpath 68f14d53b32c3431a08d48ae5b9db71d1d2637ec
+          feat/avalonia-singlefile-portable bc08e8dfbc6a8e502e201fd331a7371ac7bf3d14
+          fix/cross-count-box-duplicate 607edb55b91078297fe89a1ad8fbee1d8f007ee3
+          fix/pda-quantity-text-clipping 9a9ff0741660a54beda7e6cb76d720558e3b3463
           BRANCHES
           git ls-remote --heads origin
           exit "$failed"
