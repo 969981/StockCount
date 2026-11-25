@@ -166,7 +166,8 @@ up: "[[docs/development/00-研发规范地图]]"
 | 400 | `COUNT_QUANTITY_REQUIRED` | 箱内数量缺失，不能以默认0代替 |
 | 400 | `COUNT_QUANTITY_INVALID` | 空值/精度/值域违反批准规则 |
 | 404 | `COUNT_NOT_FOUND` | 没有该盘点单 |
-| 404 | `LABEL_NOT_FOUND` | 未查询到标签 |
+| 404 | `LABEL_NOT_FOUND` | 完整二维码及可提取箱号均未匹配标签 |
+| 409 | `LABEL_AMBIGUOUS` | 完整二维码或回退箱号匹配多条标签，拒绝任意选取 |
 | 422 | `LOCATION_INVALID` | 库位不存在/不属于允许范围/超长 |
 | 422 | `BOX_NUMBER_TOO_LONG` | PID 无法安全写入 BOXNUM(20) |
 | 409 | `COUNT_NOT_WRITABLE` | 单据可浏览但不允许该状态提交 |
@@ -203,3 +204,6 @@ up: "[[docs/development/00-研发规范地图]]"
 - 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+
+### 箱标签匹配策略（现场更新）
+扫码解析和提交事务共用 `LabelLookupPolicy`：优先以完整二维码匹配当前帐套 `XLABELDTL.QRCOD_0`；仅零匹配时提取唯一完整的 `ID.` 字段，以 `PID_0` 查询。ID 长度 1–20，仅允许 ASCII 字母数字及 `| - _ .`，不截断。多条匹配返回 409，数据库异常不触发回退；提交复核数据库返回箱号、重复箱、单位及实盘量，原扫码值及 UUID 保留。不按 STA_0 过滤。
