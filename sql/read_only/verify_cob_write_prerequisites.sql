@@ -34,21 +34,10 @@ JOIN sys.columns C ON C.object_id=IC.object_id AND C.column_id=IC.column_id
 WHERE IDX.object_id=OBJECT_ID(N'[COB].[XCOUTD]')
 ORDER BY IDX.name,IC.key_ordinal;
 
--- 3. Journal table and write privileges on THIS SQL Server user.
-SELECT OBJECT_ID(N'[dbo].[StockCountSubmission]',N'U') AS [幂等记录表ID],
-       HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'INSERT') AS [允许正式明细写入],
+-- 3. Native detail identifiers and write permissions (no auxiliary table).
+SELECT HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'INSERT') AS [允许正式明细写入],
        HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'SELECT') AS [允许正式明细查询],
-       HAS_PERMS_BY_NAME(N'dbo.StockCountSubmission',N'OBJECT',N'INSERT') AS [允许写幂等记录],
-       HAS_PERMS_BY_NAME(N'dbo.StockCountSubmission',N'OBJECT',N'SELECT') AS [允许读幂等记录],
-       HAS_PERMS_BY_NAME(N'COB.XCOUTD',N'OBJECT',N'INSERT') AS [正式明细写入权限_需授权];
-
--- 3b. Verify SQL Server uniqueness and atomic journal installation.
--- Both Test and Production use one dbo journal keyed by Environment + CountNumber + UUID.
--- This checks permissions only; it never creates objects or updates ERP.
-SELECT PK.name AS [幂等主键],PK.is_primary_key AS [主键],PK.is_unique AS [唯一]
-FROM sys.indexes PK
-WHERE PK.object_id=OBJECT_ID(N'[dbo].[StockCountSubmission]')
-  AND PK.is_primary_key=1;
+       COL_LENGTH(N'COB.XCOUTD',N'AUUID_0') AS [请求识别码字节长度];
 
 -- 4. Unit and quantity data: only 1:1 labels currently qualify for direct
 --    write where QTYSTU = QTYPCU and PCU = STU. No status STA filtering.
