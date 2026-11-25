@@ -139,6 +139,14 @@ pwsh -NoProfile -File .\scripts\build-local.ps1 -Target Windows -Version 0.2.0-l
 
 不使用发布脚本、直接执行 dotnet 命令：见 [Avalonia 双 EXE 单行 dotnet publish 手册](StockCount-Avalonia-SingleFile-Publish-Guide.md)。
 
+一条命令发布完整后台（管理器 csproj 自动发布 API 并汇总两个 EXE）：
+
+~~~powershell
+dotnet publish .\src\StockCount.Server.Desktop\StockCount.Server.Desktop.csproj -c Release -r win-x64 -o .\publish\avalonia-portable
+~~~
+
+仅在命令成功退出后使用输出目录。不要指向实际安装目录。
+
 **推荐单行 PowerShell 命令**（一键编译、发布和压缩，无需 Git、Node.js 或 Rust）：
 
 ~~~powershell
