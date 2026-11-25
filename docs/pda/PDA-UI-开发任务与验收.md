@@ -90,3 +90,16 @@ Core 已新增草稿确认、成功显示后清箱、重启模拟恢复同 UUID 
 - [[docs/TEST_PLAN|全局测试]] · [Markdown](../TEST_PLAN.md)
 - [[docs/IMPLEMENTATION_PLAN|全局研发计划]] · [Markdown](../IMPLEMENTATION_PLAN.md)
 - [MAUI工程](../../src/StockCount.Pad/README.md)
+
+## 2026-11-25 V2 紧凑布局（用户确认 HTML 原型）
+
+| 验收项 | 要求 |
+|---|---|
+| PDA-V2-01 | 48dp导航、紧凑表头和库位、平面分区，移除常驻数量说明 |
+| PDA-V2-02 | 6个字段对齐，长值换行；320–480dp下可滚动阅读 |
+| PDA-V2-03 | 数量框25sp、单位内嵌右侧、底栏固定；扫码完成后可聚焦 |
+| PDA-V2-04 | 整数/小数、真实提交、重复检查及未知结果保护保持原样 |
+| PDA-V2-05 | 400ms Toast 不阻塞扫码，成功清箱保留库位 |
+| PDA-V2-06 | 实体扫码与IME下数量框/按钮可操作；无模拟扫码入口 |
+
+源码实现后须取得Android构建和真实设备视觉/操作验收，不能以HTML预览替代。

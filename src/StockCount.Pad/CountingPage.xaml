@@ -3,144 +3,117 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.CountingPage"
              NavigationPage.HasNavigationBar="False"
-             Title="扫码盘点" BackgroundColor="{StaticResource PageBackground}">
-  <!-- Three zones from HTML: compact header, scrollable scan details, fixed submit bar. -->
+             Title="扫码盘点" BackgroundColor="White">
+  <!-- Approved V2 prototype: flat sections, dense fields, fixed action bar. -->
   <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="0">
-
-    <Grid Grid.Row="0" BackgroundColor="White"
-          ColumnDefinitions="Auto,*,Auto" Padding="8,6,10,6"
-          HeightRequest="60">
-      <Button Text="‹" Style="{StaticResource IconButton}"
-              Clicked="Back_Clicked"
+    <Grid Grid.Row="0" RowDefinitions="48,1" ColumnDefinitions="44,*,Auto" BackgroundColor="White">
+      <Button Text="‹" FontSize="27" Padding="0" BackgroundColor="Transparent"
+              TextColor="#263645" Clicked="Back_Clicked"
               SemanticProperties.Description="返回盘点单列表"/>
-      <Label Grid.Column="1" Text="扫码盘点" Style="{StaticResource PageTitle}"
-             Margin="6,0,0,0"/>
-      <Button Grid.Column="2" Text="☷" Style="{StaticResource IconButton}"
-              Clicked="History_Clicked"
+      <Label Grid.Column="1" Text="扫码盘点" FontSize="18" FontAttributes="Bold"
+             TextColor="#17232F" VerticalOptions="Center"/>
+      <Button Grid.Column="2" Text="▤ 已盘记录" FontSize="13" Padding="12,0"
+              BackgroundColor="Transparent" TextColor="#263645" Clicked="History_Clicked"
               SemanticProperties.Description="打开当前单的已盘记录"/>
+      <BoxView Grid.Row="1" Grid.ColumnSpan="3" Color="#D9DFE5"/>
     </Grid>
-
     <ScrollView Grid.Row="1" VerticalScrollBarVisibility="Default">
-      <VerticalStackLayout Padding="14,12,14,16" Spacing="11">
-
-        <Border x:Name="EnvironmentBanner" BackgroundColor="#EDF3FF"
-                Stroke="#DCE8FF" StrokeShape="RoundRectangle 10" Padding="12,10">
-          <Grid ColumnDefinitions="*,Auto">
-            <Label x:Name="EnvironmentLabel" Text="测试 · XTEST"
-                   TextColor="#305CB6" FontAttributes="Bold" FontSize="13"
-                   VerticalOptions="Center"/>
-            <HorizontalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
-              <Label Text="●" FontSize="10" TextColor="#13A678"/>
-              <Label x:Name="ConnectionStateText" Text="等待扫码"
-                     TextColor="#687D9B" FontSize="11"/>
-            </HorizontalStackLayout>
+      <VerticalStackLayout Spacing="0">
+        <Border x:Name="EnvironmentBanner" BackgroundColor="#F0F4F9"
+                Stroke="#DCE3EA" StrokeThickness="0" Padding="12,5" MinimumHeightRequest="30">
+          <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+            <Label x:Name="EnvironmentLabel" Text="测试 · XTEST" TextColor="#31537C"
+                   FontAttributes="Bold" FontSize="12" VerticalOptions="Center"/>
+            <Label x:Name="ConnectionStateText" Grid.Column="1" Text="等待扫码"
+                   TextColor="#627181" FontSize="12" HorizontalTextAlignment="End"
+                   VerticalOptions="Center" LineBreakMode="WordWrap"/>
           </Grid>
         </Border>
-
-        <Border BackgroundColor="White" Stroke="#E5EAF1"
-                StrokeShape="RoundRectangle 11" Padding="13,12">
-          <VerticalStackLayout Spacing="4">
-            <Label Text="当前盘点单" Style="{StaticResource SecondaryText}" FontSize="11"/>
-            <Label x:Name="CountNumberText" FontAttributes="Bold" FontSize="16"
-                   TextColor="#1C2D48" LineBreakMode="MiddleTruncation"/>
-            <Grid ColumnDefinitions="*,Auto">
-              <Label x:Name="CountNameText" TextColor="#71809A" FontSize="12"
-                     LineBreakMode="TailTruncation" MaxLines="2"
-                     VerticalOptions="Center"/>
-              <Label Grid.Column="1" x:Name="WarehouseText"
-                     TextColor="#8292AA" FontSize="11"
-                     VerticalOptions="Center" Margin="6,0,0,0"/>
-            </Grid>
-          </VerticalStackLayout>
-        </Border>
-
-        <Border x:Name="LocationCard" BackgroundColor="#FFFFFF"
-                Stroke="#C7D5EB" StrokeDashArray="4,3"
-                StrokeShape="RoundRectangle 12" Padding="14,14">
-          <VerticalStackLayout Spacing="7">
-            <Grid ColumnDefinitions="*,Auto">
-              <Label Text="盘点库位 · 只允许扫码"
-                     TextColor="#617493" FontSize="12"/>
-              <Label Grid.Column="1" x:Name="LocationStatusText"
-                     Text="未扫描" TextColor="#8C9BB1"
-                     FontSize="11" FontAttributes="Bold"/>
-            </Grid>
-            <Label x:Name="LocationText" Text="请先扫描盘点库位"
-                   FontSize="20" FontAttributes="Bold" TextColor="#7489AA"
-                   LineBreakMode="MiddleTruncation"
+        <BoxView Color="#DCE3EA" HeightRequest="1"/>
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10"
+              RowSpacing="4" Padding="12,10,12,11">
+          <Label x:Name="CountNumberText" FontSize="15" FontAttributes="Bold"
+                 TextColor="#17232F" LineBreakMode="CharacterWrap"/>
+          <Label x:Name="PermissionText" Grid.Column="1" FontSize="11" TextColor="#276C43"
+                 VerticalOptions="Center" HorizontalTextAlignment="End"/>
+          <Label x:Name="CountNameText" Grid.Row="1" FontSize="13" TextColor="#17232F"
+                 LineBreakMode="WordWrap" VerticalOptions="Center"/>
+          <Label x:Name="WarehouseText" Grid.Row="1" Grid.Column="1" FontSize="12"
+                 TextColor="#627181" HorizontalTextAlignment="End" VerticalOptions="Center"/>
+        </Grid>
+        <BoxView Color="#D7DDE3" HeightRequest="1"/>
+        <Border x:Name="LocationCard" BackgroundColor="#F5F8FB" StrokeThickness="0"
+                Padding="12,9,12,10">
+          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
+                RowSpacing="5" ColumnSpacing="8">
+            <Label Text="盘点库位" FontSize="13" FontAttributes="Bold" TextColor="#44515F"/>
+            <Label x:Name="LocationStatusText" Grid.Column="1" Text="未扫描"
+                   FontSize="12" TextColor="#667687" HorizontalTextAlignment="End"/>
+            <Label x:Name="LocationText" Grid.Row="1" Text="—" FontSize="25"
+                   FontAttributes="Bold" TextColor="#154A87" LineBreakMode="CharacterWrap"
                    SemanticProperties.Description="当前盘点库位，只能通过扫描修改"/>
-            <Label x:Name="LocationHintText" Text="按 PDA 实体扫码键，不支持手动修改"
-                   TextColor="#8290A9" FontSize="11"/>
-          </VerticalStackLayout>
+            <Label x:Name="LocationHintText" Grid.Row="1" Grid.Column="1"
+                   Text="请扫描库位" TextColor="#667687" FontSize="12"
+                   VerticalOptions="Center" HorizontalTextAlignment="End"/>
+          </Grid>
         </Border>
-
-        <Border BackgroundColor="White" Stroke="#E5EAF2"
-                StrokeShape="RoundRectangle 12" Padding="13,13">
-          <VerticalStackLayout Spacing="11">
-            <Grid ColumnDefinitions="*,Auto">
-              <Label Text="当前箱信息" Style="{StaticResource SectionTitle}"/>
-              <Label x:Name="BoxStateText" Grid.Column="1" Text="等待扫码"
-                     TextColor="#8290A9" FontSize="11"/>
+        <BoxView Color="#CDD7E0" HeightRequest="1"/>
+        <Grid ColumnDefinitions="*,Auto" Padding="12,11,12,8">
+          <Label Text="当前箱信息" FontSize="14" FontAttributes="Bold" TextColor="#17232F"/>
+          <Label x:Name="BoxStateText" Grid.Column="1" Text="等待扫码"
+                 FontSize="12" TextColor="#627181" VerticalOptions="Center"/>
+        </Grid>
+        <BoxView Color="#E0E5E9" HeightRequest="1"/>
+        <VerticalStackLayout x:Name="BoxEmptyPanel" Padding="12,25" Spacing="6">
+          <Label x:Name="BoxEmptyTitleText" Text="请先扫描库位" FontSize="15"
+                 FontAttributes="Bold" TextColor="#364655" HorizontalTextAlignment="Center"/>
+          <Label x:Name="BoxEmptyHintText" Text="使用 PDA 实体扫码键" FontSize="13"
+                 TextColor="#6B7885" HorizontalTextAlignment="Center"/>
+        </VerticalStackLayout>
+        <VerticalStackLayout x:Name="BoxFields" IsVisible="False" Padding="12,0" Spacing="0">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="箱码" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="BoxNumberText" FontSize="13" TextColor="#17232F" FontAttributes="Bold"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
-            <BoxView Color="#EDF0F6" HeightRequest="1"/>
-
-            <VerticalStackLayout x:Name="BoxEmptyPanel" Spacing="9"
-                                 MinimumHeightRequest="136"
-                                 VerticalOptions="Center" Padding="8,16">
-              <Label Text="▣" FontSize="38" TextColor="#8BA8DA"
-                     HorizontalTextAlignment="Center"/>
-              <Label Text="请扫描箱码" FontAttributes="Bold" FontSize="15"
-                     TextColor="#61738F" HorizontalTextAlignment="Center"/>
-              <Label x:Name="BoxEmptyHintText"
-                     Text="先确认库位，再使用 PDA 实体扫码键"
-                     FontSize="11" TextColor="#92A1B5"
-                     HorizontalTextAlignment="Center"/>
-            </VerticalStackLayout>
-
-            <Grid x:Name="BoxFields" IsVisible="False"
-                  ColumnDefinitions="94,*"
-                  RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="11">
-              <Label Grid.Row="0" Text="箱码" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="0" Grid.Column="1" x:Name="BoxNumberText"
-                     TextColor="#1C2D48" FontSize="14" FontAttributes="Bold"
-                     LineBreakMode="MiddleTruncation"/>
-              <Label Grid.Row="1" Text="产品编码" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="1" Grid.Column="1" x:Name="ItemCodeText"
-                     TextColor="#233753" FontSize="13"/>
-              <Label Grid.Row="2" Text="品名" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="2" Grid.Column="1" x:Name="ItemNameText"
-                     TextColor="#233753" FontSize="13"
-                     MaxLines="2" LineBreakMode="TailTruncation"/>
-              <Label Grid.Row="3" Text="规格" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="3" Grid.Column="1" x:Name="SpecificationText"
-                     TextColor="#233753" FontSize="13" MaxLines="2"
-                     LineBreakMode="TailTruncation"/>
-              <Label Grid.Row="4" Text="批号" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="4" Grid.Column="1" x:Name="LotText"
-                     TextColor="#233753" FontSize="13"/>
-              <Label Grid.Row="5" Text="存货单位" Style="{StaticResource SecondaryText}"/>
-              <Label Grid.Row="5" Grid.Column="1" x:Name="StockUnitText"
-                     TextColor="#233753" FontSize="13" FontAttributes="Bold"/>
+            <BoxView Color="#EDF0F2" HeightRequest="1"/>
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="产品编码" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="ItemCodeText" FontSize="13" TextColor="#17232F" FontAttributes="Bold"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
-          </VerticalStackLayout>
-        </Border>
-
-        <Border BackgroundColor="#F0F4FB" Stroke="#E3E9F5"
-                StrokeShape="RoundRectangle 10" Padding="11,10">
-          <Label Text="ⓘ 箱内数量必须人工填写；二维码中的 QT 为标签数量，不会自动代填。箱码及产品信息不可修改。"
-                 FontSize="11" TextColor="#647A9C"/>
-        </Border>
-
-        <Border x:Name="ReadOnlyWarning" IsVisible="False" Padding="12"
-                BackgroundColor="#FFF5E6" Stroke="#F3DEBA"
-                StrokeShape="RoundRectangle 9">
+            <BoxView Color="#EDF0F2" HeightRequest="1"/>
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="品名" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="ItemNameText" FontSize="13" TextColor="#17232F"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
+            </Grid>
+            <BoxView Color="#EDF0F2" HeightRequest="1"/>
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="规格" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="SpecificationText" FontSize="13" TextColor="#17232F"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
+            </Grid>
+            <BoxView Color="#EDF0F2" HeightRequest="1"/>
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="批号" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="LotText" FontSize="13" TextColor="#17232F"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
+            </Grid>
+            <BoxView Color="#EDF0F2" HeightRequest="1"/>
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+              <Label Text="存货单位" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
+              <Label Grid.Column="1" x:Name="StockUnitText" FontSize="13" TextColor="#17232F"
+                     LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
+            </Grid>
+        </VerticalStackLayout>
+        <Border x:Name="ReadOnlyWarning" IsVisible="False" Padding="12,8"
+                BackgroundColor="#FFF5E6" StrokeThickness="0">
           <Label x:Name="ReadOnlyText" Text="当前盘点单尚未获准提交"
                  TextColor="#9B5C11" FontSize="12"/>
         </Border>
-
       </VerticalStackLayout>
     </ScrollView>
-
     <Border x:Name="PendingPanel" Grid.Row="2" IsVisible="False"
             BackgroundColor="#FFF5E6" Stroke="#F3DEBA"
             Padding="13,10">
@@ -158,39 +131,52 @@
       </VerticalStackLayout>
     </Border>
 
-    <Border Grid.Row="3" BackgroundColor="White" Stroke="#E5EAF2"
-            StrokeThickness="1" Padding="14,10,14,14">
-      <VerticalStackLayout Spacing="6">
-        <Grid ColumnDefinitions="*,Auto">
-          <Label Text="箱内数量 *" Style="{StaticResource SectionTitle}"
-                 VerticalOptions="Center"/>
-          <Label x:Name="QuantityUnitText" Grid.Column="1" Text="STU"
-                 TextColor="#72839D" FontSize="12"/>
-        </Grid>
-        <Border Stroke="#DCE4EF" StrokeShape="RoundRectangle 9"
+
+    <Grid Grid.Row="3" RowDefinitions="1,Auto" BackgroundColor="White">
+      <BoxView Color="#CBD3DB"/>
+      <VerticalStackLayout Grid.Row="1" Padding="12,10,12,12" Spacing="8">
+        <Label FontSize="14" FontAttributes="Bold" TextColor="#17232F">
+          <Label.FormattedText><FormattedString>
+            <Span Text="箱内数量 "/><Span Text="*" TextColor="#B73332"/>
+          </FormattedString></Label.FormattedText>
+        </Label>
+        <Border Stroke="#8799AA" StrokeShape="RoundRectangle 4"
                 BackgroundColor="White" Padding="10,0">
-          <Entry x:Name="QuantityInput" Placeholder="请人工输入实际数量"
-                 Keyboard="Numeric" FontSize="22"
-                 FontAttributes="Bold" TextColor="#21395A"
-                 HeightRequest="48" BackgroundColor="Transparent"
-                 ClearButtonVisibility="WhileEditing"
-                 TextChanged="QuantityInput_TextChanged"/>
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+            <Entry x:Name="QuantityInput" Placeholder="输入数量" PlaceholderColor="#9AA5AF"
+                   Keyboard="Numeric" FontSize="25" FontAttributes="Bold" TextColor="#172F4D"
+                   HeightRequest="47" BackgroundColor="Transparent"
+                   ClearButtonVisibility="WhileEditing"
+                   TextChanged="QuantityInput_TextChanged"/>
+            <Label x:Name="QuantityUnitText" Grid.Column="1" Text="—" FontSize="14"
+                   TextColor="#617182" VerticalOptions="Center"/>
+          </Grid>
         </Border>
-        <Label x:Name="QuantityErrorText" IsVisible="False"
-               Text="箱内数量为必填项！" FontSize="11"
-               TextColor="{StaticResource Error}"/>
-        <Grid ColumnDefinitions="*,Auto">
-          <Button x:Name="SubmitButton" Grid.Column="0"
-                  Text="✓  提交盘点" Style="{StaticResource PrimaryAction}"
-                  IsEnabled="False" Clicked="Submit_Clicked"/>
-          <ActivityIndicator x:Name="BusyIndicator" Grid.Column="1"
-                             IsVisible="False" IsRunning="False"
-                             Color="{StaticResource Primary}"
-                             WidthRequest="30" Margin="8,0,0,0"/>
+        <Label x:Name="QuantityErrorText" IsVisible="False" FontSize="12"
+               Text="箱内数量为必填项！" TextColor="#B33332"/>
+        <Grid>
+          <Button x:Name="SubmitButton" Text="提交盘点" FontSize="16" FontAttributes="Bold"
+                  HeightRequest="46" CornerRadius="4" Padding="0" TextColor="White"
+                  BackgroundColor="#175AB7" IsEnabled="False" Clicked="Submit_Clicked">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup Name="CommonStates">
+                <VisualState Name="Normal"/>
+                <VisualState Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Property="BackgroundColor" Value="#DCE3EC"/>
+                    <Setter Property="TextColor" Value="#8290A1"/>
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Button>
+          <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
+                             InputTransparent="True" Color="#175AB7" WidthRequest="24"
+                             HeightRequest="24" HorizontalOptions="End" Margin="0,0,12,0"
+                             VerticalOptions="Center"/>
         </Grid>
       </VerticalStackLayout>
-    </Border>
-
+    </Grid>
     <!-- Compact, touch-through feedback. Never blocks the scanner or page. -->
     <Border x:Name="SuccessToast" Grid.RowSpan="4" ZIndex="100"
             IsVisible="False" InputTransparent="True"
