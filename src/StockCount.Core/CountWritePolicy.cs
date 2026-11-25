@@ -7,6 +7,12 @@ namespace StockCount.Core;
 /// <summary>Pure rules, independent of HTTP and Sage X3. No barcode QTY is used as a count.</summary>
 public static class CountWritePolicy
 {
+    // 2026-11-25: all existing count headers are eligible regardless of CUNSTA_0.
+    // Environment authorization is independent of the raw ERP status code.
+    public static string? CountSubmissionBlockReason(bool isTest, bool writesEnabled, bool schemaReviewed) =>
+        !writesEnabled ? (isTest ? "ERP_WRITE_UNAVAILABLE" : "PRODUCTION_WRITE_DISABLED") :
+        !schemaReviewed ? "SCHEMA_NOT_APPROVED" : null;
+
     public static string? Validate(string countNumber, string qr, string box, string location, decimal quantity)
     {
         if (string.IsNullOrWhiteSpace(countNumber) || countNumber.Length > 30)
