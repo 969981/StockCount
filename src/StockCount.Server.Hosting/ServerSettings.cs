@@ -64,6 +64,14 @@ public sealed class ServerSettings
         X3AuditUser = source.X3AuditUser;
     }
 
+    // Avalonia field deployment: operator has approved both X3 environments.
+    // This is an authorization policy, not a substitute for transaction validation.
+    public void ApplyApprovedFieldWrites()
+    {
+        SchemaReviewed = EnableTestWrites = true;
+        ProductionSchemaReviewed = EnableProductionWrites = true;
+    }
+
     // A UI preset, not a saved or effective authorization.
     public ServerSettings CreateWriteDraft()
     {
