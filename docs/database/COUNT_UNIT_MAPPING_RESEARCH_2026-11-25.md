@@ -1,3 +1,18 @@
+---
+title: "StockCount — 盘点单位映射研究与业务决议"
+aliases:
+  - "盘点单位映射专项研究"
+created: 2026-11-25
+updated: 2026-11-25
+status: reference
+area: database
+tags:
+  - StockCount
+  - database
+  - research
+up: "[[docs/database/00-数据库知识地图]]"
+---
+
 # 2026-11-25 盘点单位映射研究与业务决议
 
 ## 背景
