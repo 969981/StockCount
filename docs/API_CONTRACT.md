@@ -153,7 +153,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 - 幂等唯一键推荐 `(Environment, CountNumber, RequestId)`；相同键 + 同一有效载荷重放返回原持久化结果。
 - 同键但请求体内容不同 → 409 `IDEMPOTENCY_PAYLOAD_MISMATCH`。
-- 同单箱码已存在 → 按最终确认的同单防重/复盘规则返回 409 `BOX_ALREADY_RECORDED` 或授权复盘响应。**不得静默新增重复行**。
+- 当前帐套任意盘点单已存在箱码 → 返回 409 `BOX_ALREADY_RECORDED`。**不得新增跨单重复行**。
 - 在多个 API 进程/两台 PDA 同时提交时必须可靠；单机 Semaphore 不是业务一致性保障。
 - 服务端启用写入前必须解决事务与 X3 数据副作用；接口定义本身不是写库授权。
 
@@ -171,7 +171,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | 422 | `LOCATION_INVALID` | 库位不存在/不属于允许范围/超长 |
 | 422 | `BOX_NUMBER_TOO_LONG` | PID 无法安全写入 BOXNUM(20) |
 | 409 | `COUNT_NOT_WRITABLE` | 旧版兼容错误码；新版不按单据状态拒绝 |
-| 409 | `BOX_ALREADY_RECORDED` | 同单箱号重复，按批准规则 |
+| 409 | `BOX_ALREADY_RECORDED` | 当前帐套任意盘点单箱号重复 |
 | 409 | `IDEMPOTENCY_PAYLOAD_MISMATCH` | 同 RequestId 重试不同载荷 |
 | 403 | `PRODUCTION_WRITE_DISABLED` | COB 写入尚未由管理员在本机启用 |
 | 503 | `ERP_WRITE_UNAVAILABLE` | 受控写入渠道不可用；不可假报成功 |
@@ -209,7 +209,7 @@ up: "[[docs/development/00-研发规范地图]]"
 扫码解析和提交事务共用 `LabelLookupPolicy`：优先以完整二维码匹配当前帐套 `XLABELDTL.QRCOD_0`；仅零匹配时提取唯一完整的 `ID.` 字段，以 `PID_0` 查询。ID 长度 1–20，仅允许 ASCII 字母数字及 `| - _ .`，不截断。多条匹配返回 409，数据库异常不触发回退；提交复核数据库返回箱号、重复箱、单位及实盘量，原扫码值及 UUID 保留。不按 STA_0 过滤。
 
 ### 2026-11-25 现场写入调整
-不再依赖辅助幂等表。新提交在原有 XCOUTD.AUUID_0 存储请求 UUID（SQL Server binary(16) 转换），同帐套、同单号、同 UUID 且 PDAID_0=StockCount 查询原记录。重放核对箱号、库位及两数量列，不再保存完整请求哈希。正常新扫码及事务内仍按 CUNNUM_0 + BOXNUM_0 拒绝重复。旧版随机 AUUID 的记录无法按旧请求 UUID 追溯，仍受同单同箱防重保护。无需执行旧迁移脚本。
+不再依赖辅助幂等表。新提交在原有 XCOUTD.AUUID_0 存储请求 UUID（SQL Server binary(16) 转换），同帐套、同单号、同 UUID 且 PDAID_0=StockCount 查询原记录。重放核对箱号、库位及两数量列，不再保存完整请求哈希。2026-11-25 最新规则：正常新扫码及事务内按当前帐套 XCOUTD.BOXNUM_0 全表拒绝重复，不限制 CUNNUM_0、站点、仓库、日期、单据状态。旧版随机 AUUID 的记录无法按旧请求 UUID 追溯，仍受跨单防重保护。保留 alreadyRecordedInCount 字段名兼容旧 PDA；值为 true 表示当前帐套任意盘点单中已扫描。COB 与 XTEST 独立。无需执行旧迁移脚本。
 
 ### 2026-11-25 盘点计量单位
 提交以标签 STU 为唯一计量单位，XCOUTD.PCU_0=STU，PCUSTUCOE_0=1，QTYSTU_0=QTYPCU_0=人工输入数量。不再校验原标签 PCU 或系数。保留 409 UNIT_MAPPING_UNSUPPORTED 兼容码，仅用于存货单位无效。详见 [历史研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
