@@ -59,10 +59,30 @@ public class CountWritePolicyTests
     }
 
     [Theory]
-    [InlineData("PCS","PCS",1.0,true)]
-    [InlineData("PCS","BOX",1.0,false)]
-    [InlineData("PCS","PCS",10.0,false)]
-    [InlineData("","",1.0,false)]
-    public void UnitsMustBeOneToOne(string stu,string pcu,double factor,bool expected) =>
-        Assert.Equal(expected,CountWritePolicy.SupportedUnitMapping(stu,pcu,(decimal)factor));
+    [InlineData("PCS", true)]
+    [InlineData("UN", true)]
+    [InlineData("SET", true)]
+    [InlineData("KG", true)]
+    [InlineData("", false)]
+    [InlineData(" ", false)]
+    [InlineData(null, false)]
+    [InlineData("ABCD", false)]
+    [InlineData("A\t", false)]
+    public void OnlyStockUnitMustBeValid(string? stu, bool expected) =>
+        Assert.Equal(expected, CountWritePolicy.IsValidStockUnit(stu));
+
+    [Theory]
+    [InlineData("", 4000, 3950)]
+    [InlineData("PCS", 6, 5)]
+    [InlineData("BOX", 100, 99)]
+    [InlineData("", 0, 0)]
+    [InlineData("", 164000, 12)]
+    public void HistoricalPackagingDoesNotRestrictManualStockCount(
+        string labelPackageUnit, int labelFactor, int manualQuantity)
+    {
+        // Historical label values are evidence only, not policy inputs.
+        Assert.True(CountWritePolicy.IsValidStockUnit("PCS"));
+        Assert.Equal(1m, CountWritePolicy.CountUnitFactor);
+        Assert.Null(CountWritePolicy.Validate(Count, Qr, Box, Location, manualQuantity));
+    }
 }
