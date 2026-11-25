@@ -55,6 +55,10 @@ public static class ApiApplication
         });
         
         var app = builder.Build();
+        var locationRules = app.Services.GetRequiredService<LocationValidationOptions>();
+        app.Logger.LogInformation("盘点库位校验规则：XTEST 站点 {TestSite} / 仓库 {TestWarehouse}，COB 站点 {ProductionSite} / 仓库 {ProductionWarehouse}",
+            locationRules.TestCheckSite, locationRules.TestCheckWarehouse,
+            locationRules.ProductionCheckSite, locationRules.ProductionCheckWarehouse);
         // Capture outside exception handling so the log includes the actual problem response.
         app.UseMiddleware<StockCount.Api.Logging.ApiExchangeLogging>();
         app.UseExceptionHandler();
