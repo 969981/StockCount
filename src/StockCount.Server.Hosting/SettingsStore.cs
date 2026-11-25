@@ -15,15 +15,26 @@ public sealed class SettingsStore
     public string SettingsPath => Path.Combine(DirectoryPath, "server-settings.json");
     public string LogPath => Path.Combine(DirectoryPath, "server-logs.db");
 
-    public SettingsStore(string? directory = null) =>
+    private readonly bool _approvedFieldWrites;
+
+    public SettingsStore(string? directory = null, bool approvedFieldWrites = false)
+    {
         DirectoryPath = Path.GetFullPath(directory ?? AppContext.BaseDirectory);
+        _approvedFieldWrites = approvedFieldWrites;
+    }
+
+    private ServerSettings ApplyPolicy(ServerSettings settings)
+    {
+        if (_approvedFieldWrites) settings.ApplyApprovedFieldWrites();
+        return settings;
+    }
 
     public ServerSettings Load()
     {
-        if (File.Exists(SettingsPath)) return Parse(SettingsPath);
+        if (File.Exists(SettingsPath)) return ApplyPolicy(Parse(SettingsPath));
         var old = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "StockCount", "ServerHost", "server-settings.json");
-        if (!File.Exists(old)) return ServerSettings.CreateFirstUseDefaults();
+        if (!File.Exists(old)) return ApplyPolicy(ServerSettings.CreateFirstUseDefaults());
 
         // Check old JSON before copying. Only migration reads AppData.
         var content = File.ReadAllText(old, Encoding.UTF8);
@@ -43,6 +54,7 @@ public sealed class SettingsStore
 
     public void Save(ServerSettings settings)
     {
+        settings = ApplyPolicy(settings.Copy());
         settings.Validate();
         EnsureWritableDirectory();
         var temporary = SettingsPath + ".write-" + Guid.NewGuid().ToString("N");
