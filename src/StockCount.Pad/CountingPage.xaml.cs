@@ -17,6 +17,8 @@ public partial class CountingPage : ContentPage
     private bool _submitting;
     private bool _restored;
     private bool _navigating;
+    private int _toastVersion;
+    private bool _pageVisible;
 
     public CountingPage(StockCountApiClient api, InventoryCountDto selected,
         IPendingSubmissionStore pendingStore)
@@ -41,6 +43,7 @@ public partial class CountingPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        _pageVisible = true;
         ScanFeed.ScanReceived -= OnScannerReceived;
         ScanFeed.ScanReceived += OnScannerReceived;
         if (!_restored)
@@ -68,6 +71,10 @@ public partial class CountingPage : ContentPage
 
     protected override void OnDisappearing()
     {
+        _pageVisible = false;
+        ++_toastVersion;
+        SuccessToast.IsVisible = false;
+        _scanQueue.Clear();
         ScanFeed.ScanReceived -= OnScannerReceived;
         base.OnDisappearing();
     }
@@ -76,7 +83,9 @@ public partial class CountingPage : ContentPage
     {
         MainThread.BeginInvokeOnMainThread(() =>
         {
-            if (_submitting || _workflow.IsSuccessAwaitingDismiss)
+            if (!_pageVisible) return;
+            if ((_submitting && !_workflow.IsSuccessAwaitingDismiss) ||
+                (!_submitting && _workflow.IsSuccessAwaitingDismiss))
             {
                 ConnectionStateText.Text = "正在处理，请稍后重扫";
                 return;
@@ -87,7 +96,9 @@ public partial class CountingPage : ContentPage
                 return;
             }
             _scanQueue.Enqueue(raw);
-            _ = DrainScanQueueAsync();
+            // A confirmed commit may still be clearing its persisted draft.
+            // Queue scans during that short cleanup, not during the toast.
+            if (!_submitting) _ = DrainScanQueueAsync();
         });
     }
 
@@ -205,7 +216,7 @@ public partial class CountingPage : ContentPage
         try
         {
             var feedback = await _workflow.SubmitAsync();
-            // Important: do NOT redraw or clear the box before the 1000ms popup.
+            // Clear confirmed data immediately; the toast is independent.
             await ShowFeedbackAsync(feedback);
             if (feedback.Kind != "Submitted")
                 RefreshScreen();
@@ -222,6 +233,11 @@ public partial class CountingPage : ContentPage
             BusyIndicator.IsRunning = false;
             BusyIndicator.IsVisible = false;
             RefreshScreen();
+            if (_pageVisible && !_workflow.HasUnresolvedSubmission &&
+                !_workflow.IsSuccessAwaitingDismiss && _scanQueue.Count > 0)
+                _ = DrainScanQueueAsync();
+            else
+                _scanQueue.Clear();
         }
     }
 
@@ -246,6 +262,11 @@ public partial class CountingPage : ContentPage
             BusyIndicator.IsRunning = false;
             BusyIndicator.IsVisible = false;
             RefreshScreen();
+            if (_pageVisible && !_workflow.HasUnresolvedSubmission &&
+                !_workflow.IsSuccessAwaitingDismiss && _scanQueue.Count > 0)
+                _ = DrainScanQueueAsync();
+            else
+                _scanQueue.Clear();
         }
     }
 
@@ -253,15 +274,15 @@ public partial class CountingPage : ContentPage
     {
         if (feedback.Kind == "Submitted")
         {
-            // HTML prototype contract: show first, then clear the box.
-            SuccessOverlay.IsVisible = true;
-            await Task.Delay(feedback.AutoDismissMs > 0 ? feedback.AutoDismissMs : 1000);
-            SuccessOverlay.IsVisible = false;
             try
             {
+                // Retire the confirmed request and clear the old box before
+                // displaying any feedback. Do not await the toast lifetime.
                 await _workflow.AcknowledgeSuccessAsync();
                 QuantityInput.Text = "";
+                QuantityInput.Unfocus();
                 RefreshScreen();
+                ShowSuccessToast(feedback.AutoDismissMs);
             }
             catch (Exception error)
             {
@@ -289,6 +310,20 @@ public partial class CountingPage : ContentPage
         }
         if (!string.IsNullOrWhiteSpace(feedback.Message))
             await DisplayAlertAsync("提示", feedback.Message, "OK");
+    }
+
+    private void ShowSuccessToast(int durationMs)
+    {
+        if (!_pageVisible) return;
+        var version = ++_toastVersion;
+        SuccessToast.IsVisible = true;
+        // A previous timer must not dismiss a more recent success toast.
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(durationMs > 0
+            ? durationMs : CountScanWorkflow.SuccessToastDurationMs), () =>
+        {
+            if (_pageVisible && version == _toastVersion)
+                SuccessToast.IsVisible = false;
+        });
     }
 
     private bool TryGetQuantity(out decimal quantity)
