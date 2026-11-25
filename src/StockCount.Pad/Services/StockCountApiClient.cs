@@ -18,14 +18,31 @@ public sealed class StockCountApiClient : ICountScanGateway
     private readonly HttpClient _http = new() { Timeout=TimeSpan.FromSeconds(15) };
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
-    public string EnvironmentName => Preferences.Default.Get("StockCountEnvironment","Test");
-    public string BaseUrl
+    private sealed record Endpoint(string BaseUrl, string Environment);
+    private Endpoint _endpoint = ReadEndpoint();
+    private readonly SemaphoreSlim _configurationGate = new(1, 1);
+    private bool _keyLoaded;
+    private string? _cachedKey;
+
+    private static Endpoint ReadEndpoint()
     {
-        get
+        var saved = Preferences.Default.Get("StockCountApiUrl", "");
+        return new Endpoint(string.IsNullOrWhiteSpace(saved) ? ApiEndpointPolicy.DefaultEndpoint : saved.TrimEnd('/'),
+            Preferences.Default.Get("StockCountEnvironment", "Test"));
+    }
+    public string EnvironmentName => Volatile.Read(ref _endpoint).Environment;
+    public string BaseUrl => Volatile.Read(ref _endpoint).BaseUrl;
+
+    // Only called while holding the configuration gate. Empty keys are cached too,
+    // but failed reads are not cached. Secrets remain in memory and SecureStorage.
+    private async Task<string?> ReadKeyLockedAsync()
+    {
+        if (!_keyLoaded)
         {
-            var saved = Preferences.Default.Get("StockCountApiUrl", "");
-            return string.IsNullOrWhiteSpace(saved) ? ApiEndpointPolicy.DefaultEndpoint : saved.TrimEnd('/');
+            _cachedKey = await SecureStorage.Default.GetAsync("StockCountDeviceKey").ConfigureAwait(false);
+            _keyLoaded = true;
         }
+        return _cachedKey;
     }
 
     public async Task ConfigureAsync(string baseUrl,string environment,string deviceKey)
@@ -34,20 +51,39 @@ public sealed class StockCountApiClient : ICountScanGateway
             throw new InvalidOperationException("API 地址须为 http://192.168.x.x:5080 等内网 IP，或 HTTPS 地址；HTTP 不允许公网域名/IP。");
         if (environment is not ("Test" or "Production"))
             throw new InvalidOperationException("环境必须为 Test 或 Production。");
-        Preferences.Default.Set("StockCountApiUrl",normalized);
-        Preferences.Default.Set("StockCountEnvironment",environment);
-        if (!string.IsNullOrWhiteSpace(deviceKey))
-            await SecureStorage.Default.SetAsync("StockCountDeviceKey",deviceKey);
+        await _configurationGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // Always invalidate after changing settings. Never expose a new endpoint
+            // with a cached credential from an incomplete settings update.
+            _keyLoaded = false;
+            _cachedKey = null;
+            if (!string.IsNullOrWhiteSpace(deviceKey))
+                await SecureStorage.Default.SetAsync("StockCountDeviceKey",deviceKey).ConfigureAwait(false);
+            Preferences.Default.Set("StockCountApiUrl",normalized);
+            Preferences.Default.Set("StockCountEnvironment",environment);
+            Volatile.Write(ref _endpoint, new Endpoint(normalized, environment));
+        }
+        finally { _configurationGate.Release(); }
     }
 
     private async Task<HttpRequestMessage> Message(HttpMethod method,string path,
         HttpContent? content=null)
     {
-        if (string.IsNullOrEmpty(BaseUrl))
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.RequestHeaders);
+        Endpoint endpoint;
+        string? key;
+        await _configurationGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            endpoint = Volatile.Read(ref _endpoint);
+            key = await ReadKeyLockedAsync().ConfigureAwait(false);
+        }
+        finally { _configurationGate.Release(); }
+        if (string.IsNullOrEmpty(endpoint.BaseUrl))
             throw new InvalidOperationException("请先在设置页填写后端 API 地址（例如 http://192.168.1.100:5080）。");
-        var request = new HttpRequestMessage(method,BaseUrl+path) { Content=content };
-        request.Headers.TryAddWithoutValidation("X-StockCount-Environment",EnvironmentName);
-        var key=await SecureStorage.Default.GetAsync("StockCountDeviceKey");
+        var request = new HttpRequestMessage(method,endpoint.BaseUrl+path) { Content=content };
+        request.Headers.TryAddWithoutValidation("X-StockCount-Environment",endpoint.Environment);
         if (!string.IsNullOrWhiteSpace(key))
             request.Headers.TryAddWithoutValidation("X-StockCount-Device-Key",key);
         return request;
@@ -55,13 +91,14 @@ public sealed class StockCountApiClient : ICountScanGateway
 
     private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,CancellationToken ct)
     {
-        var response=await _http.SendAsync(request,ct);
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.HttpResponse);
+        var response=await _http.SendAsync(request,ct).ConfigureAwait(false);
         if (response.IsSuccessStatusCode) return response;
         var code="HTTP_"+(int)response.StatusCode;
         var message="服务器拒绝操作。";
         try
         {
-            using var document=JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
+            using var document=JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false));
             if (document.RootElement.TryGetProperty("code",out var codeElement))
                 code=codeElement.GetString()??code;
             if (document.RootElement.TryGetProperty("title",out var titleElement))
@@ -75,9 +112,10 @@ public sealed class StockCountApiClient : ICountScanGateway
     private async Task<T> ReadJsonAsync<T>(HttpMethod method,string path,object? payload,CancellationToken ct)
     {
         using var content=payload is null ? null : JsonContent.Create(payload,options:Json);
-        using var request=await Message(method,path,content);
-        using var response=await SendAsync(request,ct);
-        return await response.Content.ReadFromJsonAsync<T>(Json,ct)
+        using var request=await Message(method,path,content).ConfigureAwait(false);
+        using var response=await SendAsync(request,ct).ConfigureAwait(false);
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.JsonDecode);
+        return await response.Content.ReadFromJsonAsync<T>(Json,ct).ConfigureAwait(false)
             ?? throw new InvalidOperationException("服务端返回了空响应。");
     }
 
@@ -159,10 +197,10 @@ public sealed class StockCountApiClient : ICountScanGateway
     {
         using var request=await Message(HttpMethod.Post,
             $"/api/v1/inventory-counts/{Uri.EscapeDataString(countNumber)}/items",
-            JsonContent.Create(new SaveCountItemRequest(qr,boxNumber,location,qty),options:Json));
+            JsonContent.Create(new SaveCountItemRequest(qr,boxNumber,location,qty),options:Json)).ConfigureAwait(false);
         request.Headers.TryAddWithoutValidation("Idempotency-Key",requestId.ToString("D"));
         HttpResponseMessage response;
-        try { response=await SendAsync(request,ct); }
+        try { response=await SendAsync(request,ct).ConfigureAwait(false); }
         catch(ScanApiException error) when (error.Code is
             "BOX_ALREADY_RECORDED" or "PRODUCTION_WRITE_DISABLED" or
             "ERP_WRITE_UNAVAILABLE" or "SCHEMA_NOT_APPROVED" or
@@ -174,7 +212,8 @@ public sealed class StockCountApiClient : ICountScanGateway
         }
         using (response)
         {
-            var item=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct);
+            using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.JsonDecode);
+            var item=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct).ConfigureAwait(false);
             return item is not null && item.Status=="Committed" &&
                 item.RequestId==requestId &&
                 item.SavedQtyStu==qty && item.SavedQtyPcu==qty;
@@ -196,9 +235,12 @@ public sealed class StockCountApiClient : ICountScanGateway
         catch (ScanApiException e) when (e.Code=="SUBMISSION_LOOKUP_UNAVAILABLE") { return null; }
     }
 
-    public async Task<bool> HasDeviceKeyAsync() =>
-        !string.IsNullOrWhiteSpace(
-            await SecureStorage.Default.GetAsync("StockCountDeviceKey"));
+    public async Task<bool> HasDeviceKeyAsync()
+    {
+        await _configurationGate.WaitAsync().ConfigureAwait(false);
+        try { return !string.IsNullOrWhiteSpace(await ReadKeyLockedAsync().ConfigureAwait(false)); }
+        finally { _configurationGate.Release(); }
+    }
 
     /// <summary>Probe the address currently entered in Settings without saving or writing ERP data.</summary>
     public async Task DiagnoseConnectionAsync(string address, string environment, string enteredKey,
