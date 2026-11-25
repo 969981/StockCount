@@ -15,7 +15,7 @@ public sealed class SecurePendingSubmissionStore : IPendingSubmissionStore
     public async Task SaveAsync(PendingSubmissionDraft draft, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var existing = await LoadAsync(cancellationToken);
+        var existing = await LoadAsync(cancellationToken).ConfigureAwait(false);
         if (existing is not null &&
             (existing.RequestId != draft.RequestId ||
              existing.Environment != draft.Environment ||
@@ -25,22 +25,34 @@ public sealed class SecurePendingSubmissionStore : IPendingSubmissionStore
                 "设备中有另一笔尚未确认的提交，必须先恢复原单据并确认结果。");
         }
 
-        await SecureStorage.Default.SetAsync(Key, JsonSerializer.Serialize(draft, Json));
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.DraftWrite);
+        await Task.Run(async () =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await SecureStorage.Default.SetAsync(Key, JsonSerializer.Serialize(draft, Json)).ConfigureAwait(false);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<PendingSubmissionDraft?> LoadAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var value = await SecureStorage.Default.GetAsync(Key);
-        if (string.IsNullOrWhiteSpace(value)) return null;
-        return JsonSerializer.Deserialize<PendingSubmissionDraft>(value, Json)
-            ?? throw new InvalidDataException("待确认盘点草稿已损坏，不能自动覆盖。");
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.DraftRead);
+        return await Task.Run(async () =>
+        {
+            var value = await SecureStorage.Default.GetAsync(Key).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(value)) return null;
+            return JsonSerializer.Deserialize<PendingSubmissionDraft>(value, Json)
+                ?? throw new InvalidDataException("待确认盘点草稿已损坏，不能自动覆盖。");
+        }, cancellationToken).ConfigureAwait(false);
     }
 
-    public Task ClearAsync(CancellationToken cancellationToken)
+    public async Task ClearAsync(CancellationToken cancellationToken)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        SecureStorage.Default.Remove(Key);
-        return Task.CompletedTask;
+        using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.DraftClear);
+        await Task.Run(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SecureStorage.Default.Remove(Key);
+        }, cancellationToken).ConfigureAwait(false);
     }
 }
