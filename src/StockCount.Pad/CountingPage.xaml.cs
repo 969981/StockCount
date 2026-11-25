@@ -365,6 +365,36 @@ public partial class CountingPage : ContentPage
         return valid && quantity >= 0m;
     }
 
+    // Scope native styling to this quantity Entry. Preserve the original numeric
+    // keyboard, cursor, text events, font scaling and Android text metrics.
+    private void QuantityInput_HandlerChanged(object sender, EventArgs e)
+    {
+#if ANDROID
+        if (sender is Entry entry &&
+            entry.Handler?.PlatformView is global::Android.Widget.EditText native)
+        {
+            native.BackgroundTintList = global::Android.Content.Res.ColorStateList.ValueOf(
+                global::Android.Graphics.Color.Transparent);
+            native.SetIncludeFontPadding(true);
+            var density = native.Resources?.DisplayMetrics?.Density ?? 1f;
+            var vertical = (int)Math.Round(8 * density);
+            native.SetPadding(0, vertical, 0, vertical);
+        }
+#endif
+    }
+
+    private void QuantityInput_FocusChanged(object sender, FocusEventArgs e)
+    {
+        QuantityFrame.Stroke = new SolidColorBrush(Color.FromArgb(e.IsFocused ? "#175AB7" : "#8799AA"));
+    }
+
+    private void ClearQuantity_Clicked(object sender, EventArgs e)
+    {
+        if (!QuantityInput.IsEnabled || string.IsNullOrEmpty(QuantityInput.Text)) return;
+        QuantityInput.Text = "";
+        QuantityInput.Focus();
+    }
+
     private void QuantityInput_TextChanged(object sender, TextChangedEventArgs e)
     {
         if (QuantityErrorText.IsVisible) QuantityErrorText.IsVisible = false;
@@ -379,6 +409,8 @@ public partial class CountingPage : ContentPage
             _workflow.Box is not null && _workflow.Location is not null &&
             TryGetQuantity(out _);
         if (SubmitButton.IsEnabled != enabled) SubmitButton.IsEnabled = enabled;
+        var canClear = QuantityInput.IsEnabled && !string.IsNullOrEmpty(QuantityInput.Text);
+        if (ClearQuantityButton.IsEnabled != canClear) ClearQuantityButton.IsEnabled = canClear;
     }
 
     // Compare the last rendered domain state before touching native controls.

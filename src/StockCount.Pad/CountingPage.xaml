@@ -140,23 +140,38 @@
             <Span Text="箱内数量 "/><Span Text="*" TextColor="#B73332"/>
           </FormattedString></Label.FormattedText>
         </Label>
-        <Border Stroke="#8799AA" StrokeShape="RoundRectangle 4"
-                BackgroundColor="White" Padding="10,0">
-          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="9">
+        <!-- Use a single outline; let Android text metrics determine height.
+             Clear and unit have independent columns so neither overlays the number. -->
+        <Border x:Name="QuantityFrame" Stroke="#8799AA" StrokeShape="RoundRectangle 4"
+                BackgroundColor="White" Padding="10,2,0,2">
+          <Grid ColumnDefinitions="*,48,Auto" ColumnSpacing="0" MinimumHeightRequest="58">
             <Entry x:Name="QuantityInput" Placeholder="输入数量" PlaceholderColor="#9AA5AF"
                    Keyboard="Numeric" FontSize="25" FontAttributes="Bold" TextColor="#172F4D"
-                   HeightRequest="47" BackgroundColor="Transparent"
-                   ClearButtonVisibility="WhileEditing"
+                   MinimumHeightRequest="58" VerticalOptions="Fill" VerticalTextAlignment="Center"
+                   BackgroundColor="Transparent" ClearButtonVisibility="Never"
+                   HandlerChanged="QuantityInput_HandlerChanged"
+                   Focused="QuantityInput_FocusChanged" Unfocused="QuantityInput_FocusChanged"
                    TextChanged="QuantityInput_TextChanged"/>
-            <Label x:Name="QuantityUnitText" Grid.Column="1" Text="—" FontSize="14"
-                   TextColor="#617182" VerticalOptions="Center"/>
+            <Button Grid.Column="1" x:Name="ClearQuantityButton" Text="×"
+                    FontSize="23" TextColor="#536581" BackgroundColor="Transparent"
+                    MinimumWidthRequest="48" MinimumHeightRequest="48"
+                    Padding="0" CornerRadius="4" VerticalOptions="Center"
+                    IsEnabled="False" Clicked="ClearQuantity_Clicked"
+                    SemanticProperties.Description="清空箱内数量"/>
+            <Grid Grid.Column="2" ColumnDefinitions="1,Auto" ColumnSpacing="0"
+                  BackgroundColor="#F4F7FA" VerticalOptions="Fill">
+              <BoxView Color="#D7DDE3" VerticalOptions="Fill"/>
+              <Label Grid.Column="1" x:Name="QuantityUnitText" Text="—" FontSize="14"
+                     TextColor="#617182" VerticalOptions="Center" HorizontalTextAlignment="Center"
+                     MinimumWidthRequest="50" Padding="8,4"/>
+            </Grid>
           </Grid>
         </Border>
         <Label x:Name="QuantityErrorText" IsVisible="False" FontSize="12"
                Text="箱内数量为必填项！" TextColor="#B33332"/>
         <Grid>
           <Button x:Name="SubmitButton" Text="提交盘点" FontSize="16" FontAttributes="Bold"
-                  HeightRequest="46" CornerRadius="4" Padding="0" TextColor="White"
+                  MinimumHeightRequest="54" CornerRadius="4" Padding="12,10" TextColor="White"
                   BackgroundColor="#175AB7" IsEnabled="False" Clicked="Submit_Clicked">
             <VisualStateManager.VisualStateGroups>
               <VisualStateGroup Name="CommonStates">

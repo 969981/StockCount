@@ -1,3 +1,15 @@
+---
+title: "StockCount PDA Release APK 编译与 ADB 安装手册"
+aliases: ["PDA Release APK 编译", "ADB 安装手册"]
+created: 2026-11-25
+updated: 2026-11-25
+status: documented
+type: guide
+area: pda
+tags: [StockCount, Android, MAUI, Release, ADB]
+up: "[[docs/ANDROID_RELEASE_SIGNING]]"
+---
+
 # StockCount PDA：Release APK 编译与 ADB 安装手册
 
 更新日期：2026-11-25 | 平台：Windows x64 / PowerShell 7 | 适用：StockCount main 分支
