@@ -86,18 +86,11 @@
             <Border BorderBrush="#D9A441" BorderThickness="1" CornerRadius="8" Padding="16">
               <StackPanel Spacing="10">
                 <TextBlock Text="环境写入授权" FontSize="18" FontWeight="SemiBold"/>
-                <CheckBox Content="XTEST 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.SchemaReviewed, Mode=TwoWay}"/>
-                <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding WriteDraft.EnableTestWrites, Mode=TwoWay}"/>
-                <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.ProductionSchemaReviewed, Mode=TwoWay}"/>
-                <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding WriteDraft.EnableProductionWrites, Mode=TwoWay}"/>
-                <Button Content="{Binding WriteGatesButtonText}" Command="{Binding SelectAllWriteGatesCommand}"
-                        HorizontalAlignment="Left"/>
                 <TextBlock Text="{Binding SavedWriteAuthorization}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                <TextBlock Text="勾选后请点击保存写入授权；只有保存并重启 API 后才生效。操作员编码无需手工填写。" TextWrapping="Wrap" Opacity="0.8"/>
+                <TextBlock Text="XTEST 与 COB 默认允许写入，无需单独审批；API 仍检查单据状态、数据库结构、重复箱号和事务。" TextWrapping="Wrap" Opacity="0.8"/>
                 <TextBlock Text="X3 操作员编码（可选，默认 PDA）"/>
-                <TextBox Text="{Binding WriteDraft.X3AuditUser, Mode=TwoWay}" Watermark="PDA（留空自动使用）" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
-                <Button Content="保存写入授权" Command="{Binding SaveWriteSettingsCommand}" HorizontalAlignment="Left"/>
-                <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
+                <TextBox Text="{Binding Settings.X3AuditUser, Mode=TwoWay}" Watermark="PDA（留空自动使用）" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
+                <Button Content="保存操作员设置" Command="{Binding SaveSettingsCommand}" HorizontalAlignment="Left"/>
               </StackPanel>
             </Border>
             <Border BorderBrush="#CED7E4" BorderThickness="1" CornerRadius="8" Padding="16">
