@@ -73,24 +73,6 @@ public sealed class CountScanWorkflow(
         !LocationScanPolicy.TryParse(raw, out _) &&
         raw.Length is > 0 and <= 200 && !raw.Any(char.IsControl);
 
-    // Observed field scanner suffix: U+4E8C (二). Only offer a narrowly
-    // scoped retry for a structured label ending in an ASCII lot value.
-    // Never use this candidate until the original exact lookup returns not found.
-    private static string? GetObservedSuffixRetry(string raw)
-    {
-        if (!raw.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) ||
-            !raw.EndsWith("\u4E8C", StringComparison.Ordinal))
-            return null;
-        var candidate = raw[..^1];
-        var lotIndex = candidate.LastIndexOf("@@LT.", StringComparison.OrdinalIgnoreCase);
-        if (lotIndex < 0) return null;
-        var lot = candidate[(lotIndex + 5)..];
-        if (lot.Length == 0 || !lot.All(ch =>
-            char.IsAsciiLetterOrDigit(ch) || ch == '-' || ch == '_'))
-            return null;
-        return candidate;
-    }
-
     public async Task<bool> RestorePendingAsync(CancellationToken ct = default)
     {
         if (pendingStore is null) return false;
@@ -167,13 +149,8 @@ public sealed class CountScanWorkflow(
 
             ClearBox();
             var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, ct);
-            if (resolved is null && GetObservedSuffixRetry(raw) is { } candidate)
-            {
-                resolved = await gateway.ResolveLabelAsync(CountNumber, candidate, ct);
-                if (resolved is not null) raw = candidate;
-            }
             if (resolved is null)
-                return new CountScanFeedback("Error", "未找到该箱标签！请检查完整二维码与数据库是否一致。");
+                return new CountScanFeedback("Error", "未找到该箱标签！请检查二维码及箱号。");
             if (resolved.AlreadyRecordedInCount)
                 return new CountScanFeedback("Duplicate", "该箱号已扫描！");
 
