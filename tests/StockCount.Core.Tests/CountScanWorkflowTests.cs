@@ -13,7 +13,7 @@ public sealed class CountScanWorkflowTests
         var fake=new FakeGateway();
         var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试盘点单");
         var result=await workflow.HandleScanAsync(Qr);
-        Assert.Equal("当前扫描的是箱码，请先扫描盘点库位！",result.Message);
+        Assert.Equal("请先扫描盘点库位！",result.Message);
         Assert.Equal(0,fake.LocationRequests);
         Assert.Equal(0,fake.LabelRequests);
         Assert.Null(workflow.Box);
