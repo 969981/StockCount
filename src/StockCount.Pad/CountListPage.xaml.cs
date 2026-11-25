@@ -14,7 +14,6 @@ public partial class CountListPage : ContentPage
     private string? _cursor;
     private Guid? _lastPromptedRequestId;
     private bool _busy;
-    private string? _lastEnvironment;
 
     public CountListPage(StockCountApiClient api, IPendingSubmissionStore pendingStore)
     {
@@ -27,7 +26,6 @@ public partial class CountListPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        _lastEnvironment = _api.EnvironmentName;
         RefreshEnvironment();
         await LoadAsync(true);
 
@@ -164,7 +162,6 @@ public partial class CountListPage : ContentPage
             if (saved.Environment != _api.EnvironmentName)
             {
                 await _api.ConfigureAsync(_api.BaseUrl, saved.Environment, "");
-                _lastEnvironment = null;
                 RefreshEnvironment();
             }
 
