@@ -26,9 +26,12 @@ Push-Location $root
 try {
     dotnet test tests/StockCount.Server.Hosting.Tests/StockCount.Server.Hosting.Tests.csproj -c $Configuration
     if ($LASTEXITCODE -ne 0) { throw 'Hosting tests failed.' }
-    $common = @('-c',$Configuration,'-r','win-x64','--self-contained','true',
-        '-p:PublishSingleFile=true','-p:IncludeNativeLibrariesForSelfExtract=true',
-        '-p:PublishTrimmed=false','-p:DebugType=embedded')
+    # Release uses the exact short dotnet command documented for operators.
+    $common = @('-c',$Configuration,'-r','win-x64')
+    if ($Configuration -eq 'Debug') {
+        $common += @('--self-contained','true','-p:PublishSingleFile=true',
+            '-p:IncludeNativeLibrariesForSelfExtract=true','-p:PublishTrimmed=false','-p:DebugType=embedded')
+    }
     $uiStage = Join-Path $stage 'desktop'
     # The desktop project owns the API publish target; exactly one publish invocation.
     dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj @common -o $uiStage
