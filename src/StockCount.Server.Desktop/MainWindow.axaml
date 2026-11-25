@@ -101,6 +101,19 @@
               </StackPanel>
             </Border>
             <Button Content="确认并保存写入授权" Command="{Binding SaveWriteSettingsCommand}" HorizontalAlignment="Left"/>
+            <Border BorderBrush="#CED7E4" BorderThickness="1" CornerRadius="8" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="盘点库位校验规则" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="测试环境 XTEST" FontWeight="SemiBold"/>
+                <CheckBox Content="校验库存站点一致性" IsChecked="{Binding LocationDraft.TestCheckSite, Mode=TwoWay}"/>
+                <CheckBox Content="校验仓库一致性" IsChecked="{Binding LocationDraft.TestCheckWarehouse, Mode=TwoWay}"/>
+                <TextBlock Text="正式环境 COB" FontWeight="SemiBold"/>
+                <CheckBox Content="校验库存站点一致性" IsChecked="{Binding LocationDraft.ProductionCheckSite, Mode=TwoWay}"/>
+                <CheckBox Content="校验仓库一致性" IsChecked="{Binding LocationDraft.ProductionCheckWarehouse, Mode=TwoWay}"/>
+                <TextBlock Text="默认四项均关闭。未勾选的维度不校验；库位仍须存在于对应帐套。扫码与提交应用同一规则，不改变写入授权。保存会重启当前管理器的 API，请先暂停 PDA 提交。" TextWrapping="Wrap" Opacity="0.8"/>
+                <Button Content="保存盘点校验规则" Command="{Binding SaveLocationSettingsCommand}" HorizontalAlignment="Left"/>
+              </StackPanel>
+            </Border>
           </StackPanel>
         </ScrollViewer>
       </TabItem>
