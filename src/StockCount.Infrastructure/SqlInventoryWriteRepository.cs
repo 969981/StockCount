@@ -313,16 +313,19 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
                 detailId,qty,qty,label.StockUnit,requestId,"Committed",false);
         }
-        catch (CountWriteException)
+        catch (CountWriteException error)
         {
-            await SafeRollbackAsync(transaction);
+            var rolledBack = await SafeRollbackAsync(transaction);
+            if (!rolledBack && error.Code != "SUBMISSION_OUTCOME_UNKNOWN")
+                throw new CountWriteException(503, "SUBMISSION_OUTCOME_UNKNOWN",
+                    "提交异常且回滚未确认，请查询原请求ID。", error);
             throw;
         }
         catch (SqlException error) when (error.Number is 2601 or 2627)
         {
             await SafeRollbackAsync(transaction);
             throw new CountWriteException(409, "IDEMPOTENCY_WRITE_CONFLICT",
-                "写入唯一记录发生冲突，请通过原 Idempotency-Key 查询已有提交结果，不要换新请求ID。");
+                "写入唯一记录发生冲突，请通过原 Idempotency-Key 查询已有提交结果，不要换新请求ID。", error);
         }
         catch (SqlException error) when (error.Number is 208 or 207 or 229 or 515 or 544 or 8101)
         {
