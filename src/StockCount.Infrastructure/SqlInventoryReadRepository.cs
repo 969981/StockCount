@@ -158,11 +158,8 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         var isTest = environment.Name == "Test";
         var reviewed = isTest ? testSchemaReviewed : productionSchemaReviewed;
         var switchedOn = isTest ? enableTestWrites : enableProductionWrites;
-        var enabled = reviewed && switchedOn && row.StatusCode == 0;
-        var reason = enabled ? null
-            : row.StatusCode != 0 ? "COUNT_NOT_WRITABLE"
-            : !switchedOn ? (isTest ? "ERP_WRITE_UNAVAILABLE" : "PRODUCTION_WRITE_DISABLED")
-            : !reviewed ? "SCHEMA_NOT_APPROVED" : "ERP_WRITE_UNAVAILABLE";
+        var reason = CountWritePolicy.CountSubmissionBlockReason(isTest, switchedOn, reviewed);
+        var enabled = reason is null;
         return new InventoryCountDto(row.CountNumber,row.Description,row.SiteCode,row.WarehouseCode,
             row.CountDate,row.StatusCode,row.CountType,enabled,reason);
     }
