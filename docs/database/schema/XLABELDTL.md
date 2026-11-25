@@ -3,7 +3,7 @@ title: "XLABELDTL — 箱标签 / 二维码明细表完整字段字典"
 aliases:
   - "StockCount · docs / database / schema / XLABELDTL"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -78,6 +78,158 @@ up: "[[docs/database/00-数据库知识地图]]"
 - 数字字段的精度、scale 已在列类型中明确；`CUNTYP_0` 在不同 Schema 可能有类型差异（此前 `UNION ALL` 导致 INT1 溢出），跨环境统一映射为字符串。
 
 - **最新 V1 规则**：`STA_0` **不参与盘点准入限制**，包括 4、9；`QTY_0` 是当前标签数量，不等于人工实盘数；`QRCOD_0` 为完整原始二维码。
+
+## 业务数据查询 SQL（中文别名）
+
+2026-11-25 补充。以下均为只读，默认抽样 TOP (20)，字段使用 `中文业务别名（物理字段名）`；说明性别名不等于 X3 官方字典标题。原始码值和 CASE 翻译并列，转换不代表业务准入。切换 Schema 前核实真实列和菜单。
+
+### 1. 常用业务字段
+
+```sql
+SELECT TOP (20)
+    T.PID_0 AS [箱码（PID_0）],
+    T.QRCOD_0 AS [完整二维码（QRCOD_0）],
+    T.ITMREF_0 AS [产品编码（ITMREF_0）],
+    T.ITMDES1_0 AS [描述1（ITMDES1_0）],
+    T.ITMDES2_0 AS [描述2（规格）（ITMDES2_0）],
+    T.ITMDES3_0 AS [描述 3（ITMDES3_0）],
+    T.LOT_0 AS [批号（LOT_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.STU_0 AS [存货单位（STU_0）],
+    T.QTY_0 AS [数量（QTY_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.PCUSTUCOE_0 AS [包装/存货单位系数（PCUSTUCOE_0）],
+    T.STA_0 AS [标签状态码（STA_0）],
+    CASE T.STA_0
+        WHEN 1 THEN N'码值1（名称未确认）'
+        WHEN 4 THEN N'失效'
+        WHEN 7 THEN N'码值7（名称未确认）'
+        WHEN 8 THEN N'码值8（名称未确认）'
+        WHEN 9 THEN N'已发货'
+        ELSE N'未知或未命名码值'
+    END AS [标签状态（STA_0）],
+    T.TYP_0 AS [TYP码（用途待核）（TYP_0）],
+    CASE T.TYP_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [TYP菜单文字（TYP_0）],
+    T.ENAFLG_0 AS [激活标志码（ENAFLG_0）],
+    CASE T.ENAFLG_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [激活菜单文字（ENAFLG_0）],
+    T.PALNUM_0 AS [托盘号/识别码1（PALNUM_0）],
+    T.VCRNUM_0 AS [凭证（VCRNUM_0）],
+    T.VCRLIN_0 AS [凭证行号（VCRLIN_0）],
+    T.VCRNUMORI_0 AS [原始凭证（VCRNUMORI_0）],
+    T.VCRLINORI_0 AS [原始凭证行号（VCRLINORI_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）]
+FROM sagex3.COB.XLABELDTL AS T
+ORDER BY PID_0;
+```
+
+### 2. 全部 45 个物理字段（静态 SQL）
+
+以下按已实测 COB 物理字段顺序展开，CASE 为附加显示列，不替换原始值。
+
+```sql
+SELECT TOP (20)
+    T.UPDTICK_0 AS [更新计数（UPDTICK_0）],
+    T.TYP_0 AS [TYP码（用途待核）（TYP_0）],
+    CASE T.TYP_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [TYP菜单文字（TYP_0）],
+    T.VCRNUM_0 AS [凭证（VCRNUM_0）],
+    T.VCRLIN_0 AS [凭证行号（VCRLIN_0）],
+    T.ITMREF_0 AS [产品编码（ITMREF_0）],
+    T.ITMDES1_0 AS [描述1（ITMDES1_0）],
+    T.ITMDES2_0 AS [描述2（规格）（ITMDES2_0）],
+    T.ITMDES3_0 AS [描述 3（ITMDES3_0）],
+    T.STU_0 AS [存货单位（STU_0）],
+    T.QTY_0 AS [数量（QTY_0）],
+    T.PCU_0 AS [包装单位（PCU_0）],
+    T.PCUSTUCOE_0 AS [包装/存货单位系数（PCUSTUCOE_0）],
+    T.LOT_0 AS [批号（LOT_0）],
+    T.LOC_0 AS [库位（LOC_0）],
+    T.QRCOD_0 AS [完整二维码（QRCOD_0）],
+    T.STA_0 AS [标签状态码（STA_0）],
+    CASE T.STA_0
+        WHEN 1 THEN N'码值1（名称未确认）'
+        WHEN 4 THEN N'失效'
+        WHEN 7 THEN N'码值7（名称未确认）'
+        WHEN 8 THEN N'码值8（名称未确认）'
+        WHEN 9 THEN N'已发货'
+        ELSE N'未知或未命名码值'
+    END AS [标签状态（STA_0）],
+    T.PID_0 AS [箱码（PID_0）],
+    T.IPTDAT_0 AS [过账日期（IPTDAT_0）],
+    T.BPRNUM_0 AS [供应商（BPRNUM_0）],
+    T.BPRNAM_0 AS [BPRNAM_0（字典标题待核）（BPRNAM_0）],
+    T.VCRNUMORI_0 AS [原始凭证（VCRNUMORI_0）],
+    T.VCRLINORI_0 AS [原始凭证行号（VCRLINORI_0）],
+    T.CFGNUM_0 AS [配置号（CFGNUM_0）],
+    T.CFGCOD_0 AS [配置代码（CFGCOD_0）],
+    T.AFLG1_0 AS [AFLG1（含义待核）（AFLG1_0）],
+    T.AFLG2_0 AS [AFLG2（含义待核）（AFLG2_0）],
+    T.DFLG1_0 AS [DFLG1（含义待核）（DFLG1_0）],
+    T.DFLG2_0 AS [DFLG2（含义待核）（DFLG2_0）],
+    T.COPNBR_0 AS [打印次数（COPNBR_0）],
+    T.CREDATTIM_0 AS [创建时间（CREDATTIM_0）],
+    T.UPDDATTIM_0 AS [修改时间（UPDDATTIM_0）],
+    T.AUUID_0 AS [唯一识别码（AUUID_0）],
+    T.CREUSR_0 AS [创建用户（CREUSR_0）],
+    T.UPDUSR_0 AS [修改用户（UPDUSR_0）],
+    T.DES_0 AS [描述（DES_0）],
+    T.CLASS_0 AS [班次（CLASS_0）],
+    T.PALNUM_0 AS [托盘号/识别码1（PALNUM_0）],
+    T.CTRNUM_0 AS [识别码2（CTRNUM_0）],
+    T.QTYWEU_0 AS [重量（QTYWEU_0）],
+    T.SLO_0 AS [子批次（SLO_0）],
+    T.SERNUM_0 AS [序列（SERNUM_0）],
+    T.BPSLOT_0 AS [供应商批次（BPSLOT_0）],
+    T.ENAFLG_0 AS [激活标志码（ENAFLG_0）],
+    CASE T.ENAFLG_0
+        WHEN 1 THEN N'否'
+        WHEN 2 THEN N'是'
+        ELSE N'未知或未命名码值'
+    END AS [激活菜单文字（ENAFLG_0）],
+    T.STOSTA_0 AS [STOSTA（含义待核）（STOSTA_0）],
+    T.ROWID AS [系统行标识（ROWID）]
+FROM sagex3.COB.XLABELDTL AS T
+ORDER BY PID_0;
+```
+
+### 3. 码值字典与核验
+
+| 字段 | 菜单 | 码值 | 含义/证据 |
+| --- | ---: | --- | --- |
+| STA_0 | 6012 | 4、9 | 失效、已发货（COB 已实查） |
+| STA_0 | 6012 | 1、7、8 | 历史存在，中文名称未确认 |
+| TYP_0、ENAFLG_0 | 1 | 1、2 | 字典菜单编号来自 COB；否/是文案来自 XTEST 菜单1实测，COB 文案需复查。TYP 具体业务用途未知 |
+
+V1 不按标签状态限制盘点；CASE 只供显示。STOSTA_0 是字符串，未确认枚举来源。
+
+```sql
+SELECT DISTINCT
+    Z.CODZONE_0 AS [字段代码], Z.NOLIB_0 AS [本地菜单编号],
+    M.LANNUM_0 AS [码值], M.LAN_0 AS [语言],
+    M.LANMES_0 AS [状态含义]
+FROM sagex3.COB.ATABZON Z
+LEFT JOIN sagex3.COB.APLSTD M
+    ON M.LANCHP_0 = Z.NOLIB_0
+   AND M.LAN_0 IN (N'CHI', N'ENG') AND M.LANNUM_0 > 0
+WHERE Z.CODFIC_0 = N'XLABELDTL'
+  AND Z.CODTYP_0 = N'M' AND Z.NOLIB_0 > 0
+ORDER BY Z.CODZONE_0, Z.NOLIB_0, M.LANNUM_0, M.LAN_0;
+```
+
+全部菜单的动态 CASE（包括尚未手工核实的枚举）使用 [select_table_with_enum_aliases.sql](../../../sql/read_only/select_table_with_enum_aliases.sql)，将 `@TableName` 设为 `XLABELDTL`。脚本仅按现场非空且无冲突的中文字典生成 CASE，不使用菜单第0项；未知码值保留原值并标明未知。SQL 尚未在企业数据库执行验收，不提交实际业务数据。
+
 
 ---
 
