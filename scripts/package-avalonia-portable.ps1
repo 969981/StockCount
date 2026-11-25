@@ -1,9 +1,9 @@
 #requires -Version 7.0
 <#
 .SYNOPSIS
-  Package the Avalonia Windows self-contained build and API as a Portable ZIP.
+  Package the Avalonia Windows single-file build and API as a Portable ZIP.
 .DESCRIPTION
-  Requires exactly two single-file self-contained EXEs, refuses to ship
+  Requires exactly two single-file EXEs, refuses to ship
   adjacent user settings, logs or signing secrets, and verifies the ZIP.
   Does not replace the existing Tauri Setup / Portable release.
 .EXAMPLE
@@ -47,7 +47,7 @@ if (!(Test-Path -LiteralPath $inputPath -PathType Container)) {
 }
 $files = @(Get-ChildItem -LiteralPath $inputPath -Recurse -File -Force)
 if ($files.Count -eq 0) { throw "Avalonia publish output is empty: $inputPath" }
-# Both executables must contain the self-contained runtime.
+# Both executables must be application bundles (not tiny apphosts).
 $required = @{
   'StockCount.Server.Desktop.exe' = 1048576
   'StockCount.Api.exe' = 1048576
@@ -104,7 +104,10 @@ StockCount Avalonia Windows Portable v$Version
 ===============================================
 1. Extract ALL files to a user-writable folder, not Program Files.
 2. Launch Start-StockCount-Avalonia.cmd or StockCount.Server.Desktop.exe.
-3. Keep the two self-contained EXEs together; no separate DLLs or .NET installation required.
+3. Keep the two single-file EXEs together. The default build requires x64 .NET 10 and ASP.NET Core 10 shared runtimes.
+   Install the x64 ASP.NET Core Runtime 10 (includes .NET Runtime), or the x64 .NET 10 SDK, and check dotnet --list-runtimes.
+   https://dotnet.microsoft.com/download/dotnet/10.0
+   Optional self-contained builds do not require these shared runtimes.
    Native runtime files may be extracted to the per-user temporary .NET cache on first run.
 4. server-settings.json and server-logs.db live BESIDE the UI EXE.
 5. Old settings migrate from LocalAppData only if the adjacent JSON is absent.

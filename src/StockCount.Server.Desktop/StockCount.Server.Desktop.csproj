@@ -12,7 +12,11 @@
   <!-- Release publish with -r win-x64 automatically bundles both processes.
        Keep ordinary Debug/F5 builds framework-dependent. -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release' and '$(RuntimeIdentifier)' == 'win-x64'">
-    <SelfContained>true</SelfContained>
+    <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
+    <!-- SDK compression is only supported for self-contained bundles (NETSDK1176).
+         Prefer shared .NET runtime; optional self-contained mode is compressed. -->
+    <EnableCompressionInSingleFile Condition="'$(EnableCompressionInSingleFile)' == '' and '$(SelfContained)' == 'true'">true</EnableCompressionInSingleFile>
+    <EnableCompressionInSingleFile Condition="'$(EnableCompressionInSingleFile)' == ''">false</EnableCompressionInSingleFile>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
@@ -56,8 +60,10 @@
        Do not propagate the desktop TFM or PublishDir into the web SDK project. -->
   <Target Name="ValidateStockCountBundlePublish" BeforeTargets="PrepareForPublish"
           Condition="'$(PublishSingleFile)' == 'true' and '$(RuntimeIdentifier)' == 'win-x64'">
-    <Error Condition="'$(OS)' != 'Windows_NT' or '$(SelfContained)' != 'true' or '$(IncludeNativeLibrariesForSelfExtract)' != 'true' or '$(PublishTrimmed)' == 'true'"
-           Text="StockCount portable publish requires Windows, self-contained win-x64, native bundling and no trimming." />
+    <Error Condition="'$(OS)' != 'Windows_NT' or '$(IncludeNativeLibrariesForSelfExtract)' != 'true' or '$(PublishTrimmed)' == 'true'"
+           Text="StockCount portable publish requires Windows win-x64, native bundling and no trimming." />
+    <Error Condition="'$(SelfContained)' != 'true' and '$(EnableCompressionInSingleFile)' == 'true'"
+           Text="SDK single-file compression requires SelfContained=true (NETSDK1176). Use the default framework-dependent bundle and ZIP compression instead." />
     <PropertyGroup>
       <_StockCountPublishRoot>$([MSBuild]::EnsureTrailingSlash($([System.IO.Path]::GetFullPath('$(PublishDir)', '$(MSBuildProjectDirectory)'))))</_StockCountPublishRoot>
     </PropertyGroup>
@@ -96,7 +102,7 @@
            Text="Unexpected desktop publish dependencies: @(_StockCountUnexpectedDesktopFiles)" />
     <Message Importance="high" Text="Publishing independent StockCount API sidecar (win-x64)..." />
     <Exec WorkingDirectory="$(MSBuildProjectDirectory)"
-          Command="&quot;$(_StockCountDotNetHost)&quot; publish &quot;$(_StockCountApiProject)&quot; --disable-build-servers --artifacts-path &quot;$(_StockCountApiArtifacts)&quot; -c $(Configuration) -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=embedded -o &quot;$(_StockCountApiStage)&quot;" />
+          Command="&quot;$(_StockCountDotNetHost)&quot; publish &quot;$(_StockCountApiProject)&quot; --disable-build-servers --artifacts-path &quot;$(_StockCountApiArtifacts)&quot; -c $(Configuration) -r win-x64 --self-contained $(SelfContained) -p:EnableCompressionInSingleFile=$(EnableCompressionInSingleFile) -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=embedded -o &quot;$(_StockCountApiStage)&quot;" />
     <!-- ASP.NET SDK emits a static-web-assets endpoint manifest even without
          static asset routes. Swagger UI and its custom JS are embedded resources;
          the current managed sidecar does not call MapStaticAssets or UseStaticFiles.

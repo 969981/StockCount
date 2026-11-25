@@ -101,7 +101,7 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 | `StockCount-PDA-v0.2.0-preview.3-Android-Release-Signed.apk` | Android PDA | Release 配置、长期专用 keystore 签名；必须先配置 Secrets |
 | `StockCount-Server-v0.2.0-preview.3-Windows-x64-Setup.exe` | Windows x64 | Tauri 2 + React + ASP.NET Core 10 Sidecar 安装版 |
 | `StockCount-Server-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | Tauri 程序、Sidecar、启动脚本及说明；解压即用 |
-| `StockCount-Avalonia-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | Avalonia .NET 自包含桌面管理器、完整运行时依赖、API 与启动脚本 |
+| `StockCount-Avalonia-v0.2.0-preview.3-Windows-x64-Portable.zip` | Windows x64 | Avalonia 框架依赖单文件桌面管理器、API 与启动脚本（需要 .NET 10 及 ASP.NET Core 10 x64 Runtime） |
 | `SHA256SUMS.txt` | 多平台 | 以上 **5 个**可执行文件的 SHA256 校验清单 |
 
 **预览版说明**：Debug 签名和正式 Release keystore 签名不同，默认同一 Android 包 ID，互相不能直接覆盖安装；切换前先确认待提交 UUID，妥善迁移或备份数据。Windows 尚无代码签名，可能出现系统 SmartScreen 警示；不得关闭安全机制或从非官方地址安装。
@@ -112,14 +112,14 @@ pwsh -File .\scripts\build-local.ps1 -Target Windows
 2. 直接执行 `Start-StockCount.cmd` 或 `stockcount-server-console.exe`。与 Setup 使用相同的桌面UI和 C# API。
 3. 保持 `StockCount.Api.exe` 与 Tauri exe **处于同一目录**。这是运行时 Sidecar 依赖，不是可丢弃的临时安装程序。
 4. 本机日志文件为 `<exe目录>\server-logs.db`，可能生成 WAL/SHM 文件。不要放进受写保护的 `Program Files`，也不应直接从压缩包内部启动。
-5. **免安装仅指免 Setup，不代表彻底免依赖**：此处 Tauri 版本需要 Windows WebView2 Runtime；Avalonia 版本不需要。C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime。
+5. **免安装仅指免 Setup，不代表彻底免依赖**：此处 Tauri 版本需要 Windows WebView2 Runtime；Avalonia 版本不需要。Tauri 的 C# API Sidecar 是 self-contained .NET 10，无需额外安装 .NET Runtime；Avalonia 默认框架依赖，需要 .NET 10 和 ASP.NET Core 10 x64 Runtime。
 6. 非敏感设置文件 `server-settings.json` 与 `server-logs.db` 一样，保存在 **Tauri 主程序 EXE 同目录**；便携版 ZIP 不预置现场配置。仅当同目录配置不存在时，首次运行会校验并复制旧 `%LOCALAPPDATA%\StockCount\ServerHost\server-settings.json`，保留旧文件且不覆盖已有同目录配置。SQL 密码/设备密钥仍在 **Windows Credential Manager**，因此便携版跨机器或 Windows 账户移动后需要重新设置密钥。程序请解压到当前用户可写目录，不要放在受保护的 `Program Files`。
 7. 关闭 Tauri 管理器会停止该用户会话的 API Sidecar。日志/密钥备份以及更新时需先停止服务。
 
 ## Avalonia 原生 Windows Portable（独立于 Tauri）
 
 - 使用 `StockCount-Avalonia-v*-Windows-x64-Portable.zip`，解压到当前 Windows 用户拥有写入权限的目录；启动 `Start-StockCount-Avalonia.cmd` 或 `StockCount.Server.Desktop.exe`。
-- 该 ZIP 包含 .NET 10 自包含桌面和 API 的全部运行文件，不需要 WebView2，也不能只提取两份 EXE。
+- 该 ZIP 包含两个框架依赖单文件 EXE、启动脚本与说明，不需要 WebView2；目标机须安装 x64 .NET 10 和 ASP.NET Core 10 Runtime。两份 EXE 必须同目录。
 - 升级使用 [deploy-local.ps1](../scripts/deploy-local.ps1) 的 `-Target AvaloniaPortable`；脚本处理完整依赖、备份程序文件、SHA256 校验、出错尽力恢复。
 - 安装包内不得包含 `server-settings.json`、`server-logs.db`、`-wal`/`-shm` 或证书密钥；升级不修改这些文件，Credential Manager 仍由当前 Windows 账户维护。
 - 与 Tauri 请使用不同的安装目录，不要并发启动两个管理器的 API；写入门禁仍需要 XTEST/COB 独立核验。

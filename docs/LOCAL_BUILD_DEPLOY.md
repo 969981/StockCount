@@ -18,7 +18,7 @@ tags: [StockCount, PowerShell, Build, Deploy, Source, APK, Tauri, Avalonia, Obsi
 | [build-local.ps1](../scripts/build-local.ps1) | 统一构建 + 自动打包 | Android APK、Tauri Setup/Portable、Avalonia Portable 与 SHA256 |
 | [deploy-local.ps1](../scripts/deploy-local.ps1) | 本地安装或升级 | Android ADB、Tauri NSIS/Portable、Avalonia Portable 安全升级 |
 | [package-source.ps1](../scripts/package-source.ps1) | 将 Git 源码做可复现压缩包 | StockCount-Source-短CommitHash.zip、SourceInfo.txt、SHA256 文件 |
-| [package-avalonia-portable.ps1](../scripts/package-avalonia-portable.ps1) | 打包完整 .NET 自包含发布目录 | 含依赖的 StockCount-Avalonia-Portable.zip，拒绝现场配置 |
+| [package-avalonia-portable.ps1](../scripts/package-avalonia-portable.ps1) | 打包双 EXE 单文件发布目录 | 含依赖的 StockCount-Avalonia-Portable.zip，拒绝现场配置 |
 | [deploy-avalonia-portable.ps1](../scripts/deploy-avalonia-portable.ps1) | Avalonia 更新执行器 | 逐文件校验、备份、失败尽力恢复 |
 | [new-android-release-jks.ps1](../scripts/new-android-release-jks.ps1) | 首次生成长期 JKS | 私有 keystore，不覆盖已有文件 |
 | [configure-android-release-secrets.ps1](../scripts/configure-android-release-secrets.ps1) | 交互上传四个 Secrets | GitHub Actions 签名凭据 |
@@ -167,7 +167,7 @@ pwsh -NoProfile -File .\scripts\package-avalonia-portable.ps1 -Build -InputDirec
 pwsh -NoProfile -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release -OutputDirectory publish/avalonia-singlefile
 ~~~
 
-默认禁用裁剪，保留 Avalonia XAML、SQL Client、SQLite 及原生依赖。采用 .NET PublishSingleFile 与 IncludeNativeLibrariesForSelfExtract。自包含 EXE 可能比旧单个 AppHost 大，不代表整个发布包变大；尚需实际 CI 核验产物大小与运行。
+默认禁用裁剪，保留 Avalonia XAML、SQL Client、SQLite 及原生依赖。采用 .NET PublishSingleFile 与 IncludeNativeLibrariesForSelfExtract。默认框架依赖，不内置 .NET Runtime；目标机安装 x64 .NET 10 和 ASP.NET Core 10 Runtime。SDK 不允许框架依赖 EXE 内部压缩，ZIP 仍压缩。可选自包含压缩命令见单行发布手册。
 
 **旧安装升级**：保留现有部署脚本，自动备份被替换的程序文件，但不自动删除旧版目录内 DLL。若希望彻底去除旧 DLL，在停止管理器及 API、确认数据库关闭后，将新版解压到新的可写目录，再备份和迁移原 server-settings.json、server-logs.db 及存在的 WAL/SHM（同一关闭状态下作为一组），保持同一 Windows 用户的 Credential Manager。旧目录完整保留供回退，不要同时启动两个管理器。正式部署仍需检查端口、SQL 连接、日志与 API 启停。
 
@@ -181,7 +181,7 @@ pwsh -File .\scripts\build-avalonia-desktop.ps1 -Configuration Release
 pwsh -File .\scripts\package-avalonia-portable.ps1 -Version 0.2.0-local
 ```
 
-Avalonia Release 现在采用两个自包含单文件 EXE：`StockCount.Server.Desktop.exe` 和 `StockCount.Api.exe`，不再分发零散 DLL。运行时原生库可能首次运行解包到当前用户临时 .NET 缓存。`Assets/server.ico` 已随 Git 与源码 ZIP 分发，直接注入 Windows EXE 和窗口；无需在编译期间生成。
+Avalonia Release 现在采用两个框架依赖单文件 EXE：`StockCount.Server.Desktop.exe` 和 `StockCount.Api.exe`，不再分发零散 DLL。运行时原生库可能首次运行解包到当前用户临时 .NET 缓存。`Assets/server.ico` 已随 Git 与源码 ZIP 分发，直接注入 Windows EXE 和窗口；无需在编译期间生成。
 ### Android 同时构建 Debug + 正式签名 Release APK
 
 注意：**Release APK 必须使用项目长期保管的 JKS**。先阅读 [Android Release 签名手册](ANDROID_RELEASE_SIGNING.md)，将 keystore 放在仓库之外，并在当前终端设置签名口令环境变量（不得把密码写在命令行或仓库里）。
@@ -250,7 +250,7 @@ pwsh -File .\scripts\deploy-local.ps1 -Target AvaloniaPortable `
 
 Avalonia Portable 使用独立目录，避免与 Tauri 混用 EXE/配置；启动前检查 API 端口，不能同时启动两个后台。升级前必须退出两个管理器与 API。脚本校验 ZIP 条目、完整复制两个单文件 EXE 与辅助说明、逐文件核对 SHA256，并备份被替换的旧文件，失败时尽力回滚。
 
-**现场数据不由升级程序覆盖**：`server-settings.json`、`server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 保持原位；Credential Manager 凭据保持不变。若发布目录混入这些数据或 JKS/PFX/密钥，打包脚本会拒绝创建 ZIP。Avalonia 当前为自包含 Portable，Windows NSIS Setup 仍为 Tauri。两套 ERP 写入门禁保持独立且默认禁止。
+**现场数据不由升级程序覆盖**：`server-settings.json`、`server-logs.db`、`server-logs.db-wal`、`server-logs.db-shm` 保持原位；Credential Manager 凭据保持不变。若发布目录混入这些数据或 JKS/PFX/密钥，打包脚本会拒绝创建 ZIP。Avalonia 当前为框架依赖 Portable（需要 x64 .NET 10 与 ASP.NET Core 10 共享运行时），Windows NSIS Setup 仍为 Tauri。两套 ERP 写入门禁保持独立且默认禁止。
 ### Windows Setup 正常安装
 
 ```powershell

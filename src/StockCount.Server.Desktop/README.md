@@ -68,8 +68,10 @@ Visual Studio 请在完整 `StockCount.slnx` 中把 `StockCount.Server.Desktop` 
 
 ```powershell
 dotnet test tests/StockCount.Server.Hosting.Tests/StockCount.Server.Hosting.Tests.csproj -c Release
-dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c Release -r win-x64 --self-contained true -o publish/avalonia-desktop
+dotnet publish src/StockCount.Server.Desktop/StockCount.Server.Desktop.csproj -c Release -r win-x64 -o publish/avalonia-desktop
 ```
+
+默认发布两个框架依赖单文件 EXE，目标机需要 x64 .NET 10 和 ASP.NET Core 10 Runtime。需要自包含压缩时使用 --self-contained true -p:EnableCompressionInSingleFile=true；框架依赖 EXE 不支持 SDK 内部压缩。详见 [单命令发布手册](../../docs/StockCount-Avalonia-SingleFile-Publish-Guide.md)。
 
 开发侧至少验证：服务启停、重启保留配置、SQL 测试、SQLite 查询、密钥与 Tauri 兼容、端口冲突、LAN HTTP、防火墙、XTEST/COB 现场授权策略及事务保护；真实 ERP 写入仍需现场验证。
 

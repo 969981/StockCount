@@ -272,7 +272,7 @@ jobs:
           - Android Release-Signed.apk: optimized Release build signed by the persistent StockCount release keystore supplied via GitHub Secrets.
           - Windows Setup.exe: NSIS current-user installer with Tauri 2 manager and self-contained .NET 10 Sidecar.
           - Windows Portable.zip: extract all files to a writable directory, then run Start-StockCount.cmd.
-          - Windows Avalonia Portable.zip: self-contained .NET native manager plus API; run Start-StockCount-Avalonia.cmd; upgrades via scripts/deploy-local.ps1 -Target AvaloniaPortable.
+          - Windows Avalonia Portable.zip: framework-dependent single-file native manager plus API; install x64 .NET 10 and ASP.NET Core 10 runtimes; run Start-StockCount-Avalonia.cmd; upgrades via scripts/deploy-local.ps1 -Target AvaloniaPortable.
           - SHA256SUMS.txt: independent checksums of all five release binaries (two APK variants, Tauri Setup/Portable and Avalonia Portable).
 
           Windows non-secret settings (server-settings.json), logs (server-logs.db and SQLite WAL companions) live beside the desktop EXE, not in LOCALAPPDATA. The portable ZIP does not include user settings; if no colocated JSON exists, the first launch copies valid legacy AppData settings while leaving the old file untouched. SQL passwords and PDA device keys remain in Windows Credential Manager and do not migrate between user accounts or machines. Install/extract into a user-writable folder. Tauri requires WebView2 runtime; Avalonia does not.

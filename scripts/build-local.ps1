@@ -93,7 +93,7 @@ if ($Target -in @('All','Avalonia')) {
   # Avalonia uses the tracked native ICO and needs no Node/npm/Rust toolchain.
   # No Rust toolchain/WebView2 is required for this native Windows app.
   & (Join-Path $PSScriptRoot 'build-avalonia-desktop.ps1') -Configuration Release
-  if (-not $?) { throw 'Avalonia Windows self-contained build failed.' }
+  if (-not $?) { throw 'Avalonia Windows single-file build failed.' }
   & (Join-Path $PSScriptRoot 'package-avalonia-portable.ps1') -Version $Version -OutputDirectory $out
   if (-not $?) { throw 'Avalonia Portable packaging failed.' }
   $avaloniaZip = Join-Path $out "StockCount-Avalonia-v$Version-Windows-x64-Portable.zip"
