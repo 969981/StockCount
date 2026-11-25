@@ -39,8 +39,8 @@ public interface ICountScanGateway
 
 /// <summary>
 /// UI-independent counting flow. A scan never edits a previously entered count
-/// without explicit discard approval. A Committed result is acknowledged ONLY
-/// after the UI has shown its 1000ms success popup.
+/// without explicit discard approval. A committed result is acknowledged as soon
+/// as local cleanup can complete, independently of visual feedback.
 /// </summary>
 public sealed class CountScanWorkflow(
     ICountScanGateway gateway,
@@ -49,6 +49,7 @@ public sealed class CountScanWorkflow(
     string environment = "Test",
     IPendingSubmissionStore? pendingStore = null)
 {
+    public const int SuccessToastDurationMs = 400;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _committedAwaitingUi;
 
@@ -106,7 +107,7 @@ public sealed class CountScanWorkflow(
             if (string.IsNullOrWhiteSpace(raw))
                 return new CountScanFeedback("Error", "未识别到条码。");
             if (_committedAwaitingUi)
-                return new CountScanFeedback("Busy", "提交成功提示尚未结束，请稍后重扫。");
+                return new CountScanFeedback("Busy", "正在清理已提交箱信息，请稍后重扫。");
             if (PendingRequestId.HasValue)
                 return new CountScanFeedback("Unknown", "提交结果待确认，请先查询原请求结果。");
 
@@ -176,7 +177,7 @@ public sealed class CountScanWorkflow(
         if (PendingRequestId.HasValue && ManualQuantity != quantity)
             throw new InvalidOperationException("提交结果未确认，不能改变原请求的数量。");
         if (_committedAwaitingUi)
-            throw new InvalidOperationException("请先完成提交成功提示。");
+            throw new InvalidOperationException("请先完成已提交箱信息清理。");
         ManualQuantity = quantity;
     }
 
@@ -187,7 +188,7 @@ public sealed class CountScanWorkflow(
         try
         {
             if (_committedAwaitingUi)
-                return new CountScanFeedback("Busy", "当前提交已成功，请等待确认提示结束。");
+                return new CountScanFeedback("Busy", "当前提交已成功，正在清理本地记录。");
             if (Box is null || OriginalQr is null || Location is null)
                 return new CountScanFeedback("Error", "请先扫描盘点库位和箱码。");
             if (!ManualQuantity.HasValue)
@@ -241,7 +242,7 @@ public sealed class CountScanWorkflow(
             }
 
             _committedAwaitingUi = true;
-            return new CountScanFeedback("Submitted", "提交成功！", 1000);
+            return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
         }
         finally { _gate.Release(); }
     }
@@ -253,7 +254,7 @@ public sealed class CountScanWorkflow(
         try
         {
             if (_committedAwaitingUi)
-                return new CountScanFeedback("Submitted", "提交成功！", 1000);
+                return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
             if (!PendingRequestId.HasValue)
                 return new CountScanFeedback("Ready");
             try
@@ -263,7 +264,7 @@ public sealed class CountScanWorkflow(
                 if (confirmed is true)
                 {
                     _committedAwaitingUi = true;
-                    return new CountScanFeedback("Submitted", "提交成功！", 1000);
+                    return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
                 }
                 if (confirmed is false)
                     return new CountScanFeedback("Unknown",
@@ -278,7 +279,7 @@ public sealed class CountScanWorkflow(
         finally { _gate.Release(); }
     }
 
-    /// <summary>Call only after rendering the full success popup duration.</summary>
+    /// <summary>Call immediately after confirmed commit, before showing the non-blocking toast.</summary>
     public async Task AcknowledgeSuccessAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
