@@ -3,7 +3,7 @@ title: "StockCount — 七表结构与中文字段字典索引（5 张业务表 
 aliases:
   - "StockCount · docs / database / SCHEMA_INDEX"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -45,6 +45,15 @@ up: "[[docs/database/00-数据库知识地图]]"
 | [inspect_dictionary_tables.sql](../../sql/read_only/inspect_dictionary_tables.sql) | **ATABZON / ATEXTE 完整物理列 + 中文短/普通/长标题 + 类型、长度、可空、索引、触发器等** | 同时检查 COB / XTEST，只读元数据 |
 | [query_dictionary_tables.sql](../../sql/read_only/query_dictionary_tables.sql) | ATABZON 字段代码、标题号与 ATEXTE 中文/英文关联、两字典表有限行 `SELECT *` | 默认 XTEST；选择7张表之一、最多 TOP 100 |
   
+## 2026-11-25 · 各表内嵌业务数据查询与码值 CASE
+
+七个字段字典页面均新增「业务数据查询 SQL（中文别名）」：常用业务字段、全部物理列、原始码值与中文映射、现场本地菜单查询。已核实物理列的 XCOUTH（16）、XCOUTD（19）、XLABELDTL（45）、STOLOC（41）使用静态 SELECT，合计121个物理字段；ITMMASTER / ATABZON / ATEXTE 通过 sys.columns 动态枚举，不把字典定义当作物理列。
+
+- [单表全部物理列 + 中文别名 + 本地菜单 CASE 生成器](../../sql/read_only/select_table_with_enum_aliases.sql)：默认 XTEST、TOP 20，允许手动选择七表及 COB；输出原值、实际菜单码值、中英文含义和生成的可复用 SELECT。第0项菜单元信息不参与翻译；空白或未知码值不猜测。
+- 静态映射证据：STOLOC 的 OCPCOD/LOKSTA/CUNLOKFLG 来自 XTEST 实测；XCOUTH.CUNSTA 与 XLABELDTL.STA 已知部分来自 COB 实测；跨 Schema 映射需现场确认。
+- 所有示例 SQL 均为只读诊断，状态文字不改变 V1 业务准入规则；未在企业 SQL Server 中重新执行验证。
+- 2026-11-24 COB 只读核验中，站点+库位未发现重复，非空盘点明细均可在表头站点找到匹配；但存在仓库不一致记录。因此诊断优先用站点+库位关联，仓库作为独立比较条件；不将当前快照当成唯一索引或历史业务授权的证据。
+
 ## 字典表关系与常用字段关联
 
 ```text
