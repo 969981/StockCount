@@ -20,7 +20,7 @@ public static class ScanFeed
     public static string AndroidBarcodeExtra =>
         Preferences.Default.Get(ExtraKey, DefaultExtra);
 
-    public sealed record ScanDiagnostic(DateTimeOffset ObservedAt, string Kind, int Length);
+    public sealed record ScanDiagnostic(DateTimeOffset ObservedAt, string Kind, int Length, string Shape);
 
     public static event Action<string>? ScanReceived;
     public static event Action<ScanDiagnostic>? ScanObserved;
@@ -47,6 +47,17 @@ public static class ScanFeed
         ScannerConfigurationChanged?.Invoke();
     }
 
+    private static string DescribeInvisible(string value)
+    {
+        var positions = value.Select((ch, index) => (ch, index))
+            .Where(x => char.IsControl(x.ch) ||
+                char.GetUnicodeCategory(x.ch) == System.Globalization.UnicodeCategory.Format)
+            .Take(12)
+            .Select(x => $"{x.index}:U+{(int)x.ch:X4}");
+        var result = string.Join(", ", positions);
+        return result.Length == 0 ? "无" : result;
+    }
+
     public static void OnScan(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
@@ -54,7 +65,11 @@ public static class ScanFeed
         if (string.IsNullOrWhiteSpace(normalized)) return;
         var diagnostic = new ScanDiagnostic(DateTimeOffset.Now,
             CountScanWorkflow.LooksLikeBoxQr(normalized) ? "待查询箱码" : "待校验库位/其他码",
-            normalized.Length);
+            normalized.Length,
+            $"原始长度 {value.Length}；ID. 开头：{(normalized.StartsWith("ID.", StringComparison.OrdinalIgnoreCase) ? "是" : "否")}；" +
+            $"@@ 分隔符：{Regex.Matches(normalized, "@@").Count}；" +
+            $"控制/不可见字符：{DescribeInvisible(normalized)}；" +
+            $"首字符 U+{(int)normalized[0]:X4} / 尾字符 U+{(int)normalized[^1]:X4}");
         LatestDiagnostic = diagnostic;
         ScanObserved?.Invoke(diagnostic);
         ScanReceived?.Invoke(normalized);
