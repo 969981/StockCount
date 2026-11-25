@@ -3,7 +3,7 @@ title: "ITMMASTER — 产品主数据 X3 中文字段字典（197 条；物理�
 aliases:
   - "StockCount · docs / database / schema / ITMMASTER"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-25
 status: reference
 area: database
 tags:
@@ -236,6 +236,167 @@ up: "[[docs/database/00-数据库知识地图]]"
 执行 [`sql/read_only/select_five_tables_chinese_aliases.sql`](../../../sql/read_only/select_five_tables_chinese_aliases.sql) 可在指定 Schema 以真实物理列生成中文别名 `TOP (20)` 查询，不会将 197 个字典代码误当成 197 个可 SELECT 列。
 
 **本仓库不提交生产产品数据行。**
+
+## 业务数据查询 SQL（中文别名）
+
+2026-11-25 补充。以下均为只读，默认抽样 TOP (20)，字段使用 `中文业务别名（物理字段名）`；说明性别名不等于 X3 官方字典标题。原始码值和 CASE 翻译并列，转换不代表业务准入。切换 Schema 前核实真实列和菜单。
+
+### 1. 常用业务字段
+
+仅使用本仓库已用于业务关联的三列；其他候选字段如 STU、PCU、ITMSTA 须以实际物理列为准，见动态查询。
+
+```sql
+SELECT TOP (20)
+    T.ITMREF_0 AS [产品编码（ITMREF_0）],
+    T.YITMDES4_0 AS [品名（YITMDES4_0）],
+    T.ITMDES2_0 AS [描述2（规格）（ITMDES2_0）]
+FROM sagex3.COB.ITMMASTER AS T
+ORDER BY ITMREF_0;
+```
+
+### 2. 全部物理字段（动态 SQL）
+
+此表完整物理列尚无现场回传，不能把逻辑字典或常用字段当成全列。以下直接读取 `sys.columns` 生成真实列的中文别名，并从对应 Schema 的 APLSTD 生成 CASE；缺中文标题保留字段名。脚本会输出实际生成的 SQL 和数据样本。
+
+```sql
+/*
+StockCount — 单表全物理列中文别名 + 当前 Schema 本地菜单 CASE（只读）
+SQL Server；默认 XTEST；仅限七表。无字典标题保留物理字段名。
+先输出菜单映射及生成 SQL，再执行 TOP 抽样；不修改业务库。
+*/
+USE [sagex3];
+SET NOCOUNT ON;
+DECLARE @SchemaName sysname = N'COB'; -- COB 正式 / XTEST 测试
+DECLARE @TableName sysname = N'ITMMASTER'; -- 七表之一
+DECLARE @RowLimit int = 20;
+IF @SchemaName IS NULL OR @SchemaName NOT IN (N'COB',N'XTEST')
+    THROW 51011, N'仅允许 COB 或 XTEST', 1;
+IF @TableName IS NULL OR @TableName NOT IN
+    (N'XCOUTH',N'XCOUTD',N'XLABELDTL',N'STOLOC',N'ITMMASTER',N'ATABZON',N'ATEXTE')
+    THROW 51012, N'仅支持七张已归档的表', 1;
+IF @RowLimit IS NULL OR @RowLimit NOT BETWEEN 1 AND 100
+    THROW 51013, N'行数限 1..100', 1;
+DECLARE @S nvarchar(258) = QUOTENAME(@SchemaName);
+DECLARE @Obj int = OBJECT_ID(@S+N'.'+QUOTENAME(@TableName),N'U');
+IF @Obj IS NULL THROW 51014, N'目标表不存在或无元数据权限', 1;
+
+DECLARE @Fields TABLE (
+    Ord int PRIMARY KEY, Col sysname, Caption nvarchar(4000), Menu int
+);
+DECLARE @Meta nvarchar(max) = N'
+SELECT C.column_id, C.name,
+    COALESCE(NULLIF(T.Caption,N''''), N''无字典中文标题''),
+    CASE WHEN Z.MenuCount=1 THEN Z.Menu END
+FROM sys.columns C
+CROSS APPLY (SELECT PATINDEX(N''%[^0-9]%'', REVERSE(C.name)) AS P) P
+CROSS APPLY (SELECT CASE WHEN P.P>1 AND
+    SUBSTRING(C.name,LEN(C.name)-P.P+1,1)=N''_''
+    THEN LEFT(C.name,LEN(C.name)-P.P) ELSE C.name END AS Code) B
+OUTER APPLY (
+    SELECT MIN(ZZ.NOCOURT_0) AS TitleId,
+           MIN(CASE WHEN ZZ.CODTYP_0=N''M'' AND ZZ.NOLIB_0>0 THEN ZZ.NOLIB_0 END) AS Menu,
+           COUNT(DISTINCT CASE WHEN ZZ.CODTYP_0=N''M'' AND ZZ.NOLIB_0>0 THEN ZZ.NOLIB_0 END) AS MenuCount
+    FROM '+@S+N'.ATABZON ZZ
+    WHERE ZZ.CODFIC_0=@TableName AND ZZ.CODZONE_0=B.Code
+) Z
+OUTER APPLY (
+    SELECT MIN(NULLIF(LTRIM(RTRIM(CONVERT(nvarchar(4000),TX.TEXTE_0))),N'''')) AS Caption
+    FROM '+@S+N'.ATEXTE TX
+    WHERE TX.NUMERO_0=Z.TitleId AND TX.LAN_0=N''CHI''
+) T
+WHERE C.object_id=@Obj;';
+INSERT INTO @Fields EXEC sys.sp_executesql @Meta,
+    N'@Obj int,@TableName sysname',@Obj=@Obj,@TableName=@TableName;
+
+-- 对缺少自身字典标题的常用系统/字典字段提供说明性别名，而非官方标题。
+UPDATE @Fields SET Caption=CASE Col
+    WHEN N'ROWID' THEN N'系统行标识'
+    WHEN N'UPDTICK_0' THEN N'更新计数'
+    WHEN N'CODFIC_0' THEN N'表代码'
+    WHEN N'CODZONE_0' THEN N'字段代码'
+    WHEN N'CODTYP_0' THEN N'逻辑类型'
+    WHEN N'NOCOURT_0' THEN N'普通标题编号'
+    WHEN N'NOABREG_0' THEN N'短标题编号'
+    WHEN N'NOLONG_0' THEN N'长标题编号'
+    WHEN N'NOLIB_0' THEN N'本地菜单编号'
+    WHEN N'NUMERO_0' THEN N'文本编号'
+    WHEN N'LAN_0' THEN N'语言代码'
+    WHEN N'TEXTE_0' THEN N'文本内容'
+    ELSE Caption END
+WHERE Caption=N'无字典中文标题';
+
+DECLARE @MenuRows TABLE (Menu int, Code int, Lang nvarchar(10), Meaning nvarchar(4000));
+DECLARE @MenuSql nvarchar(max)=N'
+SELECT LANCHP_0,LANNUM_0,LAN_0,
+       NULLIF(LTRIM(RTRIM(CONVERT(nvarchar(4000),LANMES_0))),N'''')
+FROM '+@S+N'.APLSTD
+WHERE LANNUM_0>0 AND LAN_0 IN (N''CHI'',N''ENG'')
+AND LANCHP_0 IN (SELECT NOLIB_0 FROM '+@S+N'.ATABZON
+    WHERE CODFIC_0=@TableName AND CODTYP_0=N''M'' AND NOLIB_0>0);';
+INSERT INTO @MenuRows EXEC sys.sp_executesql @MenuSql,
+    N'@TableName sysname',@TableName=@TableName;
+
+SELECT F.Col AS [物理字段], F.Menu AS [本地菜单],
+       M.Code AS [码值], M.Lang AS [语言], M.Meaning AS [菜单含义]
+FROM @Fields F LEFT JOIN @MenuRows M ON M.Menu=F.Menu
+WHERE F.Menu IS NOT NULL ORDER BY F.Ord,M.Code,M.Lang;
+
+DECLARE @Cols nvarchar(max)=N'', @Ord int=0, @Col sysname,
+        @Caption nvarchar(4000),@Menu int,@Cases nvarchar(max),@Alias nvarchar(258);
+WHILE EXISTS (SELECT 1 FROM @Fields WHERE Ord>@Ord)
+BEGIN
+    SELECT TOP (1) @Ord=Ord,@Col=Col,@Caption=Caption,@Menu=Menu
+    FROM @Fields WHERE Ord>@Ord ORDER BY Ord;
+    -- 保留列名后缀，避免同一标题的多列混淆。
+    SET @Alias=QUOTENAME(LEFT(@Caption,CASE WHEN LEN(@Col)<125 THEN 125-LEN(@Col) ELSE 0 END)+N'（'+LEFT(@Col,125)+N'）');
+    SET @Cols+=CASE WHEN @Cols=N'' THEN N'' ELSE N','+CHAR(10) END+
+        N'T.'+QUOTENAME(@Col)+N' AS '+@Alias;
+    IF @Menu IS NOT NULL
+    BEGIN
+        -- 仅采用唯一、非空中文菜单文字；不使用第0项元信息，不猜测冲突值。
+        SELECT @Cases=(
+            SELECT N' WHEN '+CONVERT(nvarchar(20),M.Code)+N' THEN N'''+
+                   REPLACE(M.Meaning,N'''',N'''''')+N''''
+            FROM (
+                SELECT Code,MIN(Meaning) AS Meaning
+                FROM @MenuRows WHERE Menu=@Menu AND Lang=N'CHI' AND Meaning IS NOT NULL
+                GROUP BY Code HAVING COUNT(DISTINCT Meaning)=1
+            ) M ORDER BY M.Code FOR XML PATH(''),TYPE
+        ).value('.','nvarchar(max)');
+        SET @Cols+=N','+CHAR(10)+
+            CASE WHEN NULLIF(@Cases,N'') IS NULL THEN N'CASE WHEN T.'+QUOTENAME(@Col)+N' IS NULL THEN N''空值'' ELSE N''未核实码值'' END'
+                 ELSE N'CASE TRY_CONVERT(int,T.'+QUOTENAME(@Col)+N')'+@Cases+
+                      N' ELSE N''未知或未命名码值'' END' END
+            +N' AS '+QUOTENAME(LEFT(@Caption,CASE WHEN LEN(@Col)<120 THEN 120-LEN(@Col) ELSE 0 END)+N'含义（'+LEFT(@Col,120)+N'）');
+    END;
+END;
+DECLARE @Sql nvarchar(max)=N'SELECT TOP (@Take) '+@Cols+
+    N' FROM '+@S+N'.'+QUOTENAME(@TableName)+N' T;';
+SELECT @Sql AS [生成的全字段中文别名及CASE查询];
+EXEC sys.sp_executesql @Sql,N'@Take int',@Take=@RowLimit;
+
+```
+
+### 3. 码值字典与核验
+
+ITMSTA 对应 X3 菜单246，具体中英文值待现场回传；其余 `M` 类型字段及菜单编号见上方197条字典。不能将 `ITMSTA` 等逻辑字段直接当作已证实的物理列。
+
+```sql
+SELECT DISTINCT
+    Z.CODZONE_0 AS [字段代码], Z.NOLIB_0 AS [本地菜单编号],
+    M.LANNUM_0 AS [码值], M.LAN_0 AS [语言],
+    M.LANMES_0 AS [状态含义]
+FROM sagex3.COB.ATABZON Z
+LEFT JOIN sagex3.COB.APLSTD M
+    ON M.LANCHP_0 = Z.NOLIB_0
+   AND M.LAN_0 IN (N'CHI', N'ENG') AND M.LANNUM_0 > 0
+WHERE Z.CODFIC_0 = N'ITMMASTER'
+  AND Z.CODTYP_0 = N'M' AND Z.NOLIB_0 > 0
+ORDER BY Z.CODZONE_0, Z.NOLIB_0, M.LANNUM_0, M.LAN_0;
+```
+
+全部菜单的动态 CASE（包括尚未手工核实的枚举）使用 [select_table_with_enum_aliases.sql](../../../sql/read_only/select_table_with_enum_aliases.sql)，将 `@TableName` 设为 `ITMMASTER`。脚本仅按现场非空且无冲突的中文字典生成 CASE，不使用菜单第0项；未知码值保留原值并标明未知。SQL 尚未在企业数据库执行验收，不提交实际业务数据。
+
 
 ---
 
