@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using StockCount.Contracts;
+using StockCount.Core;
 using StockCount.Pad.Services;
 
 namespace StockCount.Pad;
@@ -9,7 +10,10 @@ public partial class HistoryPage : ContentPage
 {
     private readonly StockCountApiClient _api;
     private readonly InventoryCountDto _count;
-    private readonly ObservableCollection<CountItemDto> _items = new();
+    private readonly ObservableCollection<HistoryItemDisplay> _items = new();
+    public sealed record HistoryItemDisplay(string BoxNumber, string LocationCode,
+        string QuantityText, DateTime CreatedAt);
+
     private string? _cursor;
     private bool _busy;
 
@@ -45,7 +49,8 @@ public partial class HistoryPage : ContentPage
             if (reset) { _items.Clear(); _cursor = null; }
             var page = await _api.GetItemsAsync(_count.CountNumber, _cursor);
             foreach (var item in page.Items)
-                _items.Add(item);
+                _items.Add(new HistoryItemDisplay(item.BoxNumber, item.LocationCode,
+                    CountQuantityDisplay.Format(item.QuantityStu, item.PackageUnit), item.CreatedAt));
             _cursor = page.NextCursor;
             MoreButton.IsVisible = _cursor is not null;
             CountStatusText.Text = $"共 {_items.Count} 条";

@@ -21,7 +21,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | 已编码 | 列表卡片、搜索、分页、帐套标识、加载空态 | `CountListPage.xaml(.cs)` |
 | 已编码 | 扫码页三段布局、固定底部数量/提交、只读箱字段 | `CountingPage.xaml(.cs)` |
 | 已编码 | 扫码队列和忙碌提示、重复箱弹窗、草稿覆盖确认 | `CountingPage.xaml.cs` + `CountScanWorkflow.cs` |
-| 已编码 | 成功蒙层1000ms **之后**才清箱、不清库位 | `CountScanWorkflow.AcknowledgeSuccessAsync` |
+| 已编码 | 确认成功立即清箱、不清库位；400ms非阻塞 Toast | `CountScanWorkflow.AcknowledgeSuccessAsync` |
 | 已编码 | UUID/原始二维码/数量加密持久化与重启恢复 | `SecurePendingSubmissionStore.cs` + 列表恢复入口 |
 | 已编码 | 已盘记录真实 GET 分页 | `HistoryPage.xaml(.cs)` |
 | 已编码 | 帐套/HTTPS API/设备 Key 设置、切环境保护 | `SettingsPage.xaml(.cs)` |
@@ -38,7 +38,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | PDA-UI-03 | 主盘点页面改为三段Grid，固定底部数量与提交 | CountingPage.xaml, QuantitySubmitBar.xaml | 320dp宽/IME弹出仍能看见数量与提交；不滚动丢失主按钮 |
 | PDA-UI-04 | ViewModel 化扫码与提交（不在 View 中管理业务真值） | CountingViewModel, CountScanWorkflow | 不可手动填库位；箱详情只读；无效扫描不保留旧箱 |
 | PDA-UI-05 | 草稿保护：数量填好又扫另一箱/库位要确认 | CountScanWorkflow, ConfirmDiscardDraft | 默认继续当前箱；除用户确认，不覆盖已填数量 |
-| PDA-UI-06 | 提交成功1秒后才清除箱和数量 | CountScanWorkflow, CountingViewModel, SuccessPopup | API确认→显示1000ms→清箱；单号/名称/库位始终保留 |
+| PDA-UI-06 | 提交确认后立即清除箱和数量 | CountScanWorkflow, CountingPage, SuccessToast | API确认→清理草稿与箱信息→显示400ms Toast，同时可扫码；单号/名称/库位始终保留 |
 | PDA-UI-07 | 独立提交状态与原UUID持久化恢复 | IPendingSubmissionStore, Android secure storage, ViewModel | 超时/重启恢复同环境、同单号、箱、库位、数量、原UUID；不重复 INSERT |
 | PDA-UI-08 | 工业硬件扫码桥接、串行消费/可见排队 | IScannerService, Android BroadcastReceiver, MockScanner | no silent drop; Rx仅接收；真机验证Action/Extra/扫码键/CRLF；Debug 与 Release 盘点页均无模拟扫码入口 |
 | PDA-UI-09 | 统一后端错误码和界面提示，含重复箱/数量空/网络未知 | ApiClient, AlertService, ErrorMapper | 指定文案精准一致，重复箱不填充，网络未知不清空；错误仅在用户确认后继续扫码 |
@@ -65,7 +65,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | UX-05 | 数量留空点击提交 | 提示箱内数量为必填项，不发POST |
 | UX-06 | 手工填99，QR参考数100 | POST人工99；两数据库数量列99 |
 | UX-07 | 已填99又扫描第二箱 | 原草稿保留，确认弹窗默认继续当前箱 |
-| UX-08 | 提交HTTP201 | 先弹提交成功1秒，再清箱，单号/库位不变 |
+| UX-08 | 提交HTTP201 | 立即清箱并显示灰色半透明 Toast；无需等待消失即可扫下一箱，单号/库位不变 |
 | UX-09 | 相同UUID重试HTTP200 | 显示成功，不产生第二条明细 |
 | UX-10 | HTTP超时/断网后App重启 | 保留原UUID；先GET查询原结果，拒绝生成新UUID |
 | UX-11 | 修改环境/主机名时仍有UnknownOutcome | 阻断无提示切换，提示先恢复或确认 |
