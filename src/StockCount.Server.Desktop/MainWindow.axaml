@@ -117,6 +117,7 @@
             <StackPanel Orientation="Horizontal" Spacing="10">
               <TextBox Width="320" Watermark="搜索 IP、接口、单号、请求编号、返回码" Text="{Binding LogSearch, Mode=TwoWay}" />
               <Button Content="刷新日志" Command="{Binding RefreshLogsCommand}" />
+              <Button Content="复制当前日志" Click="CopyVisibleLogs" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10">
               <TextBlock Text="删除早于" VerticalAlignment="Center"/>
@@ -137,6 +138,7 @@
                         <TextBlock Text="{Binding TimestampUtc}" FontSize="12" Opacity="0.7"/>
                         <TextBlock Text="{Binding Level}" FontWeight="Bold" />
                         <TextBlock Text="{Binding Category}" FontSize="12" />
+                        <Button Content="复制本条" Click="CopyLogEntry" />
                       </StackPanel>
                       <SelectableTextBlock Text="{Binding Message}" TextWrapping="Wrap"/>
                       <SelectableTextBlock Text="{Binding Exception}" TextWrapping="Wrap" FontSize="12" Opacity="0.65"/>
