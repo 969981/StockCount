@@ -367,7 +367,7 @@ public partial class CountingPage : ContentPage
 
     private void QuantityInput_TextChanged(object sender, TextChangedEventArgs e)
     {
-        QuantityErrorText.IsVisible = false;
+        if (QuantityErrorText.IsVisible) QuantityErrorText.IsVisible = false;
         UpdateSubmitButton();
     }
 
