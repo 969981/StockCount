@@ -59,7 +59,7 @@ Invoke-RestMethod "http://127.0.0.1:5080/api/v1/inventory-counts?pageSize=20" -H
 - `/health` 返回 Running 只证明进程活着（没有连接数据库）；`/ready` 返回数据库 Reachable 才代表从本进程能执行 SELECT 1。
 - 分页请求使用 `pageSize=1..100`、`cursor` 为 `nextCursor` 返回的**数值偏移量字符串**，不会按 `CUNSTA_0` 状态预过滤；这种 OFFSET 分页在实时新增/修改单据时可能出现页边界变化。
 - `countType` 在 SQL 中明确 CAST 成 nvarchar，以兼容 XTEST/COB 的类型差异。
-- POST 库位校验支持现场确认的 `LC.` + 库位值协议（例如 `LC.DEMO-01`），兼容纯库位值。先去掉一次 LC 前缀，再校验 1–10 字符，按当前帐套 STOLOC.LOC_0 与盘点表头站点、仓库匹配。返回数据库库位值，不含 LC 前缀；区分格式错误、不存在、仓库不匹配、重复记录与查询失败。
+- POST 库位校验支持现场确认的 `LC.` + 库位值协议（例如 `LC.DEMO-01`），兼容纯库位值。先去掉一次 LC 前缀，再校验 1–10 字符，按当前帐套 STOLOC.LOC_0 检查存在性；站点及仓库匹配取决于对应帐套的配置，默认均关闭。返回数据库库位值，不含 LC 前缀；区分格式错误、不存在、仓库不匹配、重复记录与查询失败。
 - POST 标签解析按完整 `XLABELDTL.QRCOD_0` 过滤，并关联 ITMMASTER 品名/规格，**不按 `STA_0` 过滤**；标签原数量仅作参考，不是实盘输入。
 - 如无正确连接串或 SQL 不可达，`/ready` 返回 503；读接口的异常会由 ASP.NET Core 异常处理中间件转换为服务器错误，不能当成正常业务数据。
 
@@ -118,3 +118,7 @@ $env:STOCKCOUNT_ENABLE_PRODUCTION_WRITES = "true"
 ## 中文 Swagger 接口文档
 
 API 启动后，浏览器打开 `http://127.0.0.1:5080` 自动跳转中文 Swagger；也可访问 `/docs`、`/swagger`，OpenAPI JSON 位于 `/openapi/v1.json`。局域网监听启用后，使用后台电脑实际局域网 IP。文档和脚本内置，无需互联网/CDN，无需数据库在线即可浏览。文档仅允许直接私有 IPv4 或本机回环来源，业务 API 的设备认证和写入授权不变。在线执行仅支持 GET；POST 包含请求结构及返回说明，但不在文档内直接执行。内部关闭接口不公开。请求头 `X-StockCount-Environment` 选择 Test/Production，默认测试示例 Test；旧版认证使用可选 `X-StockCount-Device-Key`。禁止公网映射。
+
+### 库位一致性校验（可选）
+
+独立环境变量：`STOCKCOUNT_XTEST_CHECK_SITE`、`STOCKCOUNT_XTEST_CHECK_WAREHOUSE`、`STOCKCOUNT_COB_CHECK_SITE`、`STOCKCOUNT_COB_CHECK_WAREHOUSE`，值为 `true` 时启用，默认 `false`。扫码和提交事务内复核共用相同参数化查询。只校验已启用的维度，库位必须存在，两个维度同时启用时保留精确范围重复检查；写入授权、事务、幂等、标签/数量等规则不变。配置在 API 启动时读取；变更后重启 API。

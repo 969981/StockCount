@@ -81,7 +81,7 @@ public sealed class ChineseOperationFilter : IOperationFilter
             "GET api/v1/inventory-counts" => ("盘点单查询", "查询盘点单列表", "支持搜索、分页，pageSize 默认 50，范围 1–100。", typeof(CountPage), "200"),
             "GET api/v1/inventory-counts/{countNumber}" => ("盘点单查询", "查询指定盘点单", "按盘点单号查询单据与可提交状态。", typeof(CountDetails), "200"),
             "GET api/v1/inventory-counts/{countNumber}/items" => ("盘点单查询", "查询盘点明细", "分页读取 XCOUTD 明细，不修改数据。", typeof(CountItemPage), "200"),
-            "POST api/v1/locations/resolve" => ("扫码解析", "解析盘点库位", "支持 LC. 前缀，先提取库位值再按盘点单所在站点及仓库核验 STOLOC。只读。", typeof(ResolvedLocation), "200"),
+            "POST api/v1/locations/resolve" => ("扫码解析", "解析盘点库位", "支持 LC. 前缀，提取库位后核验对应帐套 STOLOC；站点及仓库一致性由各帐套后台设置独立控制（默认关闭）。只读。", typeof(ResolvedLocation), "200"),
             "POST api/v1/labels/resolve" => ("扫码解析", "解析箱码二维码", "按完整 QR 查询 XLABELDTL 标签、物料信息及本单重复状态。只读。", typeof(ResolvedLabel), "200"),
             "POST api/v1/inventory-counts/{countNumber}/items" => ("盘点提交", "提交实盘明细（实际写入）", "危险操作：实际写入 ERP。数量须人工录入；必须提供非空 UUID 幂等键，重试复用原键。服务器仍校验帐套授权、库位、标签、单位和重复箱码。", typeof(SaveCountItemResult), "201"),
             "GET api/v1/submissions/{requestId}" => ("盘点提交", "查询提交结果", "按盘点单号及原 UUID 查询已提交记录；未找到不代表可以更换 UUID 重试。", typeof(SaveCountItemResult), "200"),

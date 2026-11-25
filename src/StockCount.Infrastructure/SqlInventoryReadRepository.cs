@@ -11,7 +11,8 @@ namespace StockCount.Infrastructure;
 /// </summary>
 public sealed class SqlInventoryReadRepository(string connectionString,
     bool enableTestWrites = false, bool enableProductionWrites = false,
-    bool testSchemaReviewed = false, bool productionSchemaReviewed = false) : IInventoryReadRepository
+    bool testSchemaReviewed = false, bool productionSchemaReviewed = false,
+    LocationValidationOptions? locationValidation = null) : IInventoryReadRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
@@ -85,17 +86,11 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         string locationCode, CancellationToken cancellationToken)
     {
         var schema = EnvironmentSelector.TablePrefix(environment);
-        // One read-only statement distinguishes absent codes, wrong scope and duplicate rows.
-        var sql = $"""
-            SELECT COUNT_BIG(*) AS TotalMatches,
-                   COUNT_BIG(CASE WHEN S.STOFCY_0=@Site AND S.WRH_0=@Warehouse THEN 1 END) AS ScopedMatches,
-                   MIN(CASE WHEN S.STOFCY_0=@Site AND S.WRH_0=@Warehouse THEN S.LOC_0 END) AS LocationCode
-            FROM {schema}.[STOLOC] S
-            WHERE S.LOC_0=@Location;
-            """;
+        var scope = (locationValidation ?? new LocationValidationOptions()).For(environment.Name);
         await using var connection = await OpenAsync(cancellationToken);
         return await connection.QuerySingleAsync<LocationLookup>(
-            new CommandDefinition(sql, new { Site=siteCode, Warehouse=warehouseCode, Location=locationCode },
+            new CommandDefinition(LocationLookupQuery.Sql(schema),
+                LocationLookupQuery.Parameters(scope, siteCode, warehouseCode, locationCode),
                 cancellationToken:cancellationToken));
     }
 

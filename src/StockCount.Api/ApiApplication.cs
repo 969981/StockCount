@@ -20,6 +20,15 @@ public static class ApiApplication
         var builder = WebApplication.CreateBuilder(args);
         configureBuilder?.Invoke(builder);
         builder.Services.AddProblemDetails();
+        builder.Services.AddSingleton(services =>
+        {
+            var config = services.GetRequiredService<IConfiguration>();
+            return new LocationValidationOptions(
+                config.GetValue<bool>("StockCount:Location:TestCheckSite"),
+                config.GetValue<bool>("StockCount:Location:TestCheckWarehouse"),
+                config.GetValue<bool>("StockCount:Location:ProductionCheckSite"),
+                config.GetValue<bool>("StockCount:Location:ProductionCheckWarehouse"));
+        });
         builder.Services.AddStockCountDocumentation();
         builder.Services.AddScoped<IInventoryReadRepository>(services =>
         {
@@ -29,7 +38,8 @@ public static class ApiApplication
                 config.GetValue<bool>("StockCount:EnableTestWrites"),
                 config.GetValue<bool>("StockCount:EnableProductionWrites"),
                 config.GetValue<bool>("StockCount:Write:TestSchemaReviewed"),
-                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"));
+                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"),
+                 services.GetRequiredService<LocationValidationOptions>());
         });
         builder.Services.AddScoped<IInventoryWriteRepository>(services =>
         {
@@ -39,11 +49,16 @@ public static class ApiApplication
                 config.GetValue<bool>("StockCount:EnableProductionWrites"),
                 config["StockCount:Write:AuditUser"] ?? "",
                 config.GetValue<bool>("StockCount:Write:TestSchemaReviewed"),
-                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"));
+                config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"),
+                 services.GetRequiredService<LocationValidationOptions>());
             return new SqlInventoryWriteRepository(config.GetConnectionString("SageX3") ?? "", options);
         });
         
         var app = builder.Build();
+        var locationRules = app.Services.GetRequiredService<LocationValidationOptions>();
+        app.Logger.LogInformation("盘点库位校验规则：XTEST 站点 {TestSite} / 仓库 {TestWarehouse}，COB 站点 {ProductionSite} / 仓库 {ProductionWarehouse}",
+            locationRules.TestCheckSite, locationRules.TestCheckWarehouse,
+            locationRules.ProductionCheckSite, locationRules.ProductionCheckWarehouse);
         // Capture outside exception handling so the log includes the actual problem response.
         app.UseMiddleware<StockCount.Api.Logging.ApiExchangeLogging>();
         app.UseExceptionHandler();
@@ -228,7 +243,7 @@ public static class ApiApplication
         
         app.MapPost("/api/v1/locations/resolve",
             async (HttpContext context, ResolveLocationRequest request, IInventoryReadRepository repository,
-                ILogger<Program> logger, CancellationToken cancellationToken) =>
+                ILogger<Program> logger, LocationValidationOptions validationOptions, CancellationToken cancellationToken) =>
         {
             if (!TryEnvironment(context, out var environment)) return BadEnvironment();
             if (string.IsNullOrWhiteSpace(request.CountNumber) || request.CountNumber.Length > 30 ||
@@ -246,12 +261,13 @@ public static class ApiApplication
                     return Error(404, "COUNT_NOT_FOUND", LocationScanPolicy.Describe("COUNT_NOT_FOUND"), environment.Name);
                 var matches = await repository.InspectLocationAsync(environment, count.SiteCode,
                     count.WarehouseCode, locationCode, cancellationToken);
-                var code = LocationScanPolicy.ClassifyLookup(matches.TotalMatches, matches.ScopedMatches);
+                var scope = validationOptions.For(environment.Name);
+                var code = scope.Classify(matches.TotalMatches, matches.ScopedMatches);
                 if (code is not null)
                 {
                     logger.LogInformation("库位校验未通过：帐套 {Environment}，原因 {Code}", environment.Name, code);
                     return Error(code == "LOCATION_NOT_FOUND" ? 404 : code == "LOCATION_AMBIGUOUS" ? 409 : 422,
-                        code, LocationScanPolicy.Describe(code), environment.Name);
+                        code, scope.Describe(code), environment.Name);
                 }
                 return Results.Ok(new ResolvedLocation(environment.Name, matches.LocationCode!,
                     count.SiteCode, count.WarehouseCode, true, null));
