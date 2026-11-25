@@ -53,7 +53,7 @@ public static class ScanFeed
         var normalized = value.TrimEnd('\r', '\n');
         if (string.IsNullOrWhiteSpace(normalized)) return;
         var diagnostic = new ScanDiagnostic(DateTimeOffset.Now,
-            CountScanWorkflow.LooksLikeBoxQr(normalized) ? "箱码格式" : "待校验库位/其他码",
+            CountScanWorkflow.LooksLikeBoxQr(normalized) ? "待查询箱码" : "待校验库位/其他码",
             normalized.Length);
         LatestDiagnostic = diagnostic;
         ScanObserved?.Invoke(diagnostic);
