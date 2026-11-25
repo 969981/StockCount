@@ -124,3 +124,5 @@ API 启动后，浏览器打开 `http://127.0.0.1:5080` 自动跳转中文 Swagg
 独立环境变量：`STOCKCOUNT_XTEST_CHECK_SITE`、`STOCKCOUNT_XTEST_CHECK_WAREHOUSE`、`STOCKCOUNT_COB_CHECK_SITE`、`STOCKCOUNT_COB_CHECK_WAREHOUSE`，值为 `true` 时启用，默认 `false`。扫码和提交事务内复核共用相同参数化查询。只校验已启用的维度，库位必须存在，两个维度同时启用时保留精确范围重复检查；写入授权、事务、幂等、标签/数量等规则不变。配置在 API 启动时读取；变更后重启 API。
 
 2026-11-25：盘点单位取标签 STU，明细系数固定1，两数量取人工实盘值；不再限制标签 PCU 或 PCUSTUCOE。详见 [盘点单位研究](../../docs/database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
+
+2026-11-25 状态规则：所有已存在 XCOUTH 单据均可提交，CUNSTA_0 只读展示，不限制提交；含已结束状态。仍须满足帐套授权及其他写入检查。
