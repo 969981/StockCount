@@ -29,7 +29,7 @@ try {
     # Release uses the exact short dotnet command documented for operators.
     $common = @('-c',$Configuration,'-r','win-x64')
     if ($Configuration -eq 'Debug') {
-        $common += @('--self-contained','true','-p:PublishSingleFile=true',
+        $common += @('--self-contained','false','-p:EnableCompressionInSingleFile=false','-p:PublishSingleFile=true',
             '-p:IncludeNativeLibrariesForSelfExtract=true','-p:PublishTrimmed=false','-p:DebugType=embedded')
     }
     $uiStage = Join-Path $stage 'desktop'
