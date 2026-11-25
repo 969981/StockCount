@@ -1,0 +1,35 @@
+name: Cleanup merged PR 29 branch
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/cleanup-merged-pr29-branch.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Delete only the verified merged branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch='fix/field-counting-workflow'
+          ref="refs/heads/$branch"
+          expected='0a567bc99dd3b854f4e99a2c1924c3d9a7afa6ef'
+          test "$branch" != main
+          current="$(git ls-remote --heads origin "$ref" | cut -f1)"
+          if [ -z "$current" ]; then
+            echo 'Branch already absent.'
+            exit 0
+          fi
+          test "$current" = "$expected" || { echo 'Branch changed; refusing deletion.'; exit 1; }
+          git fetch origin main
+          git merge-base --is-ancestor "$expected" FETCH_HEAD
+          git push --force-with-lease="$ref:$expected" origin ":$ref"
+          test -z "$(git ls-remote --heads origin "$ref")"
+          git ls-remote --heads origin
