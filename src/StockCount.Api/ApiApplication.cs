@@ -292,12 +292,20 @@ public static class ApiApplication
             var count = await repository.GetCountAsync(environment, request.CountNumber, cancellationToken);
             if (count is null) return Error(404, "COUNT_NOT_FOUND", "未找到对应盘点单。", environment.Name);
         
-            // Match XLABELDTL.QRCOD_0, not a client-controlled item/quantity/label status.
+            // Exact QR first; only a definitive miss allows a structured ID fallback.
             // IMPORTANT: STA_0 must not be used as an admission filter.
-            var label = await repository.FindLabelAsync(environment, request.CountNumber,
-                request.RawQrCode.TrimEnd('\r','\n'), cancellationToken);
+            LabelRecord? label;
+            try
+            {
+                label = await repository.FindLabelAsync(environment, request.CountNumber,
+                    request.RawQrCode.TrimEnd('\r','\n'), cancellationToken);
+            }
+            catch (CountWriteException error) when (error.Code == "LABEL_AMBIGUOUS")
+            {
+                return Error(error.StatusCode, error.Code, error.Message, environment.Name);
+            }
             if (label is null)
-                return Error(404, "LABEL_NOT_FOUND", "未查询到完整二维码对应的标签。", environment.Name);
+                return Error(404, "LABEL_NOT_FOUND", "完整二维码及箱号均未查询到标签。", environment.Name);
         
             return Results.Ok(new ResolvedLabel(
                 environment.Name, label.BoxNumber, label.ItemCode, label.ItemName,
