@@ -20,8 +20,6 @@
               <StackPanel Spacing="12">
                 <TextBlock Text="{Binding ServiceState}" FontWeight="Bold" FontSize="21" TextWrapping="Wrap"/>
                 <SelectableTextBlock Text="{Binding PortOwners}" TextWrapping="Wrap" FontSize="13"/>
-                <Button Content="{Binding StopExternalText}" Command="{Binding StopExternalCommand}" IsEnabled="{Binding CanStopExternal}" HorizontalAlignment="Left"/>
-                <TextBlock Text="仅在核实进程身份后允许人工终止外部 API；不会自动关闭其他程序。操作前请停止 PDA 提交。" TextWrapping="Wrap" Opacity="0.7"/>
                 <TextBlock Text="{Binding ApiUrl}" FontSize="15"/>
                 <TextBlock Text="{Binding ApiDocsUrl}" FontSize="14" Opacity="0.8"/>
                 <Button Content="打开中文 API 文档（Swagger）" Command="{Binding OpenApiDocsCommand}" IsEnabled="{Binding ApiReachable}" HorizontalAlignment="Left"/>
@@ -87,20 +85,21 @@
             <TextBlock Text="免密模式不需要设备密钥。旧版密钥仍保存在 Windows Credential Manager，不写入 JSON。" Opacity="0.7" TextWrapping="Wrap"/>
             <Border BorderBrush="#D9A441" BorderThickness="1" CornerRadius="8" Padding="16">
               <StackPanel Spacing="10">
-                <TextBlock Text="环境写入授权（草稿）" FontSize="18" FontWeight="SemiBold"/>
+                <TextBlock Text="环境写入授权" FontSize="18" FontWeight="SemiBold"/>
                 <CheckBox Content="XTEST 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.SchemaReviewed, Mode=TwoWay}"/>
                 <CheckBox Content="启用 XTEST 写入" IsChecked="{Binding WriteDraft.EnableTestWrites, Mode=TwoWay}"/>
                 <CheckBox Content="COB 结构 / 事务已独立验收" IsChecked="{Binding WriteDraft.ProductionSchemaReviewed, Mode=TwoWay}"/>
                 <CheckBox Content="启用 COB 正式写入" IsChecked="{Binding WriteDraft.EnableProductionWrites, Mode=TwoWay}"/>
                 <Button Content="{Binding WriteGatesButtonText}" Command="{Binding SelectAllWriteGatesCommand}"
                         HorizontalAlignment="Left"/>
-                <TextBlock Text="首次预选四项仅为草稿。确认对应帐套已完成前检、幂等迁移及授权后保存；操作员编码无需手工填写。" TextWrapping="Wrap" Opacity="0.8"/>
+                <TextBlock Text="{Binding SavedWriteAuthorization}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                <TextBlock Text="勾选后请点击保存写入授权；只有保存并重启 API 后才生效。操作员编码无需手工填写。" TextWrapping="Wrap" Opacity="0.8"/>
                 <TextBlock Text="X3 操作员编码（可选，默认 PDA）"/>
                 <TextBox Text="{Binding WriteDraft.X3AuditUser, Mode=TwoWay}" Watermark="PDA（留空自动使用）" MaxLength="5" Width="300" HorizontalAlignment="Left"/>
+                <Button Content="保存写入授权" Command="{Binding SaveWriteSettingsCommand}" HorizontalAlignment="Left"/>
                 <TextBlock Text="更换 SQL Server / 数据库 / 用户名 / 密码 / 证书设置时，自动撤销两帐套此前的结构核验和写入授权。" TextWrapping="Wrap"/>
               </StackPanel>
             </Border>
-            <Button Content="确认并保存写入授权" Command="{Binding SaveWriteSettingsCommand}" HorizontalAlignment="Left"/>
             <Border BorderBrush="#CED7E4" BorderThickness="1" CornerRadius="8" Padding="16">
               <StackPanel Spacing="10">
                 <TextBlock Text="盘点库位校验规则" FontSize="18" FontWeight="SemiBold"/>
