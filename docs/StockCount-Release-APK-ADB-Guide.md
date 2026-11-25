@@ -12,6 +12,8 @@ up: "[[docs/ANDROID_RELEASE_SIGNING]]"
 
 # StockCount PDA：Release APK 编译与 ADB 安装手册
 
+> 仅做性能测试或内部试装、不自行创建正式 JKS 时，参见 [Release QA 编译发布与 ADB 安装手册（默认调试签名）](StockCount-Release-QA-APK-ADB-Guide.md)。Release QA 不属于正式签名发布包。
+
 更新日期：2026-11-25 | 平台：Windows x64 / PowerShell 7 | 适用：StockCount main 分支
 
 > **核心原则：正式 Release 必须使用同一个长期保管的 JKS 签名。** Debug 与 Release 默认包名相同，但签名通常不同。存在待确认盘点时，不得卸载旧应用、清除应用数据或重新生成请求 UUID。
