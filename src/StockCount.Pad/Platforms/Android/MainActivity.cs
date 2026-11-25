@@ -73,8 +73,9 @@ public class MainActivity : MauiAppCompatActivity
         {
             if (intent?.Action != ScanFeed.AndroidBroadcastAction) return;
             var text = intent.GetStringExtra(ScanFeed.AndroidBarcodeExtra);
-            if (!string.IsNullOrEmpty(text))
-                Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() => ScanFeed.OnScan(text));
+            if (string.IsNullOrEmpty(text)) return;
+            if (Microsoft.Maui.ApplicationModel.MainThread.IsMainThread) ScanFeed.OnScan(text);
+            else Microsoft.Maui.ApplicationModel.MainThread.BeginInvokeOnMainThread(() => ScanFeed.OnScan(text));
         }
     }
 }
