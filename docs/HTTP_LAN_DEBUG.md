@@ -2,7 +2,7 @@
 aliases: ["StockCount 局域网 HTTP 调试", "LAN HTTP"]
 title: StockCount · PDA 局域网 HTTP 编译与联调
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-26
 status: implemented-awaiting-hardware-validation
 tags: [StockCount, Android, PDA, Windows, HTTP, LAN, Debug]
 ---
@@ -71,6 +71,12 @@ Get-NetFirewallRule -Direction Inbound -Enabled True |
 ```
 
 注意：新增限定网段的允许规则，**并不会自动撤销其它已有的广泛允许规则**。若此前配置过开放 5080 的规则，必须一并审查与收紧。
+
+### 3.1 2026-11-26 现场复测与端口开放
+
+- [[docs/StockCount-Windows-5080-Firewall-Guide|Windows 5080 端口开放与完整现场排查（2026-11-25～26）]] · [Markdown](StockCount-Windows-5080-Firewall-Guide.md)
+
+PDA Ping 成功但 TCP 超时时，先查服务器监听、Public 配置文件、RemoteAddress 和有效策略。现场将既有规则改为 192.168.0.0/16 后用户确认恢复；这是需组织授权的部署范围，不是全局默认值。具体单行命令、临时规则清理、抓包与验收边界见上方专题。
 
 ## 4. 构建并安装 Debug APK
 

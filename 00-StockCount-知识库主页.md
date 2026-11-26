@@ -1,7 +1,7 @@
 ---
 title: "StockCount · Obsidian 知识库主页"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-26
 status: active
 type: moc
 area: home
@@ -48,6 +48,8 @@ aliases:
 - **AI 编码任务**：[[AGENTS|全仓编程规范]] · [Markdown](AGENTS.md)
 - **表和 SQL**：[[docs/database/SCHEMA_INDEX|七表字段索引]] · [Markdown](docs/database/SCHEMA_INDEX.md)
 - **硬件接入**：[[docs/SCANNER_INTEGRATION|工业扫码接口]] · [Markdown](docs/SCANNER_INTEGRATION.md)
+
+- **部署/网络**：[[docs/StockCount-Windows-5080-Firewall-Guide|Windows 5080 端口开放与完整现场排查（2026-11-25～26）]] · [Markdown](docs/StockCount-Windows-5080-Firewall-Guide.md)
 
 ## 使用提示
 
