@@ -1,0 +1,50 @@
+name: Import verified prebuilt PDA gain audio (one-time)
+on:
+  push:
+    branches: ['feature/pda-prebuilt-audio']
+    paths: ['.github/workflows/import-verified-pda-audio.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: StockCount-PDA-Android-Debug-APK
+          run-id: 45766828830
+          github-token: ${{ github.token }}
+          path: imported-apk
+      - name: Verify and extract only known audio resources
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,zipfile
+          lock=json.loads(pathlib.Path('tools/feedback-audio.lock.json').read_text())
+          raw=pathlib.Path('src/StockCount.Pad/Platforms/Android/Resources/raw')
+          apks=list(pathlib.Path('imported-apk').rglob('*.apk'))
+          assert len(apks)==1, apks
+          assert len(lock['files'])==19
+          with zipfile.ZipFile(apks[0]) as z:
+              for name,expected in lock['files'].items():
+                  data=z.read('res/raw/'+name)
+                  assert len(data)==expected['bytes'], name
+                  assert hashlib.sha256(data).hexdigest().upper()==expected['sha256'], name
+                  if '_g' in name:
+                      (raw/name).write_bytes(data)
+                  else:
+                      assert (raw/name).read_bytes()==data, name
+                  print(name,len(data),expected['sha256'])
+          assert len(list(raw.glob('scan_*_g*.wav')))==16
+          PY
+      - name: Commit exactly the sixteen verified WAVs
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- src/StockCount.Pad/Platforms/Android/Resources/raw/scan_success_g*.wav src/StockCount.Pad/Platforms/Android/Resources/raw/scan_failure_g*.wav
+          test "$(git diff --cached --name-only | wc -l)" -eq 16
+          git commit -m "build(pda): vendor 16 byte-verified gain WAV resources"
+          git push origin HEAD:refs/heads/feature/pda-prebuilt-audio

@@ -152,4 +152,4 @@ Test-NetConnection <API_HOST> -Port 5080
 关联：[业务 SQL 字典](database/BUSINESS_SQL_REFERENCE.md) · [API](API_CONTRACT.md) · [PDA 专项文档索引](pda/00-PDA扫码知识地图.md) · [验收计划](TEST_PLAN.md)。
 
 
-业务音量增益仅影响软件成功/失败/待确认音：1.0× 原始 OGG，低于1.0×用播放器衰减，高于1.0×使用构建时预生成的限峰 WAV。试听即时生效；不改系统媒体音量、硬件读码声或震动；0媒体音量仍静音。Android 本地编译需要 Windows x64、PowerShell 7 与 MAUI Android 工作负载。FFmpeg 8.1.2 由项目自动下载、校验并缓存，无需手动安装或配置 PATH；首次生成需联网，之后缓存可离线复用。可先执行 `pwsh -File scripts/generate-android-feedback-gain.ps1`。
+业务音量增益仅影响软件成功/失败/待确认音：1.0× 原始 OGG，低于1.0×用播放器衰减，高于1.0×使用项目中预先处理并提交的限峰 WAV。试听即时生效；不改系统媒体音量、硬件读码声或震动；0媒体音量仍静音。普通 Android 编译直接打包预制音频，不需要 FFmpeg 或音频生成步骤。仅维护者更换音频时才手动运行生成脚本，并审核更新 tools/feedback-audio.lock.json。

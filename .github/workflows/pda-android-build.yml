@@ -17,6 +17,7 @@ on:
       - 'scripts/generate-android-feedback-gain.ps1'
       - 'scripts/restore-ffmpeg.ps1'
       - 'tools/ffmpeg.lock.json'
+      - 'tools/feedback-audio.lock.json'
       - 'docs/pda/audio-feedback/**'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
@@ -36,6 +37,7 @@ on:
       - 'scripts/generate-android-feedback-gain.ps1'
       - 'scripts/restore-ffmpeg.ps1'
       - 'tools/ffmpeg.lock.json'
+      - 'tools/feedback-audio.lock.json'
       - 'docs/pda/audio-feedback/**'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
@@ -55,14 +57,6 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Install .NET MAUI Android workload
         run: dotnet workload install maui-android
-      - name: Cache pinned FFmpeg build tool
-        uses: actions/cache@v4
-        with:
-          path: .tools/ffmpeg
-          key: ${{ runner.os }}-stockcount-ffmpeg-${{ hashFiles('tools/ffmpeg.lock.json') }}
-      - name: Generate limited feedback audio profiles
-        shell: pwsh
-        run: ./scripts/generate-android-feedback-gain.ps1
       - name: Restore Android project
         run: dotnet restore src/StockCount.Pad/StockCount.Pad.csproj
       - name: Verify explicit MAUI Controls reference and restored assembly package

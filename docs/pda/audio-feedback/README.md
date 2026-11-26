@@ -36,3 +36,6 @@ Android 源码已接入同字节 WAV 与 SoundPool。CI 新增 ZIP 内资源 SHA
 
 
 增益版：原版1.0× OGG 保持不变，0.5/0.75×播放器衰减，1.25～3×限峰 WAV 由 `scripts/generate-android-feedback-gain.ps1` 在编译前生成（16文件，不提交生成物；FFmpeg 8.1.2 由 tools/ffmpeg.lock.json 固定并自动恢复）。每个 APK 验证全部19个音频资源。详见 [[docs/pda/PDA 紧凑盘点布局与业务音量增益]]。
+
+
+最新方案：16个限峰增益 WAV 已从通过验收的 APK 原样提取，随源代码提交；普通编译无需 FFmpeg。19个文件的固定哈希见 `tools/feedback-audio.lock.json`。生成脚本仅供后续音频维护使用。

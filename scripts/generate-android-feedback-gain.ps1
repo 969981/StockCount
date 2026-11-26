@@ -1,4 +1,6 @@
 param([switch]$Force)
+# Optional maintainer tool only. Ordinary APK builds use committed, hash-locked WAVs.
+# Review regenerated audio and explicitly update tools/feedback-audio.lock.json before committing.
 $ErrorActionPreference = 'Stop'
 $raw = Join-Path $PSScriptRoot '../src/StockCount.Pad/Platforms/Android/Resources/raw'
 $sourceHashes = @{

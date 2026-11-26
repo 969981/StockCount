@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "runId": 45766828830,
+    "artifactId": 15091979515,
+    "commit": "4c088e21f73a8f08ac83ed909b2248d738a584b0",
+    "note": "Exact bytes of successful Debug APK; verified identical in Release log."
+  },
+  "files": {
+    "scan_failure_g05.wav": {
+      "bytes": 19022,
+      "sha256": "E730B15A991AE3C8F3D812920F00C9F8E6F25DE6ADA9F12136D0F3B94D8F98D7"
+    },
+    "scan_failure_g06.wav": {
+      "bytes": 19022,
+      "sha256": "8F69DD0E70F089743D21FD8165E9958FFE20CC784BDB47C85D06398F998569FC"
+    },
+    "scan_failure_g07.wav": {
+      "bytes": 19022,
+      "sha256": "1E4F152D12DD8A67A27C48C59FA93A5DC92715E359B49193A85753F19F78EA60"
+    },
+    "scan_failure_g08.wav": {
+      "bytes": 19022,
+      "sha256": "876EF639154AE2BCA82F1B071CB5F99B3C45B84D097B593DB100ABD376444237"
+    },
+    "scan_failure_g09.wav": {
+      "bytes": 19022,
+      "sha256": "C3359EDE6A36519C61554CE307B27E3C0465E86F4D582EE9236F6604D598EB6E"
+    },
+    "scan_failure_g10.wav": {
+      "bytes": 19022,
+      "sha256": "04EAFCC7C88A28B0A2CD9A6B4FA0F88FD1207C07D44DFEC66B2FDD20D365A475"
+    },
+    "scan_failure_g11.wav": {
+      "bytes": 19022,
+      "sha256": "DB992603E536F9C1FBB8EC52FA8AAFE843A2032F06B1D7B722BE19C423C104F5"
+    },
+    "scan_failure_g12.wav": {
+      "bytes": 19022,
+      "sha256": "968C987EA1DDC39472CAFDE6B2309ED69317DB9B73D4B318C468B1EE3379E02A"
+    },
+    "scan_failure.ogg": {
+      "bytes": 6303,
+      "sha256": "4AB5DCA5C7DF319B8D597A6DB02B22845AD464A9032DA094B993ABDAD4927C3D"
+    },
+    "scan_read.wav": {
+      "bytes": 4044,
+      "sha256": "C418AAC0669126DF3A30F7C097D04ACBFFC17708CBE41A47E3F5D0FB4ECDC84B"
+    },
+    "scan_success_g05.wav": {
+      "bytes": 13902,
+      "sha256": "7660A2044F93AD2016B2FDD22336A22C0311680426370C808D46341A93C66AF4"
+    },
+    "scan_success_g06.wav": {
+      "bytes": 13902,
+      "sha256": "E6AA04F7551B4613E4F48F1FCDEF63FD9A56907C3C74FC2846B95E4525EE549A"
+    },
+    "scan_success_g07.wav": {
+      "bytes": 13902,
+      "sha256": "69D794DE1B8EE00459B5A6681FC54857D823BD157CACD132DB0562EDF6FF5DB7"
+    },
+    "scan_success_g08.wav": {
+      "bytes": 13902,
+      "sha256": "78D5F5327331D414BEE49AF432EF360789B84190CC97448CD9068C69A52951CC"
+    },
+    "scan_success_g09.wav": {
+      "bytes": 13902,
+      "sha256": "8B817F1426E0968BB3FF6F5023034236D7DFD8D0CD0E4D837B879671CBEBC563"
+    },
+    "scan_success_g10.wav": {
+      "bytes": 13902,
+      "sha256": "77CC102EF1BFA31498C497083A685FF42F3CD9EB6BCAA45F8E918CA89EEB4FA9"
+    },
+    "scan_success_g11.wav": {
+      "bytes": 13902,
+      "sha256": "53E7C3E89B78DD091CF1018CF39CB1FF7743BA53F73E329E8F1088CC21C3944C"
+    },
+    "scan_success_g12.wav": {
+      "bytes": 13902,
+      "sha256": "1014ECFB704C4A5A50875DCAAACD71A636746AE54DCDDE92F7645B1E7ABF4B4A"
+    },
+    "scan_success.ogg": {
+      "bytes": 5299,
+      "sha256": "7A301719C9845275C0108AFC536FD60D324BEE2E6201AF2006FFABF169E8AE57"
+    }
+  }
+}

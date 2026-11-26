@@ -42,3 +42,8 @@ tags: [StockCount, PDA, audio, UX]
 - `scripts/generate-android-feedback-gain.ps1` 校验原声，再按锁文件、脚本及输出 SHA-256 复用16个增益文件；缓存失效则自动恢复工具并重新生成。`-Force` 强制重建音频而非重复下载工具。
 - `StockCount.Pad.csproj` 的 PrepareFeedbackGainResources 在 PrepareForBuild 前运行；GitHub Actions 使用锁文件哈希缓存项目工具；APK 只含19个音频资源，不含 FFmpeg 二进制。Windows 服务端运行时无此依赖。
 - 依赖更新需更改锁文件的版本、URL、归档 SHA、内部路径并重新验证全部增益资源。
+
+
+## 最新构建方式：直接打包预制音频（取代上文自动生成构建方式）
+
+从已通过 Debug/Release 验收的 CI 工件 15091979515 提取原封不动的16个增益 WAV，纳入 Git 的 Android raw 资源目录。19个文件的字节数与 SHA-256 固定于 `tools/feedback-audio.lock.json`。移除 MSBuild 自动生成 Target 与 CI FFmpeg 恢复步骤；普通编译直接打包，无 FFmpeg 依赖、无额外下载。锁定 FFmpeg 与生成脚本保留为手动维护工具，重新生成后须独立审核音频并更新清单，不可静默覆盖已验收资源。旧构建说明仅作历史记录。

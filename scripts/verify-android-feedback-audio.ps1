@@ -1,7 +1,9 @@
 param([Parameter(Mandatory=$true)][string]$ApkPath)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem
+$manifest = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../tools/feedback-audio.lock.json') -Raw | ConvertFrom-Json -AsHashtable
 $expectedHashes = @{
+
     'scan_success.ogg' = '7A301719C9845275C0108AFC536FD60D324BEE2E6201AF2006FFABF169E8AE57'
     'scan_failure.ogg' = '4AB5DCA5C7DF319B8D597A6DB02B22845AD464A9032DA094B993ABDAD4927C3D'
     'scan_read.wav' = (Get-FileHash (Join-Path $PSScriptRoot '../docs/pda/audio-feedback/scan_read.wav') -Algorithm SHA256).Hash
@@ -43,8 +45,13 @@ foreach ($kind in @('success','failure')) {
         if (!$formatValid -or [Math]::Abs($actualMs-$expectedMs) -gt 40 -or $peak -gt 32113 -or $peak -eq 0) {
             throw "Gain WAV format/duration/peak invalid: $name ($actualMs ms, peak $peak)"
         }
-        $expectedHashes[$name] = (Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash
+        if (!$manifest.files.Contains($name)) { throw "Missing audio lock: $name" }
+        $expectedHashes[$name] = $manifest.files[$name].sha256
     }
+}
+if ($manifest.files.Count -ne 19 -or $expectedHashes.Count -ne 19) { throw 'Expected 19 locked audio files' }
+foreach ($name in $expectedHashes.Keys) {
+    if (!$manifest.files.Contains($name) -or $expectedHashes[$name] -ne $manifest.files[$name].sha256) { throw "Audio lock mismatch: $name" }
 }
 $zip = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $ApkPath).Path)
 try {
@@ -52,6 +59,7 @@ try {
         $source = Join-Path $PSScriptRoot "../src/StockCount.Pad/Platforms/Android/Resources/raw/$name"
         $expected = $expectedHashes[$name]
         if ((Get-FileHash -LiteralPath $source -Algorithm SHA256).Hash -ne $expected) { throw "Source audio mismatch: $name" }
+        if ((Get-Item -LiteralPath $source).Length -ne $manifest.files[$name].bytes) { throw "Source length mismatch: $name" }
         $entry = $zip.GetEntry("res/raw/$name")
         if ($null -eq $entry) { throw "Missing native audio resource: $name" }
         $stream = $entry.Open()
