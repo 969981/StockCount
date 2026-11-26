@@ -10,6 +10,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder.UseMauiApp<App>();
         builder.Services.AddSingleton<StockCountApiClient>();
+        builder.Services.AddSingleton<IScanFeedbackService, AndroidScanFeedbackService>();
         builder.Services.AddSingleton<StockCount.Core.IPendingSubmissionStore,
             SecurePendingSubmissionStore>();
         builder.Services.AddTransient<CountListPage>();

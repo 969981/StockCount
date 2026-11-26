@@ -22,4 +22,9 @@
               ForegroundScale="0.75" Color="#1168E4" BaseSize="512,512" />
     <MauiSplashScreen Include="Resources/Splash/splash.svg" Color="#376BEE" BaseSize="128,128" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- MAUI Android native raw resources (not MauiAsset). -->
+    <AndroidResource Remove="Platforms/Android/Resources/raw/scan_*.wav" />
+    <AndroidResource Include="Platforms/Android/Resources/raw/scan_*.wav" TargetPath="raw/%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

@@ -131,6 +131,38 @@
 
         <Border BackgroundColor="White" Stroke="#E3E9F1" StrokeShape="RoundRectangle 12" Padding="15">
           <VerticalStackLayout Spacing="8">
+            <Label Text="扫码声音与震动" Style="{StaticResource SectionTitle}"/>
+            <Label Text="业务反馈独立于硬件读码音。设置立即保存，不影响连接或盘点草稿。" Style="{StaticResource SecondaryText}"/>
+            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+              <Label Text="启用声音反馈" VerticalOptions="Center" FontSize="13"/>
+              <Switch Grid.Column="1" x:Name="SoundSwitch" Toggled="Feedback_Toggled" VerticalOptions="Center"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+              <Label Text="启用震动反馈" VerticalOptions="Center" FontSize="13"/>
+              <Switch Grid.Column="1" x:Name="VibrationSwitch" Toggled="Feedback_Toggled" VerticalOptions="Center"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+              <Label Text="业务成功反馈 · 200 ms" VerticalOptions="Center" FontSize="13"/>
+              <Switch Grid.Column="1" x:Name="SuccessFeedbackSwitch" Toggled="Feedback_Toggled" VerticalOptions="Center"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+              <Label Text="业务失败/待确认 · 1000 ms" VerticalOptions="Center" FontSize="13"/>
+              <Switch Grid.Column="1" x:Name="FailureFeedbackSwitch" Toggled="Feedback_Toggled" VerticalOptions="Center"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" MinimumHeightRequest="48">
+              <Label Text="额外扫码读取音（默认关闭）" VerticalOptions="Center" FontSize="13"/>
+              <Switch Grid.Column="1" x:Name="ReadFeedbackSwitch" Toggled="Feedback_Toggled" VerticalOptions="Center"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+              <Button x:Name="PreviewSuccessButton" Text="试听成功" Clicked="PreviewSuccess_Clicked" Style="{StaticResource SecondaryAction}"/>
+              <Button Grid.Column="1" x:Name="PreviewFailureButton" Text="试听失败" Clicked="PreviewFailure_Clicked" Style="{StaticResource SecondaryAction}"/>
+            </Grid>
+            <Label x:Name="FeedbackSettingsStatus" Text="试听遵循当前声音与震动开关；不会发送请求。" Style="{StaticResource SecondaryText}"/>
+          </VerticalStackLayout>
+        </Border>
+
+        <Border BackgroundColor="White" Stroke="#E3E9F1" StrokeShape="RoundRectangle 12" Padding="15">
+          <VerticalStackLayout Spacing="8">
             <Label Text="客户端性能诊断" Style="{StaticResource SectionTitle}"/>
             <Label Text="最近512个阶段耗时，仅内存保留；不记录箱码、数量或密钥。" Style="{StaticResource SecondaryText}"/>
             <Label x:Name="PerformanceText" Text="点击刷新查看采样" FontSize="12" LineBreakMode="WordWrap"/>
