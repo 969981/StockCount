@@ -125,3 +125,8 @@ public interface IScannerService
 ## 扫码声音与震动专项（2026-11-26，规划）
 
 - [[docs/pda/PDA 扫码业务声音与震动反馈改造方案|扫码成功/失败音效与震动改造方案]] · [Markdown](pda/PDA%20%E6%89%AB%E7%A0%81%E4%B8%9A%E5%8A%A1%E5%A3%B0%E9%9F%B3%E4%B8%8E%E9%9C%87%E5%8A%A8%E5%8F%8D%E9%A6%88%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) — PDA-FB-01～08、F01～F22 触发矩阵、独立合成音效与验收（规划）。
+
+
+## 2026-11-26 PDA 键盘与成功提示
+
+- [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](pda/PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。

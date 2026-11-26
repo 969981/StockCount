@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.CountingPage"
              NavigationPage.HasNavigationBar="False"
-             Title="扫码盘点" BackgroundColor="White">
-  <!-- Approved V2 prototype: flat sections, dense fields, fixed action bar. -->
+             Title="扫码盘点" BackgroundColor="White" SafeAreaEdges="All">
+  <!-- IME Resize + MAUI 10 safe area: only the star-sized detail area scrolls.
+       Quantity and submit are siblings of the ScrollView, never inside it. -->
   <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="0">
     <Grid Grid.Row="0" RowDefinitions="48,1" ColumnDefinitions="44,*,Auto" BackgroundColor="White">
       <Button Text="‹" FontSize="27" Padding="0" BackgroundColor="Transparent"
@@ -17,7 +18,7 @@
               SemanticProperties.Description="打开当前单的已盘记录"/>
       <BoxView Grid.Row="1" Grid.ColumnSpan="3" Color="#D9DFE5"/>
     </Grid>
-    <ScrollView Grid.Row="1" VerticalScrollBarVisibility="Default">
+    <ScrollView Grid.Row="1" x:Name="CountDetailsScroll" VerticalScrollBarVisibility="Default" VerticalOptions="Fill" MinimumHeightRequest="0">
       <VerticalStackLayout Spacing="0">
         <Border x:Name="EnvironmentBanner" BackgroundColor="#F0F4F9"
                 Stroke="#DCE3EA" StrokeThickness="0" Padding="12,5" MinimumHeightRequest="30">
@@ -132,9 +133,9 @@
     </Border>
 
 
-    <Grid Grid.Row="3" RowDefinitions="1,Auto" BackgroundColor="White">
+    <Grid x:Name="QuantityActionBar" Grid.Row="3" RowDefinitions="1,Auto" BackgroundColor="White">
       <BoxView Color="#CBD3DB"/>
-      <VerticalStackLayout Grid.Row="1" Padding="12,10,12,12" Spacing="8">
+      <VerticalStackLayout Grid.Row="1" Padding="12,6,12,8" Spacing="5">
         <Label FontSize="14" FontAttributes="Bold" TextColor="#17232F">
           <Label.FormattedText><FormattedString>
             <Span Text="箱内数量 "/><Span Text="*" TextColor="#B73332"/>

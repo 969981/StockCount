@@ -40,7 +40,7 @@ up: "[[docs/development/00-研发规范地图]]"
 | P-08 | P0 | `XLABELDTL.STA_0` **不作盘点准入限制** | 对存在且可解析的标签，无论 STA_0 为 1/4/7/8/9 或其他值，都不得仅因 STA_0 拒绝；可展示原始状态供参考 |
 | P-09 | P0 | 箱内实盘数由操作员**手动输入**，单位 STU | 必填、允许修改；不可自动把 QR 的 QT 或 `XLABELDTL.QTY_0` 当实盘数 |
 | P-10 | P0 | 服务端提交并落盘 | 核准后将**同一个人工实盘数**同时写入选定帐套 `XCOUTD.QTYSTU_0` 和 `XCOUTD.QTYPCU_0`，**两列数值完全相等**；不得直接更改 `XLABELDTL.QTY_0` |
-| P-11 | P0 | 只在服务端明确确认成功后清空箱数据 | 提示「提交成功！」约一秒自动收起；保留当前单号、名称和库位，清空箱、物料临时数据及数量 |
+| P-11 | P0 | 只在服务端明确确认成功后清空箱数据 | 提示「提交成功！」默认2秒自动收起（PDA本地可配置0.5/1/2/3/5秒）；保留当前单号、名称和库位，清空箱、物料临时数据及数量 |
 | P-12 | P0 | 遇到网络未知结果不能双写 | 相同提交请求携带稳定幂等键；超时保留输入、按相同键查询/重试；后台保证原子性及并发控制 |
 | P-13 | P0 | V1 不提供创建/关闭盘点单功能 | 不调用旧 APK `AddXCOUTH` / `CloseXCOUTH` 变更接口 |
 | P-14 | P0 | 客户端无数据库凭据 | 只访问受控可信局域网 HTTP API（`http://<Windows内网IP>:5080`；客户端拒绝公网 HTTP），不包含 SQL Server 连接字符串或动态 SQL；设备密钥和数据会明文传输，仅供隔离可信 PDA 网络使用 |
@@ -129,3 +129,8 @@ up: "[[docs/development/00-研发规范地图]]"
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
 - 业务实现：[[docs/SCANNER_INTEGRATION|扫码交互]] · [Markdown](docs/SCANNER_INTEGRATION.md) · [[docs/DATABASE_MAPPING|数据库字段映射]] · [Markdown](docs/DATABASE_MAPPING.md)
+
+
+## 2026-11-26 PDA 键盘与成功提示
+
+- [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](docs/pda/PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。
