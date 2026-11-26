@@ -201,3 +201,6 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 ## 原版成功/失败音效替换（2026-11-26）
 
 StockCount main 构建改用原始 s.ogg / f.ogg（不转码），Android 资源 ID scan_success / scan_failure 不变。合成 scan_read.wav 保留，反馈分类、音量、播放备用、震动、Toast、API 与数据库逻辑不变。实际 APK 使用固定 SHA-256 验证两段 OGG，并确保无旧成功/失败 WAV。详见 [音效样品及资源版本](audio-feedback/README.md)。
+
+
+PDA-AUDIO-01～05：业务增益 0.5～3.0×、0.25步长，原声1×不变，低档播放器衰减、高档构建时生成限峰WAV；SoundPool/MediaPlayer同档位、硬件读码音不变。详见 [[docs/pda/PDA 紧凑盘点布局与业务音量增益]]。
