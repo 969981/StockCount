@@ -14,6 +14,7 @@ on:
       - 'scripts/build-android-release.ps1'
       - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/verify-android-feedback-audio.ps1'
+      - 'scripts/generate-android-feedback-gain.ps1'
       - 'docs/pda/audio-feedback/**'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
@@ -30,6 +31,7 @@ on:
       - 'scripts/build-android-release.ps1'
       - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/verify-android-feedback-audio.ps1'
+      - 'scripts/generate-android-feedback-gain.ps1'
       - 'docs/pda/audio-feedback/**'
       - 'src/StockCount.Core/**'
       - 'src/StockCount.Contracts/**'
@@ -49,6 +51,14 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Install .NET MAUI Android workload
         run: dotnet workload install maui-android
+      - name: Generate limited feedback audio profiles
+        shell: pwsh
+        run: |
+          if (!(Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
+          }
+          ./scripts/generate-android-feedback-gain.ps1 -Force
       - name: Restore Android project
         run: dotnet restore src/StockCount.Pad/StockCount.Pad.csproj
       - name: Verify explicit MAUI Controls reference and restored assembly package

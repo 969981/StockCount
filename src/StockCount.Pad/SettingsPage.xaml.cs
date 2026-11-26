@@ -67,6 +67,8 @@ public partial class SettingsPage : ContentPage
             SuccessFeedbackSwitch.IsToggled = options.SuccessEnabled;
             FailureFeedbackSwitch.IsToggled = options.FailureEnabled;
             ReadFeedbackSwitch.IsToggled = options.ReadEnabled;
+            AudioGainSlider.Value = AudioGainPolicy.Normalize(options.GainQuarterSteps);
+            ShowAudioGain(options.GainQuarterSteps);
             UpdateFeedbackPreview();
         }
         finally { _loadingFeedback = false; }
@@ -81,7 +83,7 @@ public partial class SettingsPage : ContentPage
         {
             _feedback.UpdateOptions(new ScanFeedbackOptions(SoundSwitch.IsToggled,
                 VibrationSwitch.IsToggled, SuccessFeedbackSwitch.IsToggled,
-                FailureFeedbackSwitch.IsToggled, ReadFeedbackSwitch.IsToggled));
+                FailureFeedbackSwitch.IsToggled, ReadFeedbackSwitch.IsToggled, _feedback.Options.GainQuarterSteps));
             FeedbackSettingsStatus.Text = "声音与震动设置已保存";
         }
         catch
@@ -92,9 +94,38 @@ public partial class SettingsPage : ContentPage
         UpdateFeedbackPreview();
     }
 
+    private void ShowAudioGain(int step) =>
+        AudioGainValue.Text = $"{AudioGainPolicy.Multiplier(step):0.00}×";
+
+    private void AudioGain_ValueChanged(object sender, ValueChangedEventArgs e)
+    {
+        if (_loadingFeedback || AudioGainSlider is null || AudioGainValue is null) return;
+        var step = AudioGainPolicy.FromSlider(e.NewValue);
+        try
+        {
+            _loadingFeedback = true;
+            if (AudioGainSlider.Value != step) AudioGainSlider.Value = step;
+            if (_feedback.Options.GainQuarterSteps != step)
+                _feedback.UpdateOptions(_feedback.Options with { GainQuarterSteps = step });
+            ShowAudioGain(step);
+            FeedbackSettingsStatus.Text = "业务音量增益已保存；点击试听确认效果。";
+        }
+        catch
+        {
+            LoadFeedbackOptions();
+            FeedbackSettingsStatus.Text = "增益保存失败，请重试。";
+        }
+        finally { _loadingFeedback = false; }
+    }
+
+    private void ResetAudioGain_Clicked(object sender, EventArgs e) =>
+        AudioGainSlider.Value = AudioGainPolicy.DefaultStep;
+
     private void UpdateFeedbackPreview()
     {
         var options = _feedback.Options;
+        AudioGainSlider.IsEnabled = options.SoundEnabled;
+        ResetAudioGainButton.IsEnabled = options.SoundEnabled;
         PreviewSuccessButton.IsEnabled = options.AllowsSound(FeedbackKind.Success) ||
             options.AllowsVibration(FeedbackKind.Success);
         PreviewFailureButton.IsEnabled = options.AllowsSound(FeedbackKind.Failure) ||

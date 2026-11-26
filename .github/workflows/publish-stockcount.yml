@@ -82,6 +82,14 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Install MAUI Android workload
         run: dotnet workload install maui-android
+      - name: Generate limited feedback audio profiles
+        shell: pwsh
+        run: |
+          if (!(Get-Command ffmpeg -ErrorAction SilentlyContinue)) {
+            choco install ffmpeg -y --no-progress
+            if ($LASTEXITCODE -ne 0) { throw 'FFmpeg installation failed' }
+          }
+          ./scripts/generate-android-feedback-gain.ps1 -Force
       - name: Test counting business rules
         run: dotnet test tests/StockCount.Core.Tests/StockCount.Core.Tests.csproj -c Release
       - name: Build signed debug APK
@@ -96,6 +104,7 @@ jobs:
           $signed = @(Get-ChildItem $path -File -Filter "*-Signed.apk")
           if ($signed.Count -ne 1) { throw "Expected one signed APK, got $($signed.Count)" }
           ./scripts/verify-android-launcher-icon.ps1 -ApkPath $signed[0].FullName
+          ./scripts/verify-android-feedback-audio.ps1 -ApkPath $signed[0].FullName
           New-Item -ItemType Directory release-android -Force | Out-Null
           $dest = "release-android/StockCount-PDA-v$env:RELEASE_VERSION-Android-Debug-Signed.apk"
           Copy-Item -LiteralPath $signed[0].FullName -Destination $dest

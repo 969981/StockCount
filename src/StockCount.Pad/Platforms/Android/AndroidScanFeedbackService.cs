@@ -11,7 +11,7 @@ namespace StockCount.Pad.Services;
 public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposable
 {
     private readonly FeedbackGate _gate = new();
-    private readonly Dictionary<FeedbackKind, int> _samples = new();
+    private readonly Dictionary<(FeedbackKind Kind, int Step), int> _samples = new();
     private readonly HashSet<int> _ready = new();
     private ScanFeedbackOptions _options = ReadOptions();
     private SoundPool? _pool;
@@ -35,11 +35,13 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
     public void UpdateOptions(ScanFeedbackOptions options)
     {
         // Persist separately from server address, environment and pending UUID.
+        options = options with { GainQuarterSteps = AudioGainPolicy.Normalize(options.GainQuarterSteps) };
+        var gainChanged = Options.GainQuarterSteps != options.GainQuarterSteps;
         ScanFeedbackPreferences.Save(options);
         Volatile.Write(ref _options, options);
         Dispatch(() =>
         {
-            if (!options.AllowsSound(_streamKind)) StopAudio();
+            if (gainChanged || !options.AllowsSound(_streamKind)) StopAudio();
             if (!options.VibrationEnabled || !options.SuccessEnabled || !options.FailureEnabled)
                 CancelVibration();
         });
@@ -71,9 +73,13 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
             var context = Android.App.Application.Context;
             foreach (var kind in new[] { FeedbackKind.Success, FeedbackKind.Failure, FeedbackKind.Read })
             {
-                var sample = _pool.Load(context, ResourceId(kind), 1);
-                _samples[kind] = sample;
-                if (sample <= 0) Log($"sample-load-rejected kind={kind}");
+                var last = kind == FeedbackKind.Read ? AudioGainPolicy.DefaultStep : AudioGainPolicy.MaxStep;
+                for (var step = AudioGainPolicy.DefaultStep; step <= last; step++)
+                {
+                    var sample = _pool.Load(context, ResourceId(kind, step), 1);
+                    _samples[(kind, step)] = sample;
+                    if (sample <= 0) Log($"sample-load-rejected kind={kind} step={step}");
+                }
             }
             TraceMediaVolume("resume");
         }
@@ -108,7 +114,7 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         var options = Options;
         if (options.AllowsSound(kind))
         {
-            try { Play(kind); }
+            try { Play(kind, options.GainQuarterSteps); }
             catch { Log("play"); }
         }
         if (options.AllowsVibration(kind))
@@ -127,32 +133,51 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         }
     }
 
-    private static int ResourceId(FeedbackKind kind) => kind switch
+    private static int ResourceId(FeedbackKind kind, int step) =>
+        (FeedbackAudioPolicy.SampleKind(kind), AudioGainPolicy.AssetStep(kind, step)) switch
     {
-        FeedbackKind.Success => global::StockCount.Pad.Resource.Raw.scan_success,
-        FeedbackKind.Failure or FeedbackKind.WarningUnknown => global::StockCount.Pad.Resource.Raw.scan_failure,
-        FeedbackKind.Read => global::StockCount.Pad.Resource.Raw.scan_read,
+        (FeedbackKind.Success, 4) => global::StockCount.Pad.Resource.Raw.scan_success,
+        (FeedbackKind.Success, 5) => global::StockCount.Pad.Resource.Raw.scan_success_g05,
+        (FeedbackKind.Success, 6) => global::StockCount.Pad.Resource.Raw.scan_success_g06,
+        (FeedbackKind.Success, 7) => global::StockCount.Pad.Resource.Raw.scan_success_g07,
+        (FeedbackKind.Success, 8) => global::StockCount.Pad.Resource.Raw.scan_success_g08,
+        (FeedbackKind.Success, 9) => global::StockCount.Pad.Resource.Raw.scan_success_g09,
+        (FeedbackKind.Success, 10) => global::StockCount.Pad.Resource.Raw.scan_success_g10,
+        (FeedbackKind.Success, 11) => global::StockCount.Pad.Resource.Raw.scan_success_g11,
+        (FeedbackKind.Success, 12) => global::StockCount.Pad.Resource.Raw.scan_success_g12,
+        (FeedbackKind.Failure, 4) => global::StockCount.Pad.Resource.Raw.scan_failure,
+        (FeedbackKind.Failure, 5) => global::StockCount.Pad.Resource.Raw.scan_failure_g05,
+        (FeedbackKind.Failure, 6) => global::StockCount.Pad.Resource.Raw.scan_failure_g06,
+        (FeedbackKind.Failure, 7) => global::StockCount.Pad.Resource.Raw.scan_failure_g07,
+        (FeedbackKind.Failure, 8) => global::StockCount.Pad.Resource.Raw.scan_failure_g08,
+        (FeedbackKind.Failure, 9) => global::StockCount.Pad.Resource.Raw.scan_failure_g09,
+        (FeedbackKind.Failure, 10) => global::StockCount.Pad.Resource.Raw.scan_failure_g10,
+        (FeedbackKind.Failure, 11) => global::StockCount.Pad.Resource.Raw.scan_failure_g11,
+        (FeedbackKind.Failure, 12) => global::StockCount.Pad.Resource.Raw.scan_failure_g12,
+        (FeedbackKind.Read, _) => global::StockCount.Pad.Resource.Raw.scan_read,
         _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
-    private void Play(FeedbackKind kind)
+    private void Play(FeedbackKind kind, int step)
     {
         var now = SystemClock.ElapsedRealtime();
         if (!FeedbackAudioPolicy.MayInterrupt(kind, _streamKind, now, _streamUntil)) return;
         StopAudio();
         var pool = _pool;
         var sampleKind = FeedbackAudioPolicy.SampleKind(kind);
-        var ready = _samples.TryGetValue(sampleKind, out var sample) && sample > 0 && _ready.Contains(sample);
+        var assetStep = AudioGainPolicy.AssetStep(kind, step);
+        var volume = AudioGainPolicy.PlaybackVolume(kind, step);
+        var ready = _samples.TryGetValue((sampleKind, assetStep), out var sample) && sample > 0 && _ready.Contains(sample);
         if (pool is not null && ready)
         {
             try
             {
-                _stream = pool.Play(sample, 1f, 1f, kind == FeedbackKind.Read ? 1 : 2, 0, 1f);
+                _stream = pool.Play(sample, volume, volume, kind == FeedbackKind.Read ? 1 : 2, 0, 1f);
                 if (_stream > 0)
                 {
                     _streamKind = kind;
                     _streamUntil = now + FeedbackPolicy.AudioMilliseconds(kind);
-                    Trace($"soundpool-start kind={kind} stream={_stream}");
+                    Trace($"soundpool-start kind={kind} stream={_stream} gainStep={step}");
                     return;
                 }
                 Log($"soundpool-zero-stream kind={kind}");
@@ -161,17 +186,17 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         }
         else Log($"soundpool-not-ready kind={kind} pool={pool is not null} sample={sample}");
 
-        if (FeedbackAudioPolicy.CanUseFallback(kind)) PlayFallback(kind);
+        if (FeedbackAudioPolicy.CanUseFallback(kind)) PlayFallback(kind, step, volume);
     }
 
-    private void PlayFallback(FeedbackKind kind)
+    private void PlayFallback(FeedbackKind kind, int step, float volume)
     {
         // No delayed replay after the next business result. Native resource
         // preparation may cost time, but never wait for playback completion.
         try
         {
             TraceMediaVolume("fallback");
-            var player = MediaPlayer.Create(Android.App.Application.Context, ResourceId(kind));
+            var player = MediaPlayer.Create(Android.App.Application.Context, ResourceId(kind, step));
             if (player is null)
             {
                 Log($"mediaplayer-create-failed kind={kind}");
@@ -193,11 +218,11 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
                 });
             };
             player.Looping = false;
-            player.SetVolume(1f, 1f);
+            player.SetVolume(volume, volume);
             player.Start();
             _streamKind = kind;
             _streamUntil = SystemClock.ElapsedRealtime() + FeedbackPolicy.AudioMilliseconds(kind);
-            Trace($"mediaplayer-start kind={kind}");
+            Trace($"mediaplayer-start kind={kind} gainStep={step}");
         }
         catch
         {

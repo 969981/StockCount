@@ -55,3 +55,6 @@ aliases:
 
 
 - [[docs/USER_GUIDE|现场软件使用手册]] · [Markdown](../USER_GUIDE.md)
+
+
+- [[docs/pda/PDA 紧凑盘点布局与业务音量增益|紧凑盘点布局与业务音量增益]] · [Markdown](PDA%20%E7%B4%A7%E5%87%91%E7%9B%98%E7%82%B9%E5%B8%83%E5%B1%80%E4%B8%8E%E4%B8%9A%E5%8A%A1%E9%9F%B3%E9%87%8F%E5%A2%9E%E7%9B%8A.md) — 键盘自动滚动、横向操作栏、独立限峰音量增益。

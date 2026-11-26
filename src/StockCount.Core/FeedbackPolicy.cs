@@ -17,7 +17,8 @@ public sealed record FeedbackEvent(FeedbackReason Reason, Guid? RequestId = null
 }
 
 public sealed record ScanFeedbackOptions(bool SoundEnabled = true, bool VibrationEnabled = true,
-    bool SuccessEnabled = true, bool FailureEnabled = true, bool ReadEnabled = false)
+    bool SuccessEnabled = true, bool FailureEnabled = true, bool ReadEnabled = false,
+    int GainQuarterSteps = AudioGainPolicy.DefaultStep)
 {
     public bool AllowsSound(FeedbackKind kind) => SoundEnabled && CategoryEnabled(kind);
     public bool AllowsVibration(FeedbackKind kind) =>
