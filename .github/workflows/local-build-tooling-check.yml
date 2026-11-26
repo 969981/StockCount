@@ -35,6 +35,8 @@ on:
       - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/verify-android-feedback-audio.ps1'
       - 'scripts/generate-android-feedback-gain.ps1'
+      - 'scripts/restore-ffmpeg.ps1'
+      - 'tools/ffmpeg.lock.json'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
       - '.github/workflows/local-build-tooling-check.yml'
   pull_request:
@@ -70,6 +72,8 @@ on:
       - 'scripts/verify-android-launcher-icon.ps1'
       - 'scripts/verify-android-feedback-audio.ps1'
       - 'scripts/generate-android-feedback-gain.ps1'
+      - 'scripts/restore-ffmpeg.ps1'
+      - 'tools/ffmpeg.lock.json'
       - 'docs/LOCAL_BUILD_DEPLOY.md'
       - '.github/workflows/local-build-tooling-check.yml'
 
@@ -105,6 +109,7 @@ jobs:
             'scripts/verify-android-launcher-icon.ps1',
             'scripts/verify-android-feedback-audio.ps1',
             'scripts/generate-android-feedback-gain.ps1',
+            'scripts/restore-ffmpeg.ps1',
             'scripts/build-avalonia-desktop.ps1',
             'scripts/build-tauri-sidecar.ps1',
             'scripts/package-windows-portable.ps1',

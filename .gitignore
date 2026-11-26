@@ -49,3 +49,7 @@ publish/
 # Generated native feedback gain profiles (derived from original OGG at build time)
 /src/StockCount.Pad/Platforms/Android/Resources/raw/scan_success_g*.wav
 /src/StockCount.Pad/Platforms/Android/Resources/raw/scan_failure_g*.wav
+
+# Project-local restored build tools and audio build cache
+/.tools/
+/src/StockCount.Pad/Platforms/Android/Resources/raw/.gain-build.json

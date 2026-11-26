@@ -35,4 +35,4 @@ Android 源码已接入同字节 WAV 与 SoundPool。CI 新增 ZIP 内资源 SHA
 原版素材的公开再分发授权未核实；使用者需自行确认。此处不包含 APK 其他资源或业务数据。编译和真机验收独立进行。
 
 
-增益版：原版1.0× OGG 保持不变，0.5/0.75×播放器衰减，1.25～3×限峰 WAV 由 `scripts/generate-android-feedback-gain.ps1` 在编译前生成（16文件，不提交生成物）。每个 APK 验证全部19个音频资源。详见 [[docs/pda/PDA 紧凑盘点布局与业务音量增益]]。
+增益版：原版1.0× OGG 保持不变，0.5/0.75×播放器衰减，1.25～3×限峰 WAV 由 `scripts/generate-android-feedback-gain.ps1` 在编译前生成（16文件，不提交生成物；FFmpeg 8.1.2 由 tools/ffmpeg.lock.json 固定并自动恢复）。每个 APK 验证全部19个音频资源。详见 [[docs/pda/PDA 紧凑盘点布局与业务音量增益]]。

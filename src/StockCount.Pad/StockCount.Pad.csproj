@@ -25,7 +25,7 @@
     <AndroidResource Remove="Platforms/Android/Resources/raw/scan_*.wav;Platforms/Android/Resources/raw/scan_*.ogg" />
     <AndroidResource Include="Platforms/Android/Resources/raw/scan_success.ogg;Platforms/Android/Resources/raw/scan_failure.ogg;Platforms/Android/Resources/raw/scan_read.wav;Platforms/Android/Resources/raw/scan_success_g05.wav;Platforms/Android/Resources/raw/scan_success_g06.wav;Platforms/Android/Resources/raw/scan_success_g07.wav;Platforms/Android/Resources/raw/scan_success_g08.wav;Platforms/Android/Resources/raw/scan_success_g09.wav;Platforms/Android/Resources/raw/scan_success_g10.wav;Platforms/Android/Resources/raw/scan_success_g11.wav;Platforms/Android/Resources/raw/scan_success_g12.wav;Platforms/Android/Resources/raw/scan_failure_g05.wav;Platforms/Android/Resources/raw/scan_failure_g06.wav;Platforms/Android/Resources/raw/scan_failure_g07.wav;Platforms/Android/Resources/raw/scan_failure_g08.wav;Platforms/Android/Resources/raw/scan_failure_g09.wav;Platforms/Android/Resources/raw/scan_failure_g10.wav;Platforms/Android/Resources/raw/scan_failure_g11.wav;Platforms/Android/Resources/raw/scan_failure_g12.wav" TargetPath="raw/%(Filename)%(Extension)" />
   </ItemGroup>
-  <!-- Generate from checked original OGGs before resource processing; no runtime encoder. -->
+  <!-- Restore pinned project FFmpeg only if needed; generate from checked OGGs before resource processing. No runtime encoder. -->
   <Target Name="PrepareFeedbackGainResources" BeforeTargets="PrepareForBuild"
           Condition="'$(DesignTimeBuild)' != 'true'">
     <Exec Command="pwsh -NoProfile -File &quot;$(MSBuildProjectDirectory)/../../scripts/generate-android-feedback-gain.ps1&quot;" />
