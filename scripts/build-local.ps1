@@ -116,6 +116,7 @@ if ($Target -in @('All','Android')) {
     $signed = @(Get-ChildItem -LiteralPath $apkDir -File -Filter '*-Signed.apk')
     if ($signed.Count -ne 1) { throw "Expected one signed debug APK, found $($signed.Count); do not ship unsigned APK." }
     & (Join-Path $PSScriptRoot 'verify-android-launcher-icon.ps1') -ApkPath $signed[0].FullName
+    & (Join-Path $PSScriptRoot 'verify-android-feedback-audio.ps1') -ApkPath $signed[0].FullName
     $apk = Join-Path $out "StockCount-PDA-v$Version-Android-Debug-Signed.apk"
     Copy-Item -LiteralPath $signed[0].FullName -Destination $apk -Force
     Assert-Artifact $apk
