@@ -40,9 +40,7 @@ jobs:
             fi
             if [ -n "$(git ls-remote --heads origin "$ref")" ]; then failed=1; fi
           done <<'BRANCHES'
-          feat/avalonia-lean-singlefile 028ae2715de4da017ca0dd58595b982263400eb1
-          feature/pda-scan-feedback 0036337b86e630158a54568ffaec802877824ac6
-          fix/avalonia-isolated-api-publish 6c72447f2d197ff5fa8042739466498f0cba07c0
+          fix/pda-keyboard-submit-toast cae57c720b5d7bfe9e583a9e1db17b7367fd8069
           BRANCHES
           git ls-remote --heads origin
           exit "$failed"
