@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Security.Cryptography;
 using System.Text;
 using StockCount.Contracts;
@@ -41,7 +42,7 @@ public static class ApiApplication
                 config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"),
                  services.GetRequiredService<LocationValidationOptions>());
         });
-        builder.Services.AddScoped<IInventoryHistoryRepository>(services =>
+        builder.Services.TryAddScoped<IInventoryHistoryRepository>(services =>
             (IInventoryHistoryRepository)services.GetRequiredService<IInventoryReadRepository>());
         builder.Services.AddScoped<IInventoryWriteRepository>(services =>
         {
