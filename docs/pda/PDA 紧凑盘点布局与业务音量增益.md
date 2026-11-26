@@ -1,5 +1,6 @@
 ---
 title: "PDA 紧凑盘点布局与业务音量增益"
+aliases: ["PDA 紧凑数量操作栏", "PDA 业务音量增益"]
 created: 2026-11-26
 updated: 2026-11-26
 status: implemented-unverified
