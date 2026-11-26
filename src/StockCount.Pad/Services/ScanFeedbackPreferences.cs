@@ -11,7 +11,8 @@ internal static class ScanFeedbackPreferences
         Preferences.Default.Get(Prefix + "VibrationEnabled", true),
         Preferences.Default.Get(Prefix + "SuccessEnabled", true),
         Preferences.Default.Get(Prefix + "FailureEnabled", true),
-        Preferences.Default.Get(Prefix + "ReadEnabled", false));
+        Preferences.Default.Get(Prefix + "ReadEnabled", false),
+        AudioGainPolicy.Normalize(Preferences.Default.Get(Prefix + "GainQuarterSteps", AudioGainPolicy.DefaultStep)));
 
     public static void Save(ScanFeedbackOptions options)
     {
@@ -20,5 +21,6 @@ internal static class ScanFeedbackPreferences
         Preferences.Default.Set(Prefix + "SuccessEnabled", options.SuccessEnabled);
         Preferences.Default.Set(Prefix + "FailureEnabled", options.FailureEnabled);
         Preferences.Default.Set(Prefix + "ReadEnabled", options.ReadEnabled);
+        Preferences.Default.Set(Prefix + "GainQuarterSteps", AudioGainPolicy.Normalize(options.GainQuarterSteps));
     }
 }
