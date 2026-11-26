@@ -53,6 +53,10 @@ public sealed record CountItemDto(
 );
 public sealed record CountItemPage(string Environment, IReadOnlyList<CountItemDto> Items, string? NextCursor);
 
+/// <summary>Counts are returned on the first page only; continuation uses the same upper ROWID.</summary>
+public sealed record CountHistoryPage(string Environment, IReadOnlyList<CountItemDto> Items,
+    string? NextCursor, long? TotalCount, long? FilteredCount);
+
 public sealed record SaveCountItemRequest(
     string RawQrCode,
     string BoxNumber,

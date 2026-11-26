@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="StockCount.Pad.HistoryPage"
              NavigationPage.HasNavigationBar="False"
-             Title="已盘记录"
+             Title="已盘记录" SafeAreaEdges="All"
              BackgroundColor="{StaticResource PageBackground}">
   <Grid RowDefinitions="Auto,Auto,*,Auto">
     <Grid Grid.Row="0" BackgroundColor="White" ColumnDefinitions="Auto,*,Auto"
@@ -28,8 +28,15 @@
           <Label x:Name="CountNumberText" FontSize="15" FontAttributes="Bold"
                  TextColor="#1C2D48"/>
           <Label x:Name="CountNameText" FontSize="12" TextColor="#72829C"/>
+          <Label x:Name="TotalStatusText" Text="已盘总记录：—" FontSize="16" FontAttributes="Bold" TextColor="#305CB6"/>
         </VerticalStackLayout>
       </Border>
+      <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
+        <Entry x:Name="BoxSearchInput" Placeholder="搜索箱码" MaxLength="20" FontSize="13" MinimumHeightRequest="44"/>
+        <Entry Grid.Column="1" x:Name="LocationFilterInput" Placeholder="库位（精确）" MaxLength="10" FontSize="13" MinimumHeightRequest="44"/>
+        <Button Grid.Row="1" Text="查询 / 筛选" Clicked="Filter_Clicked" Style="{StaticResource SecondaryAction}"/>
+        <Button Grid.Row="1" Grid.Column="1" Text="清空筛选" Clicked="ClearFilter_Clicked" Style="{StaticResource SecondaryAction}"/>
+      </Grid>
       <Grid ColumnDefinitions="*,Auto" Padding="3,5,3,0">
         <Label Text="已盘箱列表" Style="{StaticResource SectionTitle}"/>
         <Label Grid.Column="1" x:Name="CountStatusText"
@@ -37,7 +44,8 @@
       </Grid>
     </VerticalStackLayout>
     <Grid Grid.Row="2" Padding="14,0,14,0">
-      <CollectionView x:Name="ItemsList" SelectionMode="None">
+      <CollectionView x:Name="ItemsList" SelectionMode="None" RemainingItemsThreshold="-1"
+                      RemainingItemsThresholdReached="ThresholdReached" ItemsUpdatingScrollMode="KeepScrollOffset">
         <CollectionView.ItemTemplate>
           <DataTemplate>
             <Border BackgroundColor="White" Stroke="#E3E9F1"
@@ -88,8 +96,10 @@
                          HorizontalOptions="Center"/>
     </Grid>
     <Grid Grid.Row="3" ColumnDefinitions="*,Auto" Padding="14,10,14,15">
-      <Label Text="只读记录 · 不支持修改或删除" FontSize="11"
-             TextColor="#8C9CB2" VerticalOptions="Center"/>
+      <VerticalStackLayout VerticalOptions="Center" Spacing="2">
+        <Label x:Name="FooterStatus" Text="正在读取" FontSize="11" TextColor="#627181"/>
+        <Label Text="只读记录 · 不支持修改或删除" FontSize="11" TextColor="#8C9CB2"/>
+      </VerticalStackLayout>
       <Button x:Name="MoreButton" Grid.Column="1" Text="加载更多"
               IsVisible="False" Style="{StaticResource SecondaryAction}"
               Clicked="More_Clicked"/>

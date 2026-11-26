@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Security.Cryptography;
 using System.Text;
 using StockCount.Contracts;
@@ -41,6 +42,8 @@ public static class ApiApplication
                 config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"),
                  services.GetRequiredService<LocationValidationOptions>());
         });
+        builder.Services.TryAddScoped<IInventoryHistoryRepository>(services =>
+            (IInventoryHistoryRepository)services.GetRequiredService<IInventoryReadRepository>());
         builder.Services.AddScoped<IInventoryWriteRepository>(services =>
         {
             var config = services.GetRequiredService<IConfiguration>();
@@ -329,6 +332,23 @@ public static class ApiApplication
             return Results.Ok(new CountItemPage(environment.Name, rows.Take(size).ToArray(), next));
         });
         
+        // Separate read endpoint: older APKs continue to use offset pagination unchanged.
+        app.MapGet("/api/v1/inventory-counts/{countNumber}/history",
+            async (HttpContext context, string countNumber, IInventoryHistoryRepository repository,
+                int? pageSize, string? cursor, string? boxSearch, string? location,
+                CancellationToken cancellationToken) =>
+        {
+            if (!TryEnvironment(context, out var environment)) return BadEnvironment();
+            var size = pageSize ?? HistoryPagingPolicy.PageSize;
+            if (!HistoryQuery.TryCreate(environment.Name, countNumber, boxSearch, location, out var query) ||
+                !HistoryPagingPolicy.ValidSize(size) || !HistoryCursor.TryDecode(cursor, query, out var position))
+                return Error(400, "HISTORY_QUERY_INVALID", "箱码搜索最多20字符，库位最多10字符；分页游标须对应当前筛选。", environment.Name);
+            var page = await repository.GetHistoryAsync(environment, query, position, size, cancellationToken);
+            return page is null
+                ? Error(404, "COUNT_NOT_FOUND", "未找到对应盘点单。", environment.Name)
+                : Results.Ok(page);
+        });
+
         // Idempotent, transactional write. Actual mutation requires explicit
         // server-side environment + schema-approval flags; no auxiliary table.
         app.MapPost("/api/v1/inventory-counts/{countNumber}/items",

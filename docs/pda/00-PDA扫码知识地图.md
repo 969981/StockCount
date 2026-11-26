@@ -49,3 +49,6 @@ aliases:
 ## 2026-11-26 PDA 键盘与成功提示
 
 - [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。
+
+
+- [[docs/pda/PDA 已盘记录分页与搜索优化|已盘记录分页与搜索优化]] · [Markdown](PDA%20%E5%B7%B2%E7%9B%98%E8%AE%B0%E5%BD%95%E5%88%86%E9%A1%B5%E4%B8%8E%E6%90%9C%E7%B4%A2%E4%BC%98%E5%8C%96.md) — 真实总数、ROWID游标、自动加载、筛选及500行缓存上限。

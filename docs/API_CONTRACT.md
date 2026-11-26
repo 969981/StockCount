@@ -38,7 +38,8 @@ up: "[[docs/development/00-研发规范地图]]"
 | GET | `/api/v1/inventory-counts/{countNumber}` | 单据详情、原始状态、是否允许提交及原因 | P0 |
 | POST | `/api/v1/locations/resolve` | 解析/校验扫码库位 | P0 |
 | POST | `/api/v1/labels/resolve` | 解析完整箱标签 QR，查物料等 | P0 |
-| GET | `/api/v1/inventory-counts/{countNumber}/items` | 本单明细分页查询与重复提示 | P1 / 防重可内部实现 |
+| GET | `/api/v1/inventory-counts/{countNumber}/items` | 旧版偏移分页，保持兼容 | P1 |
+| GET | `/api/v1/inventory-counts/{countNumber}/history` | 新版 ROWID 游标、真实总数、箱码/库位筛选 | P1 |
 | POST | `/api/v1/inventory-counts/{countNumber}/items` | 保存人工实盘数、幂等/事务 | XTEST/COB 均已编码真实 SQL 事务，按帐套独立核验与显式启用 |
 | GET | `/api/v1/submissions/{requestId}?countNumber=...` | 查询数据库持久提交记录，避免超时双写 | 查询原有 XCOUTD.AUUID_0，无需附加表 |
 
@@ -215,3 +216,8 @@ up: "[[docs/development/00-研发规范地图]]"
 提交以标签 STU 为唯一计量单位，XCOUTD.PCU_0=STU，PCUSTUCOE_0=1，QTYSTU_0=QTYPCU_0=人工输入数量。不再校验原标签 PCU 或系数。保留 409 UNIT_MAPPING_UNSUPPORTED 兼容码，仅用于存货单位无效。详见 [历史研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
 
 2026-11-25：`statusCode` 保留原始 ERP 状态；`canSubmit` 不再依赖状态，所有现有单据（含已结束）可在帐套授权后提交。提交不修改表头状态。
+
+
+## 已盘记录新版只读分页（2026-11-26）
+
+`GET /api/v1/inventory-counts/{countNumber}/history?pageSize=50&boxSearch=DEMO&location=LOC-DEMO01`。boxSearch 为包含匹配（最多20字符），location 精确匹配（最多10字符），均可省略或组合；pageSize 1–100 默认50。首页响应 CountHistoryPage 包含 environment、items、nextCursor、totalCount（本单全部明细行）、filteredCount（本单匹配行）；续页使用同一查询及 nextCursor，统计字段为 null，不重复 COUNT_BIG。400 HISTORY_QUERY_INVALID 表示筛选/游标无效，404 COUNT_NOT_FOUND 表示无单据。旧 GET /items 和 POST /items 不变。参见 [[docs/pda/PDA 已盘记录分页与搜索优化|专项文档]] · [Markdown](pda/PDA%20%E5%B7%B2%E7%9B%98%E8%AE%B0%E5%BD%95%E5%88%86%E9%A1%B5%E4%B8%8E%E6%90%9C%E7%B4%A2%E4%BC%98%E5%8C%96.md)。
