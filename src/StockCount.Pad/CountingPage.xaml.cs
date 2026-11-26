@@ -85,8 +85,7 @@ public partial class CountingPage : ContentPage
     protected override void OnDisappearing()
     {
         _pageVisible = false;
-        _toastLifetime.Invalidate();
-        SuccessToast.IsVisible = false;
+        DismissBusinessToast();
         _scanQueue.Clear();
         ScanFeed.ScanReceived -= OnScannerReceived;
         base.OnDisappearing();
@@ -108,6 +107,7 @@ public partial class CountingPage : ContentPage
             {
                 ConnectionStateText.Text = "扫码过快，请重新扫描最后一箱";
                 Notify(FeedbackReason.QueueFull);
+                ShowBusinessToast("扫码过快，请重新扫描最后一箱", false);
                 return;
             }
             _scanQueue.Enqueue((raw, receivedAt));
@@ -147,6 +147,7 @@ public partial class CountingPage : ContentPage
         if (_workflow.HasUnresolvedSubmission)
         {
             Notify(FeedbackReason.PendingBlocked);
+            DismissBusinessToast();
             await DisplayAlertAsync("提交结果待确认",
                 "请先查询原 UUID 的提交结果；不能扫描下一箱覆盖当前草稿。", "OK");
             return;
@@ -162,6 +163,7 @@ public partial class CountingPage : ContentPage
                 ConnectionStateText.Text = "当前箱已读取，请直接提交";
                 return;
             }
+            DismissBusinessToast();
             var discard = await DisplayAlertAsync("当前箱尚未提交",
                 "继续扫码会丢弃当前箱已输入的数量，是否确认？",
                 "丢弃并继续", "继续当前箱");
@@ -196,7 +198,7 @@ public partial class CountingPage : ContentPage
         {
             Notify(FeedbackReason.ScanException);
             ConnectionStateText.Text = "连接异常";
-            await DisplayAlertAsync("扫码失败", error.Message, "OK");
+            ShowBusinessToast("扫码失败：" + error.Message, false);
         }
         finally
         {
@@ -220,14 +222,17 @@ public partial class CountingPage : ContentPage
             Notify(FeedbackReason.QuantityInvalid);
             QuantityErrorText.Text = "箱内数量为必填项或格式无效！";
             QuantityErrorText.IsVisible = true;
-            await DisplayAlertAsync("提示", "箱内数量为必填项！", "OK");
+            ShowBusinessToast("箱内数量为必填项或格式无效！", false);
             return;
         }
         try { _workflow.EnterManualQuantity(quantity); }
         catch (InvalidOperationException error)
         {
             Notify(FeedbackReason.QuantityInvalid);
-            await DisplayAlertAsync("无法更改数量", error.Message, "OK");
+            if (_workflow.HasUnresolvedSubmission)
+                await DisplayAlertAsync("无法更改数量", error.Message, "OK");
+            else
+                ShowBusinessToast(error.Message, false);
             return;
         }
         await SubmitCurrentAsync();
@@ -259,6 +264,7 @@ public partial class CountingPage : ContentPage
         catch (Exception error)
         {
             Notify(FeedbackReason.SubmissionException);
+            DismissBusinessToast();
             await DisplayAlertAsync("提交结果需确认",
                 error.Message + "\n请确认提交结果，避免重复扫描。", "OK");
         }
@@ -295,6 +301,7 @@ public partial class CountingPage : ContentPage
         catch (Exception error)
         {
             Notify(FeedbackReason.SubmissionException);
+            DismissBusinessToast();
             await DisplayAlertAsync("查询提交结果异常", error.Message + "\n请保留原请求并再次确认。", "OK");
         }
         finally
@@ -331,12 +338,13 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Text = "";
                 QuantityInput.Unfocus();
                 RefreshScreen();
-                ShowSuccessToast();
+                ShowBusinessToast("提交成功！", true);
                 Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), requestId);
             }
             catch (Exception error)
             {
                 Notify(FeedbackReason.ConfirmedCleanupFailed, requestId);
+                DismissBusinessToast();
                 await DisplayAlertAsync("提交已成功但本机收尾失败",
                     "服务器已确认保存。请勿重复提交。\n" + error.Message, "OK");
             }
@@ -346,36 +354,61 @@ public partial class CountingPage : ContentPage
         Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), _workflow.PendingRequestId);
         if (feedback.Kind == "LocationUpdated")
         {
+            ClearFailureToast();
             ConnectionStateText.Text = "库位已更新";
             return;
         }
         if (feedback.Kind == "BoxResolved")
         {
+            ClearFailureToast();
             ConnectionStateText.Text = "箱码读取完成";
             return;
         }
 
-        if (feedback.Kind == "Duplicate")
+        if (feedback.Kind == "Duplicate" || feedback.ErrorCode == "BOX_ALREADY_RECORDED")
         {
             QuantityInput.Text = "";
             RefreshScreen();
         }
-        if (!string.IsNullOrWhiteSpace(feedback.Message))
-            await DisplayAlertAsync("提示", feedback.Message, "OK");
+        if (string.IsNullOrWhiteSpace(feedback.Message)) return;
+        if (BusinessToastPolicy.IsAutomaticFailure(feedback, submission, _workflow.HasUnresolvedSubmission))
+        {
+            ShowBusinessToast(feedback.Message, false);
+            return;
+        }
+        DismissBusinessToast();
+        await DisplayAlertAsync("提示", feedback.Message, "OK");
     }
 
-    private void ShowSuccessToast()
+    private bool _toastIsFailure;
+
+    private void ClearFailureToast()
+    {
+        if (_toastIsFailure) DismissBusinessToast();
+    }
+
+    private void DismissBusinessToast()
+    {
+        _toastLifetime.Invalidate();
+        BusinessToast.IsVisible = false;
+        _toastIsFailure = false;
+    }
+
+    private void ShowBusinessToast(string message, bool success)
     {
         if (!_pageVisible) return;
         var version = _toastLifetime.Begin();
-        // Preferences are read on each new confirmed submission, including recovery.
         var durationMs = CountingInteractionPreferences.SuccessToastDurationMs;
-        SuccessToast.IsVisible = true;
-        // Display time is independent of the transaction and the scanner queue.
+        _toastIsFailure = !success;
+        BusinessToast.BackgroundColor = Color.FromArgb(success ? "#287348" : "#A93232");
+        BusinessToastTitle.Text = success ? "✓ 盘点成功" : "! 扫码 / 业务提示";
+        BusinessToastMessage.Text = message;
+        BusinessToast.IsVisible = true;
+        // No await or queue lock for the presentation lifetime.
         Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(durationMs), () =>
         {
             if (_pageVisible && _toastLifetime.IsCurrent(version))
-                SuccessToast.IsVisible = false;
+                DismissBusinessToast();
         });
     }
 

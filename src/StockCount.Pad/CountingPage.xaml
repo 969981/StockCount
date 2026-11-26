@@ -194,14 +194,19 @@
       </VerticalStackLayout>
     </Grid>
     <!-- Compact, touch-through feedback. Never blocks the scanner or page. -->
-    <Border x:Name="SuccessToast" Grid.RowSpan="4" ZIndex="100"
+    <Border x:Name="BusinessToast" Grid.RowSpan="4" ZIndex="100"
             IsVisible="False" InputTransparent="True"
-            BackgroundColor="#CC444444" StrokeThickness="0"
+            BackgroundColor="#287348" StrokeThickness="0"
             StrokeShape="RoundRectangle 9"
-            HorizontalOptions="Center" VerticalOptions="Center"
-            Padding="18,10">
-      <Label Text="提交成功！" TextColor="White" FontSize="15"
-             InputTransparent="True" HorizontalTextAlignment="Center"/>
+            HorizontalOptions="Fill" VerticalOptions="Center"
+            MaximumWidthRequest="340" Margin="18,0" Padding="16,12">
+      <VerticalStackLayout Spacing="4" InputTransparent="True">
+        <Label x:Name="BusinessToastTitle" Text="✓ 盘点成功" TextColor="White"
+               FontSize="13" FontAttributes="Bold" InputTransparent="True" HorizontalTextAlignment="Center"/>
+        <Label x:Name="BusinessToastMessage" Text="提交成功！" TextColor="White" FontSize="16"
+               FontAttributes="Bold" LineBreakMode="WordWrap"
+               InputTransparent="True" HorizontalTextAlignment="Center"/>
+      </VerticalStackLayout>
     </Border>
   </Grid>
 </ContentPage>

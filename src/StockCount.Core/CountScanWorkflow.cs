@@ -13,7 +13,11 @@ public sealed class ScanCommitRejectedException(string code, string message) : E
 
 public sealed record LocationScanResult(string? Location, string? ErrorCode = null, string? Message = null);
 
-public sealed record CountScanFeedback(string Kind, string? Message = null, int AutoDismissMs = 0);
+public sealed record CountScanFeedback(string Kind, string? Message = null, int AutoDismissMs = 0)
+{
+    // Optional presentation discriminator for a definitive server rejection.
+    public string? ErrorCode { get; init; }
+}
 
 /// <summary>Serialized before POST, restored after Android process termination.</summary>
 public sealed record PendingSubmissionDraft(
@@ -233,7 +237,7 @@ public sealed class CountScanWorkflow(
                     try { await pendingStore.ClearAsync(CancellationToken.None); }
                     catch { /* Do not report the rejected transaction as successful. */ }
                 }
-                return new CountScanFeedback("Error", rejected.Message);
+                return new CountScanFeedback("Error", rejected.Message) { ErrorCode = rejected.Code };
             }
             catch (Exception)
             {
