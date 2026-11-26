@@ -44,3 +44,8 @@ aliases:
 
 > [!IMPORTANT]
 > `com.service.scanner.start` 是启动扫描服务，**不是**软件触发一次读码。实体键、Android 广播、MAUI Receiver、API 落库是四个独立验收层级。协议示例来自旧项目/厂商手册；StockCount 真机当前未复测。
+
+
+## 2026-11-26 PDA 键盘与成功提示
+
+- [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。

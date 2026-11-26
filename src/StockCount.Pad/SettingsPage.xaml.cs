@@ -10,6 +10,7 @@ public partial class SettingsPage : ContentPage
     private string _environment;
     private readonly IScanFeedbackService _feedback;
     private bool _loadingFeedback;
+    private bool _loadingInteraction = true;
 
     public SettingsPage(StockCountApiClient api, IPendingSubmissionStore pendingStore, IScanFeedbackService feedback)
     {
@@ -28,6 +29,7 @@ public partial class SettingsPage : ContentPage
     {
         base.OnAppearing();
         LoadFeedbackOptions();
+        LoadInteractionOptions();
         RefreshPerformanceReport();
         ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
         ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
@@ -104,6 +106,45 @@ public partial class SettingsPage : ContentPage
 
     private void PreviewFailure_Clicked(object sender, EventArgs e) =>
         _feedback.Preview(FeedbackKind.Failure);
+
+    private void LoadInteractionOptions()
+    {
+        _loadingInteraction = true;
+        try
+        {
+            SuccessToastDurationPicker.ItemsSource = new[] { "0.5 秒", "1 秒", "2 秒（默认）", "3 秒", "5 秒" };
+            SuccessToastDurationPicker.SelectedIndex = SuccessToastPolicy.IndexOf(
+                CountingInteractionPreferences.SuccessToastDurationMs);
+        }
+        finally { _loadingInteraction = false; }
+    }
+
+    private void SuccessToastDuration_Changed(object sender, EventArgs e)
+    {
+        if (_loadingInteraction || SuccessToastDurationPicker.SelectedIndex < 0) return;
+        try
+        {
+            CountingInteractionPreferences.SuccessToastDurationMs =
+                SuccessToastPolicy.DurationAt(SuccessToastDurationPicker.SelectedIndex);
+            SuccessToastSettingsStatus.Text = "已保存，即时生效；不会延迟下一箱扫码。";
+        }
+        catch
+        {
+            LoadInteractionOptions();
+            SuccessToastSettingsStatus.Text = "显示时长保存失败，请重试。";
+        }
+    }
+
+    private void ResetSuccessToastDuration_Clicked(object sender, EventArgs e)
+    {
+        try
+        {
+            CountingInteractionPreferences.SuccessToastDurationMs = SuccessToastPolicy.DefaultDurationMs;
+            LoadInteractionOptions();
+            SuccessToastSettingsStatus.Text = "已恢复默认 2 秒。";
+        }
+        catch { SuccessToastSettingsStatus.Text = "恢复默认失败，请重试。"; }
+    }
 
     private void OnScanObserved(ScanFeed.ScanDiagnostic diagnostic)
     {

@@ -26,7 +26,7 @@ public partial class CountingPage : ContentPage
     private bool _submitting;
     private bool _restored;
     private bool _navigating;
-    private int _toastVersion;
+    private readonly SuccessToastLifetime _toastLifetime = new();
     private bool _pageVisible;
 
     public CountingPage(StockCountApiClient api, InventoryCountDto selected,
@@ -84,7 +84,7 @@ public partial class CountingPage : ContentPage
     protected override void OnDisappearing()
     {
         _pageVisible = false;
-        ++_toastVersion;
+        _toastLifetime.Invalidate();
         SuccessToast.IsVisible = false;
         _scanQueue.Clear();
         ScanFeed.ScanReceived -= OnScannerReceived;
@@ -330,7 +330,7 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Text = "";
                 QuantityInput.Unfocus();
                 RefreshScreen();
-                ShowSuccessToast(feedback.AutoDismissMs);
+                ShowSuccessToast();
                 Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), requestId);
             }
             catch (Exception error)
@@ -363,16 +363,17 @@ public partial class CountingPage : ContentPage
             await DisplayAlertAsync("提示", feedback.Message, "OK");
     }
 
-    private void ShowSuccessToast(int durationMs)
+    private void ShowSuccessToast()
     {
         if (!_pageVisible) return;
-        var version = ++_toastVersion;
+        var version = _toastLifetime.Begin();
+        // Preferences are read on each new confirmed submission, including recovery.
+        var durationMs = CountingInteractionPreferences.SuccessToastDurationMs;
         SuccessToast.IsVisible = true;
-        // A previous timer must not dismiss a more recent success toast.
-        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(durationMs > 0
-            ? durationMs : CountScanWorkflow.SuccessToastDurationMs), () =>
+        // Display time is independent of the transaction and the scanner queue.
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(durationMs), () =>
         {
-            if (_pageVisible && version == _toastVersion)
+            if (_pageVisible && _toastLifetime.IsCurrent(version))
                 SuccessToast.IsVisible = false;
         });
     }

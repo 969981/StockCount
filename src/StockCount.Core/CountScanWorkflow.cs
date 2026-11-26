@@ -49,7 +49,7 @@ public sealed class CountScanWorkflow(
     string environment = "Test",
     IPendingSubmissionStore? pendingStore = null)
 {
-    public const int SuccessToastDurationMs = 400;
+    public const int SuccessToastDurationMs = SuccessToastPolicy.DefaultDurationMs;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private bool _committedAwaitingUi;
 

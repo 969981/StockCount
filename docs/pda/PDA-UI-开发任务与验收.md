@@ -21,7 +21,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | 已编码 | 列表卡片、搜索、分页、帐套标识、加载空态 | `CountListPage.xaml(.cs)` |
 | 已编码 | 扫码页三段布局、固定底部数量/提交、只读箱字段 | `CountingPage.xaml(.cs)` |
 | 已编码 | 扫码队列和忙碌提示、重复箱弹窗、草稿覆盖确认 | `CountingPage.xaml.cs` + `CountScanWorkflow.cs` |
-| 已编码 | 确认成功立即清箱、不清库位；400ms非阻塞 Toast | `CountScanWorkflow.AcknowledgeSuccessAsync` |
+| 已编码 | 确认成功立即清箱、不清库位；可配置非阻塞 Toast（默认2000ms） | `CountScanWorkflow.AcknowledgeSuccessAsync` |
 | 已编码 | UUID/原始二维码/数量加密持久化与重启恢复 | `SecurePendingSubmissionStore.cs` + 列表恢复入口 |
 | 已编码 | 已盘记录真实 GET 分页 | `HistoryPage.xaml(.cs)` |
 | 已编码 | 帐套/HTTPS API/设备 Key 设置、切环境保护 | `SettingsPage.xaml(.cs)` |
@@ -38,7 +38,7 @@ up: "[[docs/pda/PDA-UI-UX-设计规范与交互状态]]"
 | PDA-UI-03 | 主盘点页面改为三段Grid，固定底部数量与提交 | CountingPage.xaml, QuantitySubmitBar.xaml | 320dp宽/IME弹出仍能看见数量与提交；不滚动丢失主按钮 |
 | PDA-UI-04 | ViewModel 化扫码与提交（不在 View 中管理业务真值） | CountingViewModel, CountScanWorkflow | 不可手动填库位；箱详情只读；无效扫描不保留旧箱 |
 | PDA-UI-05 | 草稿保护：数量填好又扫另一箱/库位要确认 | CountScanWorkflow, ConfirmDiscardDraft | 默认继续当前箱；除用户确认，不覆盖已填数量 |
-| PDA-UI-06 | 提交确认后立即清除箱和数量 | CountScanWorkflow, CountingPage, SuccessToast | API确认→清理草稿与箱信息→显示400ms Toast，同时可扫码；单号/名称/库位始终保留 |
+| PDA-UI-06 | 提交确认后立即清除箱和数量 | CountScanWorkflow, CountingPage, SuccessToast | API确认→清理草稿与箱信息→显示可配置 Toast（默认2000ms），同时可扫码；单号/名称/库位始终保留 |
 | PDA-UI-07 | 独立提交状态与原UUID持久化恢复 | IPendingSubmissionStore, Android secure storage, ViewModel | 超时/重启恢复同环境、同单号、箱、库位、数量、原UUID；不重复 INSERT |
 | PDA-UI-08 | 工业硬件扫码桥接、串行消费/可见排队 | IScannerService, Android BroadcastReceiver, MockScanner | no silent drop; Rx仅接收；真机验证Action/Extra/扫码键/CRLF；Debug 与 Release 盘点页均无模拟扫码入口 |
 | PDA-UI-09 | 统一后端错误码和界面提示，含重复箱/数量空/网络未知 | ApiClient, AlertService, ErrorMapper | 指定文案精准一致，重复箱不填充，网络未知不清空；错误仅在用户确认后继续扫码 |
@@ -99,7 +99,7 @@ Core 已新增草稿确认、成功显示后清箱、重启模拟恢复同 UUID 
 | PDA-V2-02 | 6个字段对齐，长值换行；320–480dp下可滚动阅读 |
 | PDA-V2-03 | 数量框25sp、单位内嵌右侧、底栏固定；扫码完成后可聚焦 |
 | PDA-V2-04 | 整数/小数、真实提交、重复检查及未知结果保护保持原样 |
-| PDA-V2-05 | 400ms Toast 不阻塞扫码，成功清箱保留库位 |
+| PDA-V2-05 | 可配置 Toast（默认2000ms） 不阻塞扫码，成功清箱保留库位 |
 | PDA-V2-06 | 实体扫码与IME下数量框/按钮可操作；无模拟扫码入口 |
 
 源码实现后须取得Android构建和真实设备视觉/操作验收，不能以HTML预览替代。
@@ -108,3 +108,8 @@ Core 已新增草稿确认、成功显示后清箱、重启模拟恢复同 UUID 
 ## 扫码声音与震动专项（2026-11-26，规划）
 
 - [[docs/pda/PDA 扫码业务声音与震动反馈改造方案|扫码成功/失败音效与震动改造方案]] · [Markdown](PDA%20%E6%89%AB%E7%A0%81%E4%B8%9A%E5%8A%A1%E5%A3%B0%E9%9F%B3%E4%B8%8E%E9%9C%87%E5%8A%A8%E5%8F%8D%E9%A6%88%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) — PDA-FB-01～08、F01～F22 触发矩阵、独立合成音效与验收（规划）。
+
+
+## 2026-11-26 PDA 键盘与成功提示
+
+- [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。

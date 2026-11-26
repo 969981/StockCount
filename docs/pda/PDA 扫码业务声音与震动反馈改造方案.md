@@ -83,7 +83,7 @@ up: "[[docs/pda/00-PDA扫码知识地图]]"
 | F21 | 恢复草稿、返回/取消确认、列表加载、连接测试 | Neutral | 0 | 不播放扫码业务音；恢复后只对新确认结果反馈 |
 | F22 | 设置页主动试听 | 指定音 | 见设置 | 不发 API、不改盘点，不计业务事件 |
 
-F16/F17/F18 在 ShowFeedbackAsync 的 Submitted 分支单独处理；先捕获当前 PendingRequestId，因为 AcknowledgeSuccessAsync 可能清空。对同一 UUID 成功反馈在进程生命周期内去重；重启后若仍为待确认且确认成功，可提示一次，不新增持久业务状态。警告去重独立于成功去重，后续真正确认成功仍可播放。现有 400ms 成功 Toast 不因 626ms 音频延长。
+F16/F17/F18 在 ShowFeedbackAsync 的 Submitted 分支单独处理；先捕获当前 PendingRequestId，因为 AcknowledgeSuccessAsync 可能清空。对同一 UUID 成功反馈在进程生命周期内去重；重启后若仍为待确认且确认成功，可提示一次，不新增持久业务状态。警告去重独立于成功去重，后续真正确认成功仍可播放。现有 可配置成功 Toast（默认2000ms） 不因 626ms 音频延长。
 
 ## 4. 组件架构与接口
 
@@ -152,7 +152,7 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 | PDA-FB-07 | 构建测试及打包 | Android Debug/Release APK 含 3 raw 资源，Core 原测试通过 |
 | PDA-FB-08 | 海康 PDA 真机验收 | 实际成功/失败音、震动时长、快速扫码、超时/恢复、系统静音行为 |
 
-验收重点：普通成功不阻塞主线程、队列或 400ms Toast；音频播放耗时不计入业务网络时延；同 UUID 重试确认只播放一次；业务未知始终保留草稿；F18 不误导重复提交；快速扫码时不出现持续警报风暴。硬件成功音与业务成功音区分，不能通过关闭硬件读码反馈来假装业务反馈已实现。
+验收重点：普通成功不阻塞主线程、队列或 可配置 Toast（默认2000ms）；音频播放耗时不计入业务网络时延；同 UUID 重试确认只播放一次；业务未知始终保留草稿；F18 不误导重复提交；快速扫码时不出现持续警报风暴。硬件成功音与业务成功音区分，不能通过关闭硬件读码反馈来假装业务反馈已实现。
 
 原规划不涉及数据库、API 契约或实际盘点权限修改。实际实施见下节。
 
@@ -172,3 +172,8 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 - UI：三条构造入口共享同一服务，设置五开关及两个试听按钮独立保存；Submitted 先保留原 UUID、完成既有清理、再反馈；Unknown 不清除 UUID。
 - CI：新增 APK ZIP 原始音频 SHA-256 检查，Debug、Release QA、正式签名产物均验证三资源。当前环境无 dotnet / Android workload，不能声称本地编译通过；以 PR workflow 为准。真机声音、系统音量、震动、连续扫码与恢复测试仍待 PDA-FB-08。
 - 原版私有音频未进入公开仓库，生产写入权限、数据库、API、端口均未修改。
+
+
+## 2026-11-26 PDA 键盘与成功提示
+
+- [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。

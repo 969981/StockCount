@@ -133,7 +133,7 @@ public sealed class CountScanWorkflowTests
         var result=await workflow.SubmitAsync();
         Assert.Equal("Submitted",result.Kind);
         Assert.Equal("提交成功！",result.Message);
-        Assert.Equal(400,result.AutoDismissMs);
+        Assert.Equal(2000,result.AutoDismissMs);
         // The UI acknowledges immediately; the toast lifetime is not a workflow gate.
         Assert.True(workflow.IsSuccessAwaitingDismiss);
         Assert.NotNull(workflow.Box);
