@@ -88,14 +88,13 @@ public sealed class FeedbackGate
     public bool Accept(FeedbackEvent feedback, long nowMs)
     {
         if (feedback.Kind == FeedbackKind.None) return false;
-        if (feedback.Reason is FeedbackReason.Submitted or FeedbackReason.RecoveredSubmitted
+        if ((feedback.Reason is FeedbackReason.Submitted or FeedbackReason.RecoveredSubmitted)
             && feedback.RequestId is Guid id)
             return _confirmed.Add(id);
         // Repeated rejection of scans during a pending operation or a full queue
         // is noisy. Do not throttle distinct ordinary validation results.
         if (feedback.Reason is FeedbackReason.QueueFull or FeedbackReason.PendingBlocked
-            or FeedbackReason.SubmitUnknown or FeedbackReason.SubmissionException
-            or FeedbackReason.ConfirmedCleanupFailed)
+            or FeedbackReason.SubmitUnknown or FeedbackReason.SubmissionException)
         {
             if (_lastWarning is long last && nowMs - last < WarningIntervalMs) return false;
             _lastWarning = nowMs;

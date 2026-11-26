@@ -107,7 +107,7 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
             try
             {
                 var ms = FeedbackPolicy.VibrationMilliseconds(kind);
-                using var vibrator = GetVibrator();
+                var vibrator = GetVibrator();
                 if (ms > 0 && vibrator?.HasVibrator == true)
                 {
                     using var effect = VibrationEffect.CreateOneShot(ms, VibrationEffect.DefaultAmplitude);
@@ -139,7 +139,7 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         var context = Android.App.Application.Context;
         if (OperatingSystem.IsAndroidVersionAtLeast(31))
         {
-            using var manager = context.GetSystemService(Context.VibratorManagerService) as VibratorManager;
+            var manager = context.GetSystemService(Context.VibratorManagerService) as VibratorManager;
             return manager?.DefaultVibrator;
         }
         return context.GetSystemService(Context.VibratorService) as Vibrator;
@@ -147,7 +147,7 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
 
     private static void CancelVibration()
     {
-        try { using var vibrator = GetVibrator(); vibrator?.Cancel(); }
+        try { var vibrator = GetVibrator(); vibrator?.Cancel(); }
         catch { Log("cancel-vibration"); }
     }
 

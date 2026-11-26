@@ -80,6 +80,7 @@ public sealed class FeedbackPolicyTests
         var gate = new FeedbackGate();
         var id = Guid.NewGuid();
         Assert.True(gate.Accept(new(FeedbackReason.SubmitUnknown, id), 0));
+        Assert.True(gate.Accept(new(FeedbackReason.ConfirmedCleanupFailed, id), 5));
         Assert.True(gate.Accept(new(FeedbackReason.RecoveredSubmitted, id), 10));
         Assert.False(gate.Accept(new(FeedbackReason.Submitted, id), 20));
         Assert.True(gate.Accept(new(FeedbackReason.Submitted, Guid.NewGuid()), 21));
