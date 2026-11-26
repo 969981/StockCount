@@ -56,6 +56,7 @@ public partial class CountingPage : ContentPage
     {
         base.OnAppearing();
         _pageVisible = true;
+        HistoryButton.IsVisible = CountingInteractionPreferences.HistoryEnabled;
         ScanFeed.ScanReceived -= OnScannerReceived;
         ScanFeed.ScanReceived += OnScannerReceived;
         if (!_restored)
@@ -505,8 +506,17 @@ public partial class CountingPage : ContentPage
             };
     }
 
-    private async void History_Clicked(object sender, EventArgs e) =>
-        await Navigation.PushAsync(new HistoryPage(_api, _selected));
+    private async void History_Clicked(object sender, EventArgs e)
+    {
+        // Recheck the preference at navigation time, not only when rendering the button.
+        var enabled = CountingInteractionPreferences.HistoryEnabled;
+        HistoryButton.IsVisible = enabled;
+        if (!HistoryVisibilityPolicy.CanNavigate(enabled, _pageVisible,
+            _busy || _draining || _submitting, _navigating)) return;
+        _navigating = true;
+        try { await Navigation.PushAsync(new HistoryPage(_api, _selected)); }
+        finally { _navigating = false; }
+    }
 
     private async void Back_Clicked(object sender, EventArgs e) =>
         await GoBackAsync();

@@ -38,6 +38,21 @@ public partial class HistoryPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        if (!CountingInteractionPreferences.HistoryEnabled)
+        {
+            _visible = false;
+            ItemsList.RemainingItemsThreshold = -1;
+            _request?.Cancel();
+            _items.Clear();
+            _ids.Clear();
+            _loaded = false;
+            // Prevent a directly constructed page from displaying cached records or issuing a query.
+            if (Content is not null) Content.IsVisible = false;
+            if (Navigation.NavigationStack.LastOrDefault() == this)
+                await Navigation.PopAsync();
+            return;
+        }
+        if (Content is not null) Content.IsVisible = true;
         _visible = true;
         if (!_loaded) await ApplyFiltersAsync();
         else UpdateControls();
@@ -78,7 +93,8 @@ public partial class HistoryPage : ContentPage
 
     private async Task LoadAsync(bool firstPage = false, bool nextWindow = false)
     {
-        if (!_visible || _query is null || (!firstPage && (_busy || _cursor is null))) return;
+        if (!_visible || !CountingInteractionPreferences.HistoryEnabled || _query is null ||
+            (!firstPage && (_busy || _cursor is null))) return;
         var query = _query;
         var cursor = firstPage ? null : _cursor;
         var request = new CancellationTokenSource();
@@ -94,7 +110,8 @@ public partial class HistoryPage : ContentPage
         try
         {
             var page = await _api.GetHistoryAsync(query.CountNumber, cursor, query.BoxSearch, query.Location, request.Token);
-            if (!_visible || !ReferenceEquals(_request, request) || request.IsCancellationRequested) return;
+            if (!_visible || !CountingInteractionPreferences.HistoryEnabled ||
+                !ReferenceEquals(_request, request) || request.IsCancellationRequested) return;
             if (page.Environment != query.Environment) throw new InvalidOperationException("查询帐套发生变化，请刷新。");
             if (page.Items.Count > HistoryPagingPolicy.PageSize || page.NextCursor is not null &&
                 (page.Items.Count == 0 || page.NextCursor == cursor))
@@ -164,7 +181,7 @@ public partial class HistoryPage : ContentPage
         MoreButton.IsEnabled = !_busy;
         MoreButton.Text = _retryRequired ? "重试" :
             HistoryPagingPolicy.NeedsNextWindow(_items.Count) ? "继续更早记录" : "加载更多";
-        ItemsList.RemainingItemsThreshold = _visible && HistoryPagingPolicy.CanAutoLoad(
+        ItemsList.RemainingItemsThreshold = _visible && CountingInteractionPreferences.HistoryEnabled && HistoryPagingPolicy.CanAutoLoad(
             _items.Count, _cursor is not null, _busy, _retryRequired) ? 5 : -1;
     }
 

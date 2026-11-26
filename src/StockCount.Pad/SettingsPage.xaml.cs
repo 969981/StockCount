@@ -115,6 +115,8 @@ public partial class SettingsPage : ContentPage
             SuccessToastDurationPicker.ItemsSource = new[] { "0.5 秒", "1 秒", "2 秒（默认）", "3 秒", "5 秒" };
             SuccessToastDurationPicker.SelectedIndex = SuccessToastPolicy.IndexOf(
                 CountingInteractionPreferences.SuccessToastDurationMs);
+            HistoryEnabledSwitch.IsToggled = CountingInteractionPreferences.HistoryEnabled;
+            ShowHistorySettingStatus();
         }
         finally { _loadingInteraction = false; }
     }
@@ -144,6 +146,28 @@ public partial class SettingsPage : ContentPage
             SuccessToastSettingsStatus.Text = "已恢复默认 2 秒。";
         }
         catch { SuccessToastSettingsStatus.Text = "恢复默认失败，请重试。"; }
+    }
+
+    private void ShowHistorySettingStatus()
+    {
+        HistorySettingsStatus.Text = HistoryEnabledSwitch.IsToggled
+            ? "已开启 · 显示已盘记录入口"
+            : "已关闭 · 隐藏已盘记录入口";
+    }
+
+    private void HistoryEnabled_Toggled(object sender, ToggledEventArgs e)
+    {
+        if (_loadingInteraction || HistoryEnabledSwitch is null || HistorySettingsStatus is null) return;
+        try
+        {
+            CountingInteractionPreferences.HistoryEnabled = e.Value;
+            ShowHistorySettingStatus();
+        }
+        catch
+        {
+            LoadInteractionOptions();
+            HistorySettingsStatus.Text = "设置保存失败，请重试。";
+        }
     }
 
     private void OnScanObserved(ScanFeed.ScanDiagnostic diagnostic)
