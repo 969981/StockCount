@@ -58,3 +58,8 @@ up: "[[docs/pda/00-PDA扫码知识地图]]"
 本轮仅改 PDA 展示与配置及 Core 默认提示值，不修改数据库、API、权限、实际库存数据或扫码协议；当前尚无真机截图和 CI 结果。
 
 [[docs/pda/00-PDA扫码知识地图|PDA 知识地图]] · [Markdown](00-PDA扫码知识地图.md)
+
+
+## 盘点交互设置追加项（2026-11-26）
+
+`StockCount.Interaction.HistoryEnabled`：bool，默认 false，设备本地 Preferences；允许查看已盘记录开关即时保存，独立于成功提示时长，恢复2秒不改变历史开关。入口和历史页面均校验。详见 [[docs/pda/PDA 已盘记录分页与搜索优化|已盘记录专项]] · [Markdown](PDA%20%E5%B7%B2%E7%9B%98%E8%AE%B0%E5%BD%95%E5%88%86%E9%A1%B5%E4%B8%8E%E6%90%9C%E7%B4%A2%E4%BC%98%E5%8C%96.md)。

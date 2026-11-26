@@ -13,7 +13,7 @@
               SemanticProperties.Description="返回盘点单列表"/>
       <Label Grid.Column="1" Text="扫码盘点" FontSize="18" FontAttributes="Bold"
              TextColor="#17232F" VerticalOptions="Center"/>
-      <Button Grid.Column="2" Text="▤ 已盘记录" FontSize="13" Padding="12,0"
+      <Button Grid.Column="2" x:Name="HistoryButton" IsVisible="False" Text="▤ 已盘记录" FontSize="13" Padding="12,0"
               BackgroundColor="Transparent" TextColor="#263645" Clicked="History_Clicked"
               SemanticProperties.Description="打开当前单的已盘记录"/>
       <BoxView Grid.Row="1" Grid.ColumnSpan="3" Color="#D9DFE5"/>
