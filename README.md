@@ -17,7 +17,7 @@ up: "[[docs/development/00-研发规范地图]]"
 
 > 基于 .NET 10 的工业 Android PDA 库存盘点应用与 ASP.NET Core API，连接既有 Sage X3 / SQL Server 盘点数据。
 
-**当前阶段：Android MAUI Debug APK、Tauri Windows Setup/Portable、Avalonia Windows QA 均有成功的 CI 构建记录；新版 Avalonia Portable 部署脚本须以最新 Actions 回归为准。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；两套写入默认关闭、由现场分别授权。**
+**当前阶段：Android MAUI Debug APK、Tauri Windows Setup/Portable、Avalonia Windows QA 均有成功的 CI 构建记录；新版 Avalonia Portable 部署脚本须以最新 Actions 回归为准。海康真机扫码与 Sage X3 XTEST/COB 实际写入尚待现场验收；Tauri/独立 API 默认关闭写入；Avalonia 现场版应用已批准的两帐套写入策略，部署前须核验实际权限和结构，详见软件使用手册。**
 
 ## 一键生成 JKS 与发布 GitHub Release
 
@@ -203,3 +203,9 @@ docs/
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
 - 设备：[[docs/pda/00-PDA扫码知识地图|海康 PDA 扫码地图]] · [Markdown](docs/pda/00-PDA%E6%89%AB%E7%A0%81%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
 - 数据库：[[docs/database/00-数据库知识地图|Sage X3 数据库地图]] · [Markdown](docs/database/00-%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9F%A5%E8%AF%86%E5%9C%B0%E5%9B%BE.md)
+
+
+## 现场使用与业务 SQL（2026-11-26）
+
+- [[docs/USER_GUIDE|StockCount 软件使用手册]] · [Markdown](docs/USER_GUIDE.md) — Windows 管理器、PDA 配置、扫码、异常恢复、历史记录与排障。
+- [[docs/database/BUSINESS_SQL_REFERENCE|业务 SQL 实现字典]] · [Markdown](docs/database/BUSINESS_SQL_REFERENCE.md) — 源码 Q01–Q09 / W01–W06、字段与参数、只读核验。

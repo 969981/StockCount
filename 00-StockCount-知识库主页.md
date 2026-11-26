@@ -39,7 +39,7 @@ aliases:
   → XCOUTD.QTYSTU_0 = XCOUTD.QTYPCU_0 = 人工输入值
 ```
 
-**`XLABELDTL.STA_0` 不限制盘点**。写入状态/系数、同单重复策略和 X3 系统字段的处理仍需受控核验；生产 COB 写入默认关闭。
+**`XLABELDTL.STA_0` 不限制盘点**。当前规则是本帐套跨单防重、STU 同值写入、原 UUID 幂等；Tauri/独立 API 默认关闭写入，Avalonia 现场版应用已批准写入策略，数据库结构和权限仍须现场核验。
 
 ## 从这里开始
 
@@ -59,3 +59,9 @@ aliases:
 
 > [!WARNING]
 > 公开仓库只放开发规范、字段结构和**合成示例**；不得上传企业真实凭据、箱码、明细数据、厂商私有 PDF 原文或生产环境配置。
+
+
+## 现场使用与业务 SQL（2026-11-26）
+
+- [[docs/USER_GUIDE|StockCount 软件使用手册]] · [Markdown](docs/USER_GUIDE.md) — Windows 管理器、PDA 配置、扫码、异常恢复、历史记录与排障。
+- [[docs/database/BUSINESS_SQL_REFERENCE|业务 SQL 实现字典]] · [Markdown](docs/database/BUSINESS_SQL_REFERENCE.md) — 源码 Q01–Q09 / W01–W06、字段与参数、只读核验。

@@ -106,3 +106,6 @@ STOLOC.STOFCY_0 + STOLOC.WRH_0 + STOLOC.LOC_0
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](../../00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
 - 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](../DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](../API_CONTRACT.md)
+
+
+- [当前业务 SQL 实现字典](BUSINESS_SQL_REFERENCE.md) · [运行时只读核验](../../sql/read_only/runtime_business_queries.sql)

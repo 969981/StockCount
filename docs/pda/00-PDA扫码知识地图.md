@@ -52,3 +52,6 @@ aliases:
 
 
 - [[docs/pda/PDA 已盘记录分页与搜索优化|已盘记录分页与搜索优化]] · [Markdown](PDA%20%E5%B7%B2%E7%9B%98%E8%AE%B0%E5%BD%95%E5%88%86%E9%A1%B5%E4%B8%8E%E6%90%9C%E7%B4%A2%E4%BC%98%E5%8C%96.md) — 真实总数、ROWID游标、自动加载、筛选及500行缓存上限。
+
+
+- [[docs/USER_GUIDE|现场软件使用手册]] · [Markdown](../USER_GUIDE.md)
