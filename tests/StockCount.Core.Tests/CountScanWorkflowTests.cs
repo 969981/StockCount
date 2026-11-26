@@ -118,8 +118,9 @@ public sealed class CountScanWorkflowTests
         await workflow.HandleScanAsync("LOC-DEMO01");
         var result=await workflow.HandleScanAsync(Qr);
         Assert.Equal("该箱号已扫描！",result.Message);
-        Assert.Equal("BOX_ALREADY_RECORDED",result.ErrorCode);
-        Assert.True(BusinessToastPolicy.IsAutomaticFailure(result, true, workflow.HasUnresolvedSubmission));
+        Assert.Equal("Duplicate",result.Kind);
+        Assert.Null(result.ErrorCode);
+        Assert.True(BusinessToastPolicy.IsAutomaticFailure(result, false, workflow.HasUnresolvedSubmission));
         Assert.Null(workflow.Box);
         Assert.Equal("LOC-DEMO01",workflow.Location);
     }
@@ -204,6 +205,9 @@ public sealed class CountScanWorkflowTests
         workflow.EnterManualQuantity(99m);
         var result=await workflow.SubmitAsync();
         Assert.Equal("该箱号已扫描！",result.Message);
+        Assert.Equal("Error",result.Kind);
+        Assert.Equal("BOX_ALREADY_RECORDED",result.ErrorCode);
+        Assert.True(BusinessToastPolicy.IsAutomaticFailure(result, true, workflow.HasUnresolvedSubmission));
         Assert.Null(workflow.Box);
         Assert.Equal("LOC-DEMO01",workflow.Location);
     }
