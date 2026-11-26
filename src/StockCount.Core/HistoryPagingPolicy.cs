@@ -56,6 +56,7 @@ public static class HistoryPagingPolicy
     public const int PageSize = 50;
     public const int MaxBufferedRows = 500;
     public static bool ValidSize(int size) => size is >= 1 and <= 100;
+    public static bool NeedsNextWindow(int buffered) => buffered > MaxBufferedRows - PageSize;
     public static bool CanAutoLoad(int buffered, bool hasMore, bool busy, bool retryRequired) =>
-        buffered < MaxBufferedRows && hasMore && !busy && !retryRequired;
+        !NeedsNextWindow(buffered) && hasMore && !busy && !retryRequired;
 }

@@ -40,11 +40,13 @@ public partial class HistoryPage : ContentPage
         base.OnAppearing();
         _visible = true;
         if (!_loaded) await ApplyFiltersAsync();
+        else UpdateControls();
     }
 
     protected override void OnDisappearing()
     {
         _visible = false;
+        ItemsList.RemainingItemsThreshold = -1;
         _request?.Cancel();
         base.OnDisappearing();
     }
@@ -64,8 +66,11 @@ public partial class HistoryPage : ContentPage
         _cursor = null;
         _total = _filtered = null;
         _previousRows = 0;
+        ItemsList.RemainingItemsThreshold = -1;
         _items.Clear();
         _ids.Clear();
+        TotalStatusText.Text = "已盘总记录：—";
+        CountStatusText.Text = "正在读取";
         _retryRequired = false;
         _loaded = false;
         await LoadAsync(firstPage: true);
@@ -158,7 +163,7 @@ public partial class HistoryPage : ContentPage
         MoreButton.IsVisible = _cursor is not null || _retryRequired;
         MoreButton.IsEnabled = !_busy;
         MoreButton.Text = _retryRequired ? "重试" :
-            _items.Count >= HistoryPagingPolicy.MaxBufferedRows ? "继续更早记录" : "加载更多";
+            HistoryPagingPolicy.NeedsNextWindow(_items.Count) ? "继续更早记录" : "加载更多";
         ItemsList.RemainingItemsThreshold = _visible && HistoryPagingPolicy.CanAutoLoad(
             _items.Count, _cursor is not null, _busy, _retryRequired) ? 5 : -1;
     }
@@ -182,6 +187,6 @@ public partial class HistoryPage : ContentPage
     {
         if (_busy) return;
         if (!_loaded) { await ApplyFiltersAsync(); return; }
-        await LoadAsync(nextWindow: _items.Count >= HistoryPagingPolicy.MaxBufferedRows);
+        await LoadAsync(nextWindow: HistoryPagingPolicy.NeedsNextWindow(_items.Count));
     }
 }

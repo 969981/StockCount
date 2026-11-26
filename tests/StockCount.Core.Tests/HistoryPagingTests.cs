@@ -75,6 +75,9 @@ public sealed class HistoryPagingTests
     {
         Assert.True(HistoryPagingPolicy.CanAutoLoad(450,true,false,false));
         Assert.False(HistoryPagingPolicy.CanAutoLoad(500,true,false,false));
+        Assert.False(HistoryPagingPolicy.CanAutoLoad(451,true,false,false));
+        Assert.False(HistoryPagingPolicy.NeedsNextWindow(450));
+        Assert.True(HistoryPagingPolicy.NeedsNextWindow(451));
         Assert.False(HistoryPagingPolicy.CanAutoLoad(50,false,false,false));
         Assert.False(HistoryPagingPolicy.CanAutoLoad(50,true,true,false));
         Assert.False(HistoryPagingPolicy.CanAutoLoad(50,true,false,true));

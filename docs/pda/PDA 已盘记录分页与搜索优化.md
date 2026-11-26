@@ -1,5 +1,6 @@
 ---
 title: "PDA 已盘记录分页与搜索优化"
+aliases: ["已盘记录游标分页", "PDA 历史记录优化"]
 created: 2026-11-26
 updated: 2026-11-26
 status: implemented-unverified
