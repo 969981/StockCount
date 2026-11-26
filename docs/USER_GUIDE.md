@@ -110,7 +110,7 @@ adb install -r ".\StockCount-PDA.apk"
 | StockCount.Interaction.SuccessToastDurationMs | 2000 |
 | StockCount.Interaction.HistoryEnabled | false |
 
-反馈音频：成功626ms/震动200ms，失败840ms/震动1000ms，额外读码125ms/无震动；设置页可试听，不发送业务请求。声音使用媒体音量，SoundPool 未就绪或播放失败时业务音用 MediaPlayer 备用，不自动提高音量。用 adb logcat -s StockCountFeedback 核查播放状态（不含箱码）。客户端性能诊断最近512阶段样本，仅内存保留，支持刷新、复制、清空。
+反馈音频：原版成功 OGG 626ms/震动200ms，原版失败 OGG 840ms/震动1000ms，额外合成读码 WAV 125ms/无震动；设置页可试听，不发送业务请求。声音使用媒体音量，SoundPool 未就绪或播放失败时业务音用 MediaPlayer 备用，不自动提高音量。用 adb logcat -s StockCountFeedback 核查播放状态（不含箱码）。客户端性能诊断最近512阶段样本，仅内存保留，支持刷新、复制、清空。
 
 Windows 非敏感配置 server-settings.json、SQLite 日志 server-logs.db 位于管理器 EXE 同目录，可能存在 -wal/-shm 文件；停止服务后一起备份，Windows Credential Manager 凭据不会随文件迁移。Avalonia SQLite 日志可搜索最近500条、显示最多200条，启动清理30天前日志，手动清理支持1/3/7/14/30天且二次确认；它只删除日志，不删除 ERP 数据。日志可包含业务字段，限制授权人员访问，不向公开仓库上传。
 

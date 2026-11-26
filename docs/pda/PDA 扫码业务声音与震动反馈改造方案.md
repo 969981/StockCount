@@ -196,3 +196,8 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 | F10/F11/F15/F18/F20、草稿恢复 | 人工确认/原 UUID 保持 | 原规则 |
 
 统一“业务提示显示时长”，保留旧 Preferences key StockCount.Interaction.SuccessToastDurationMs（默认2000，0.5/1/2/3/5秒），无迁移、无新增等待；SuccessToastLifetime 版本机制共用，新提示覆盖旧提示，离页或有效扫码清除失败提示；触摸穿透、自动换行。Core CountScanFeedback 增加可选 ErrorCode 以区分服务端明确重复，不根据中文消息猜测。未更改写入、库位、幂等、扫码队列、历史 API。新增25项纯策略测试。验收需用海康真机开启声音、失败反馈，试听成功/失败，检查媒体音量，扫码错库位/无库位/无标签/重复，快速纠错，退出重入，断网未知仍阻止覆盖；用 `adb logcat -s StockCountFeedback` 查看加载/播放/备用路径，严禁上传业务敏感数据。源码已提交，CI/真机待核验。
+
+
+## 原版成功/失败音效替换（2026-11-26）
+
+StockCount main 构建改用原始 s.ogg / f.ogg（不转码），Android 资源 ID scan_success / scan_failure 不变。合成 scan_read.wav 保留，反馈分类、音量、播放备用、震动、Toast、API 与数据库逻辑不变。实际 APK 使用固定 SHA-256 验证两段 OGG，并确保无旧成功/失败 WAV。详见 [音效样品及资源版本](audio-feedback/README.md)。

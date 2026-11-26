@@ -21,3 +21,15 @@ tags: [StockCount, audio, PDA]
 Android 源码已接入同字节 WAV 与 SoundPool。CI 新增 ZIP 内资源 SHA-256 检查；设备试听和编译结果尚待回传。
 
 [[docs/pda/PDA 扫码业务声音与震动反馈改造方案|反馈改造方案]] · [Markdown](../PDA%20%E6%89%AB%E7%A0%81%E4%B8%9A%E5%8A%A1%E5%A3%B0%E9%9F%B3%E4%B8%8E%E9%9C%87%E5%8A%A8%E5%8F%8D%E9%A6%88%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md)
+
+
+## 2026-11-26 原版声音替换
+
+上表保留为历史合成样品，不再用于成功/失败业务音。按用户指定在 StockCount main 构建，原版 PDA 的 s.ogg / f.ogg 保持原始字节，分别作为 Android raw/scan_success.ogg / scan_failure.ogg；资源 ID 不变，仍使用 SoundPool / MediaPlayer。额外读取 scan_read.wav 不变。CI 固定核验两个 OGG 的 SHA-256 及原读取 WAV，并拒绝 APK 残留旧业务 WAV。
+
+| 实际资源 | 字节 | SHA-256 |
+| --- | ---: | --- |
+| scan_success.ogg | 5299 | `7a301719c9845275c0108afc536fd60d324bee2e6201af2006ffabf169e8ae57` |
+| scan_failure.ogg | 6303 | `4ab5dca5c7df319b8d597a6db02b22845ad464a9032da094b993abdad4927c3d` |
+
+原版素材的公开再分发授权未核实；使用者需自行确认。此处不包含 APK 其他资源或业务数据。编译和真机验收独立进行。
