@@ -12,7 +12,7 @@ namespace StockCount.Infrastructure;
 public sealed class SqlInventoryReadRepository(string connectionString,
     bool enableTestWrites = false, bool enableProductionWrites = false,
     bool testSchemaReviewed = false, bool productionSchemaReviewed = false,
-    LocationValidationOptions? locationValidation = null) : IInventoryReadRepository
+    LocationValidationOptions? locationValidation = null) : IInventoryReadRepository, IInventoryHistoryRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken cancellationToken)
     {
@@ -148,6 +148,41 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         return result.Select(x=>new CountItemDto(
             x.DetailId,x.CountNumber,x.BoxNumber,x.LocationCode,x.ItemCode,x.LotNumber,
             x.PackageUnit,x.QuantityPcu,x.QuantityStu,x.CreatedAt)).ToArray();
+    }
+
+    public async Task<CountHistoryPage?> GetHistoryAsync(
+        SelectedEnvironment environment, HistoryQuery query, HistoryCursor? cursor,
+        int size, CancellationToken cancellationToken)
+    {
+        if (await GetCountAsync(environment, query.CountNumber, cancellationToken) is null) return null;
+        await using var connection = await OpenAsync(cancellationToken);
+        HistorySummary? summary = null;
+        if (cursor is null)
+            summary = await connection.QuerySingleAsync<HistorySummary>(new CommandDefinition(
+                HistoryReadQuery.Summary(environment), new { query.CountNumber, query.BoxSearch, query.Location },
+                cancellationToken: cancellationToken));
+        var upper = cursor?.UpperRowId ?? summary?.UpperRowId;
+        if (upper is null)
+            return new CountHistoryPage(environment.Name, Array.Empty<CountItemDto>(), null,
+                summary?.TotalCount, summary?.FilteredCount);
+        var rows = (await connection.QueryAsync<CountItemRow>(new CommandDefinition(
+            HistoryReadQuery.Page(environment, cursor is not null),
+            new { query.CountNumber, query.BoxSearch, query.Location, UpperRowId = upper,
+                BeforeRowId = cursor?.BeforeRowId, Take = size + 1 },
+            cancellationToken: cancellationToken))).ToArray();
+        var items = rows.Take(size).Select(x => new CountItemDto(
+            x.DetailId,x.CountNumber,x.BoxNumber,x.LocationCode,x.ItemCode,x.LotNumber,
+            x.PackageUnit,x.QuantityPcu,x.QuantityStu,x.CreatedAt)).ToArray();
+        var next = rows.Length > size
+            ? new HistoryCursor(upper, items[^1].DetailId).Encode(query) : null;
+        return new CountHistoryPage(environment.Name, items, next, summary?.TotalCount, summary?.FilteredCount);
+    }
+
+    private sealed class HistorySummary
+    {
+        public string? UpperRowId { get; set; }
+        public long TotalCount { get; set; }
+        public long FilteredCount { get; set; }
     }
 
     private InventoryCountDto ToDto(CountRow row, SelectedEnvironment environment)

@@ -9,7 +9,7 @@ namespace StockCount.Core.Tests;
 public sealed class ApiDocumentationTests
 {
     [Fact]
-    public async Task ServesChineseSwaggerAndNineBusinessOperationsWithoutDatabase()
+    public async Task ServesChineseSwaggerAndTenBusinessOperationsWithoutDatabase()
     {
         await using var app = ApiApplication.Build(Array.Empty<string>(),
             builder => builder.WebHost.UseUrls("http://127.0.0.1:0"));
@@ -40,7 +40,7 @@ public sealed class ApiDocumentationTests
             var root = doc.RootElement;
             Assert.Contains("库存盘点", root.GetProperty("info").GetProperty("title").GetString());
             var paths = root.GetProperty("paths");
-            Assert.Equal(9, paths.EnumerateObject().Sum(p => p.Value.EnumerateObject().Count()));
+            Assert.Equal(10, paths.EnumerateObject().Sum(p => p.Value.EnumerateObject().Count()));
             Assert.False(paths.TryGetProperty("/internal/shutdown", out _));
             Assert.False(paths.TryGetProperty("/docs/zh-cn.js", out _));
             var counts = paths.GetProperty("/api/v1/inventory-counts").GetProperty("get");
@@ -48,6 +48,10 @@ public sealed class ApiDocumentationTests
             Assert.Contains(counts.GetProperty("parameters").EnumerateArray(),
                 p => p.GetProperty("name").GetString() == "X-StockCount-Environment" &&
                      p.GetProperty("required").GetBoolean());
+            var history = paths.GetProperty("/api/v1/inventory-counts/{countNumber}/history").GetProperty("get");
+            Assert.Equal("查询已盘记录", history.GetProperty("summary").GetString());
+            Assert.Contains(history.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "boxSearch");
+            Assert.Contains(history.GetProperty("parameters").EnumerateArray(), p => p.GetProperty("name").GetString() == "location");
             var submit = paths.GetProperty("/api/v1/inventory-counts/{countNumber}/items").GetProperty("post");
             Assert.Contains("实际写入", submit.GetProperty("summary").GetString());
             Assert.Contains(submit.GetProperty("parameters").EnumerateArray(),

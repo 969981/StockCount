@@ -152,6 +152,15 @@ public sealed class StockCountApiClient : ICountScanGateway
             (string.IsNullOrWhiteSpace(cursor) ? "" : "&cursor="+Uri.EscapeDataString(cursor)),
             null,ct);
 
+    public Task<CountHistoryPage> GetHistoryAsync(string countNumber, string? cursor,
+        string? boxSearch, string? location, CancellationToken ct = default) =>
+        ReadJsonAsync<CountHistoryPage>(HttpMethod.Get,
+            "/api/v1/inventory-counts/" + Uri.EscapeDataString(countNumber) +
+            "/history?pageSize=" + HistoryPagingPolicy.PageSize +
+            (string.IsNullOrEmpty(cursor) ? "" : "&cursor=" + Uri.EscapeDataString(cursor)) +
+            (string.IsNullOrEmpty(boxSearch) ? "" : "&boxSearch=" + Uri.EscapeDataString(boxSearch)) +
+            (string.IsNullOrEmpty(location) ? "" : "&location=" + Uri.EscapeDataString(location)), null, ct);
+
     public async Task<LocationScanResult> ResolveLocationAsync(string countNumber,string rawCode,CancellationToken ct)
     {
         try

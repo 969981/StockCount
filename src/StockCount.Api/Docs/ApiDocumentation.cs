@@ -80,6 +80,7 @@ public sealed class ChineseOperationFilter : IOperationFilter
             "GET ready" => ("服务诊断", "测试 SQL Server 连接", "执行 SELECT 1，检查当前帐套连接，不代表具备写入权限。", null, "200"),
             "GET api/v1/inventory-counts" => ("盘点单查询", "查询盘点单列表", "支持搜索、分页，pageSize 默认 50，范围 1–100。", typeof(CountPage), "200"),
             "GET api/v1/inventory-counts/{countNumber}" => ("盘点单查询", "查询指定盘点单", "按盘点单号查询单据与可提交状态。", typeof(CountDetails), "200"),
+            "GET api/v1/inventory-counts/{countNumber}/history" => ("盘点单查询", "查询已盘记录", "ROWID 游标分页；首次返回真实总数和筛选数量。只读，旧分页接口保持不变。", typeof(CountHistoryPage), "200"),
             "GET api/v1/inventory-counts/{countNumber}/items" => ("盘点单查询", "查询盘点明细", "分页读取 XCOUTD 明细，不修改数据。", typeof(CountItemPage), "200"),
             "POST api/v1/locations/resolve" => ("扫码解析", "解析盘点库位", "支持 LC. 前缀，提取库位后核验对应帐套 STOLOC；站点及仓库一致性由各帐套后台设置独立控制（默认关闭）。只读。", typeof(ResolvedLocation), "200"),
             "POST api/v1/labels/resolve" => ("扫码解析", "解析箱码二维码", "优先按完整 QR 查询 XLABELDTL；零匹配时提取 ID. 查询箱号 PID_0，多条匹配拒绝。返回物料信息及本单重复状态。只读。", typeof(ResolvedLabel), "200"),
@@ -124,6 +125,8 @@ public sealed class ChineseOperationFilter : IOperationFilter
                 "pageSize" => "每页记录数，1–100，默认 50。",
                 "cursor" => "上一页返回的 nextCursor，首次查询留空。",
                 "search" => "搜索文本，最多 100 字符。",
+                "boxSearch" => "箱码包含搜索，最多20字符。",
+                "location" => "实盘库位精确匹配，最多10字符。",
                 _ => parameter.Description
             };
 
@@ -161,7 +164,7 @@ public sealed class ChineseSchemaFilter : ISchemaFilter
     {
         ["countNumber"]="盘点单号", ["description"]="盘点名称", ["siteCode"]="站点", ["warehouseCode"]="仓库",
         ["countDate"]="盘点日期", ["statusCode"]="状态编码", ["countType"]="盘点类型", ["canSubmit"]="是否可提交",
-        ["cannotSubmitReason"]="不可提交原因", ["environment"]="帐套", ["items"]="记录列表", ["nextCursor"]="下一页游标",
+        ["cannotSubmitReason"]="不可提交原因", ["environment"]="帐套", ["items"]="记录列表", ["nextCursor"]="下一页游标", ["totalCount"]="盘点单总记录数（首页）", ["filteredCount"]="匹配筛选的记录数（首页）",
         ["count"]="盘点单", ["rawCode"]="原始库位码", ["locationCode"]="库位", ["isValid"]="是否有效",
         ["message"]="提示信息", ["rawQrCode"]="完整原始二维码", ["boxNumber"]="箱号", ["itemCode"]="物料编码",
         ["itemName"]="品名", ["specification"]="规格", ["lotNumber"]="批号", ["stockUnit"]="存货单位",
