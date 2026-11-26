@@ -2,6 +2,8 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.OS;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Maui;
 using StockCount.Pad.Services;
 
 namespace StockCount.Pad;
@@ -16,6 +18,7 @@ namespace StockCount.Pad;
 public class MainActivity : MauiAppCompatActivity
 {
     private BarcodeReceiver? _receiver;
+    private IScanFeedbackService? Feedback => IPlatformApplication.Current?.Services.GetService<IScanFeedbackService>();
 
     protected override void OnResume()
     {
@@ -23,12 +26,14 @@ public class MainActivity : MauiAppCompatActivity
         ScanFeed.ScannerConfigurationChanged -= OnScannerConfigurationChanged;
         ScanFeed.ScannerConfigurationChanged += OnScannerConfigurationChanged;
         RegisterScannerReceiver();
+        Feedback?.Resume();
     }
 
     protected override void OnPause()
     {
         ScanFeed.ScannerConfigurationChanged -= OnScannerConfigurationChanged;
         UnregisterScannerReceiver();
+        Feedback?.Suspend();
         base.OnPause();
     }
 

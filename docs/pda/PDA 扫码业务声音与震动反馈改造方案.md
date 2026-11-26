@@ -3,7 +3,7 @@ title: "PDA 扫码业务声音与震动反馈改造方案"
 aliases: ["ScanFeedbackService", "PDA 扫码音效", "扫码震动"]
 created: 2026-11-26
 updated: 2026-11-26
-status: proposed
+status: implemented-unverified
 type: implementation-plan
 area: pda
 tags: [StockCount, PDA, Android, MAUI, SoundPool, Vibrator, QA]
@@ -13,7 +13,7 @@ up: "[[docs/pda/00-PDA扫码知识地图]]"
 # PDA 扫码业务声音与震动反馈改造方案
 
 > [!IMPORTANT]
-> 本次为实施规划、触发矩阵与音频样品交付（需求 ID PDA-FB-01～08），不是应用功能上线。基于 StockCount 源码基线 `ab53a15b2101a856393a0626267c314dfa9ccacc` 及 2026-11-26 原版 X3 PDA v1.8.9 静态研究。原版音频授权未确认，不提交到公开项目；本仓库附带独立数学合成 WAV，不含原 APK 音频、采样或波形。具体音色及真机播放效果待用户验收。
+> 本节保留原规划及触发矩阵（需求 ID PDA-FB-01～08）；2026-11-26 已在 feature/pda-scan-feedback 分支编码 PDA-FB-02～06，构建和真机验收未确认，详见末尾实施记录。基于 StockCount 源码基线 `ab53a15b2101a856393a0626267c314dfa9ccacc` 及 2026-11-26 原版 X3 PDA v1.8.9 静态研究。原版音频授权未确认，不提交到公开项目；本仓库附带独立数学合成 WAV，不含原 APK 音频、采样或波形。具体音色及真机播放效果待用户验收。
 
 ## 1. 反馈规范
 
@@ -154,7 +154,7 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 
 验收重点：普通成功不阻塞主线程、队列或 400ms Toast；音频播放耗时不计入业务网络时延；同 UUID 重试确认只播放一次；业务未知始终保留草稿；F18 不误导重复提交；快速扫码时不出现持续警报风暴。硬件成功音与业务成功音区分，不能通过关闭硬件读码反馈来假装业务反馈已实现。
 
-本次未修改应用源码、数据库、API 契约或实际盘点权限；无 Android 编译及真机测试结论。下一轮从 PDA-FB-02 开始开发。
+原规划不涉及数据库、API 契约或实际盘点权限修改。实际实施见下节。
 
 ## 知识库导航
 
@@ -163,3 +163,12 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 - [[docs/pda/PDA-UI-UX-设计规范与交互状态|PDA UI 设计]] · [Markdown](PDA-UI-UX-设计规范与交互状态.md)
 - [[docs/SCANNER_INTEGRATION|扫码集成]] · [Markdown](../SCANNER_INTEGRATION.md)
 - [[docs/00-文档导航|文档总目录]] · [Markdown](../00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+
+
+## 7. 2026-11-26 实施记录（代码待 CI/真机验收）
+
+- Core：FeedbackPolicy、FeedbackGate、ScanFeedbackOptions 及 42 项参数化/独立测试用例；反馈只分类，不决定业务结果。F08/F09/F10/F12/F19/F21 保持原 UI 或静默；F22 直接 Preview，避免进入业务去重。F01～F22 其余非静默触发均接入 CountingPage。
+- Android：单实例 SoundPool + Vibrator，前台预加载、后台释放、代次过滤迟到加载回调；声音加载不就绪不重放旧事件，保留震动。使用三份独立合成 WAV，添加 VIBRATE 权限。
+- UI：三条构造入口共享同一服务，设置五开关及两个试听按钮独立保存；Submitted 先保留原 UUID、完成既有清理、再反馈；Unknown 不清除 UUID。
+- CI：新增 APK ZIP 原始音频 SHA-256 检查，Debug、Release QA、正式签名产物均验证三资源。当前环境无 dotnet / Android workload，不能声称本地编译通过；以 PR workflow 为准。真机声音、系统音量、震动、连续扫码与恢复测试仍待 PDA-FB-08。
+- 原版私有音频未进入公开仓库，生产写入权限、数据库、API、端口均未修改。

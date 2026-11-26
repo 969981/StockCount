@@ -9,17 +9,19 @@ public partial class CountListPage : ContentPage
 {
     private readonly StockCountApiClient _api;
     private readonly IPendingSubmissionStore _pendingStore;
+    private readonly IScanFeedbackService _feedback;
     private readonly ObservableCollection<InventoryCountDto> _counts = new();
     private CancellationTokenSource? _searchDebounce;
     private string? _cursor;
     private Guid? _lastPromptedRequestId;
     private bool _busy;
 
-    public CountListPage(StockCountApiClient api, IPendingSubmissionStore pendingStore)
+    public CountListPage(StockCountApiClient api, IPendingSubmissionStore pendingStore, IScanFeedbackService feedback)
     {
         InitializeComponent();
         _api = api;
         _pendingStore = pendingStore;
+        _feedback = feedback;
         CountList.ItemsSource = _counts;
     }
 
@@ -116,7 +118,7 @@ public partial class CountListPage : ContentPage
         await LoadAsync(false);
 
     private async void OpenSettings_Clicked(object sender, EventArgs e) =>
-        await Navigation.PushAsync(new SettingsPage(_api, _pendingStore));
+        await Navigation.PushAsync(new SettingsPage(_api, _pendingStore, _feedback));
 
     private async void CountList_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -128,7 +130,7 @@ public partial class CountListPage : ContentPage
         try
         {
             var details = await _api.GetCountDetailsAsync(selected.CountNumber);
-            await Navigation.PushAsync(new CountingPage(_api, details.Count, _pendingStore));
+            await Navigation.PushAsync(new CountingPage(_api, details.Count, _pendingStore, _feedback));
         }
         catch (Exception error)
         {
@@ -167,7 +169,7 @@ public partial class CountListPage : ContentPage
 
             // Fetch fresh metadata from the actual environment. Do not fabricate a count.
             var details = await _api.GetCountDetailsAsync(saved.CountNumber);
-            await Navigation.PushAsync(new CountingPage(_api, details.Count, _pendingStore));
+            await Navigation.PushAsync(new CountingPage(_api, details.Count, _pendingStore, _feedback));
         }
         catch (Exception error)
         {

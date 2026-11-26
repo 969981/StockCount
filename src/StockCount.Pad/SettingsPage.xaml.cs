@@ -8,10 +8,15 @@ public partial class SettingsPage : ContentPage
     private readonly StockCountApiClient _api;
     private readonly IPendingSubmissionStore _pendingStore;
     private string _environment;
+    private readonly IScanFeedbackService _feedback;
+    private bool _loadingFeedback;
 
-    public SettingsPage(StockCountApiClient api, IPendingSubmissionStore pendingStore)
+    public SettingsPage(StockCountApiClient api, IPendingSubmissionStore pendingStore, IScanFeedbackService feedback)
     {
+        _feedback = feedback;
+        _loadingFeedback = true;
         InitializeComponent();
+        _loadingFeedback = false;
         _api = api;
         _pendingStore = pendingStore;
         _environment = api.EnvironmentName;
@@ -22,6 +27,7 @@ public partial class SettingsPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
+        LoadFeedbackOptions();
         RefreshPerformanceReport();
         ScannerActionText.Text = "广播：" + ScanFeed.AndroidBroadcastAction;
         ScannerExtraText.Text = "字段：" + ScanFeed.AndroidBarcodeExtra;
@@ -47,6 +53,57 @@ public partial class SettingsPage : ContentPage
         ScanFeed.ScanObserved -= OnScanObserved;
         base.OnDisappearing();
     }
+
+    private void LoadFeedbackOptions()
+    {
+        _loadingFeedback = true;
+        try
+        {
+            var options = _feedback.Options;
+            SoundSwitch.IsToggled = options.SoundEnabled;
+            VibrationSwitch.IsToggled = options.VibrationEnabled;
+            SuccessFeedbackSwitch.IsToggled = options.SuccessEnabled;
+            FailureFeedbackSwitch.IsToggled = options.FailureEnabled;
+            ReadFeedbackSwitch.IsToggled = options.ReadEnabled;
+            UpdateFeedbackPreview();
+        }
+        finally { _loadingFeedback = false; }
+    }
+
+    private void Feedback_Toggled(object sender, ToggledEventArgs e)
+    {
+        if (_loadingFeedback || SoundSwitch is null || VibrationSwitch is null ||
+            SuccessFeedbackSwitch is null || FailureFeedbackSwitch is null ||
+            ReadFeedbackSwitch is null || FeedbackSettingsStatus is null) return;
+        try
+        {
+            _feedback.UpdateOptions(new ScanFeedbackOptions(SoundSwitch.IsToggled,
+                VibrationSwitch.IsToggled, SuccessFeedbackSwitch.IsToggled,
+                FailureFeedbackSwitch.IsToggled, ReadFeedbackSwitch.IsToggled));
+            FeedbackSettingsStatus.Text = "声音与震动设置已保存";
+        }
+        catch
+        {
+            LoadFeedbackOptions();
+            FeedbackSettingsStatus.Text = "反馈设置保存失败，请重试";
+        }
+        UpdateFeedbackPreview();
+    }
+
+    private void UpdateFeedbackPreview()
+    {
+        var options = _feedback.Options;
+        PreviewSuccessButton.IsEnabled = options.AllowsSound(FeedbackKind.Success) ||
+            options.AllowsVibration(FeedbackKind.Success);
+        PreviewFailureButton.IsEnabled = options.AllowsSound(FeedbackKind.Failure) ||
+            options.AllowsVibration(FeedbackKind.Failure);
+    }
+
+    private void PreviewSuccess_Clicked(object sender, EventArgs e) =>
+        _feedback.Preview(FeedbackKind.Success);
+
+    private void PreviewFailure_Clicked(object sender, EventArgs e) =>
+        _feedback.Preview(FeedbackKind.Failure);
 
     private void OnScanObserved(ScanFeed.ScanDiagnostic diagnostic)
     {

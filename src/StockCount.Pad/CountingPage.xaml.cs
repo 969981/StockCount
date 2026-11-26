@@ -12,6 +12,7 @@ public partial class CountingPage : ContentPage
     private readonly StockCountApiClient _api;
     private readonly InventoryCountDto _selected;
     private readonly CountScanWorkflow _workflow;
+    private readonly IScanFeedbackService _feedback;
     private readonly Queue<(string Raw, long ReceivedAt)> _scanQueue = new();
     private static readonly Color ConfirmedGreen = Color.FromArgb("#287348");
     private static readonly Color MutedGray = Color.FromArgb("#667687");
@@ -29,10 +30,11 @@ public partial class CountingPage : ContentPage
     private bool _pageVisible;
 
     public CountingPage(StockCountApiClient api, InventoryCountDto selected,
-        IPendingSubmissionStore pendingStore)
+        IPendingSubmissionStore pendingStore, IScanFeedbackService feedback)
     {
         InitializeComponent();
         _api = api;
+        _feedback = feedback;
         _selected = selected;
         _workflow = new CountScanWorkflow(api, selected.CountNumber,
             selected.Description, api.EnvironmentName, pendingStore);
@@ -104,9 +106,11 @@ public partial class CountingPage : ContentPage
             if (_scanQueue.Count >= 5)
             {
                 ConnectionStateText.Text = "扫码过快，请重新扫描最后一箱";
+                Notify(FeedbackReason.QueueFull);
                 return;
             }
             _scanQueue.Enqueue((raw, receivedAt));
+            Notify(FeedbackReason.ReadAccepted);
             // A confirmed commit may still be clearing its persisted draft.
             // Queue scans during that short cleanup, not during the toast.
             if (!_submitting) _ = DrainScanQueueAsync();
@@ -141,6 +145,7 @@ public partial class CountingPage : ContentPage
         if (_busy) return;
         if (_workflow.HasUnresolvedSubmission)
         {
+            Notify(FeedbackReason.PendingBlocked);
             await DisplayAlertAsync("提交结果待确认",
                 "请先查询原 UUID 的提交结果；不能扫描下一箱覆盖当前草稿。", "OK");
             return;
@@ -162,6 +167,7 @@ public partial class CountingPage : ContentPage
             if (!discard) return;
             if (!_workflow.DiscardUnsubmittedDraft())
             {
+                Notify(FeedbackReason.PendingBlocked);
                 await DisplayAlertAsync("无法丢弃", "上次提交结果未确认。", "OK");
                 return;
             }
@@ -187,6 +193,7 @@ public partial class CountingPage : ContentPage
         }
         catch (Exception error)
         {
+            Notify(FeedbackReason.ScanException);
             ConnectionStateText.Text = "连接异常";
             await DisplayAlertAsync("扫码失败", error.Message, "OK");
         }
@@ -209,6 +216,7 @@ public partial class CountingPage : ContentPage
         if (_busy) return;
         if (!TryGetQuantity(out var quantity))
         {
+            Notify(FeedbackReason.QuantityInvalid);
             QuantityErrorText.Text = "箱内数量为必填项或格式无效！";
             QuantityErrorText.IsVisible = true;
             await DisplayAlertAsync("提示", "箱内数量为必填项！", "OK");
@@ -217,6 +225,7 @@ public partial class CountingPage : ContentPage
         try { _workflow.EnterManualQuantity(quantity); }
         catch (InvalidOperationException error)
         {
+            Notify(FeedbackReason.QuantityInvalid);
             await DisplayAlertAsync("无法更改数量", error.Message, "OK");
             return;
         }
@@ -224,9 +233,9 @@ public partial class CountingPage : ContentPage
     }
 
     private async void Retry_Clicked(object sender, EventArgs e) =>
-        await SubmitCurrentAsync();
+        await SubmitCurrentAsync(recovery: true);
 
-    private async Task SubmitCurrentAsync()
+    private async Task SubmitCurrentAsync(bool recovery = false)
     {
         if (_busy || _draining) return;
         using var total = ClientPerformance.Shared.Measure(ClientPerfStage.SubmitTotal);
@@ -242,13 +251,14 @@ public partial class CountingPage : ContentPage
             using (ClientPerformance.Shared.Measure(ClientPerfStage.SubmitWorkflow))
                 feedback = await _workflow.SubmitAsync();
             // Clear confirmed data immediately; the toast is independent.
-            await ShowFeedbackAsync(feedback);
+            await ShowFeedbackAsync(feedback, submission: true, recovery: recovery);
             if (feedback.Kind != "Submitted")
                 RefreshScreen();
         }
         catch (Exception error)
         {
-            await DisplayAlertAsync("提交失败",
+            Notify(FeedbackReason.SubmissionException);
+            await DisplayAlertAsync("提交结果需确认",
                 error.Message + "\n请确认提交结果，避免重复扫描。", "OK");
         }
         finally
@@ -279,7 +289,12 @@ public partial class CountingPage : ContentPage
         try
         {
             var feedback = await _workflow.CheckPendingAsync();
-            await ShowFeedbackAsync(feedback);
+            await ShowFeedbackAsync(feedback, submission: true, recovery: true);
+        }
+        catch (Exception error)
+        {
+            Notify(FeedbackReason.SubmissionException);
+            await DisplayAlertAsync("查询提交结果异常", error.Message + "\n请保留原请求并再次确认。", "OK");
         }
         finally
         {
@@ -296,10 +311,16 @@ public partial class CountingPage : ContentPage
         }
     }
 
-    private async Task ShowFeedbackAsync(CountScanFeedback feedback)
+    private void Notify(FeedbackReason reason, Guid? requestId = null)
+    {
+        if (_pageVisible) _feedback.Notify(new FeedbackEvent(reason, requestId));
+    }
+
+    private async Task ShowFeedbackAsync(CountScanFeedback feedback, bool submission = false, bool recovery = false)
     {
         if (feedback.Kind == "Submitted")
         {
+            var requestId = _workflow.PendingRequestId;
             try
             {
                 // Retire the confirmed request and clear the old box before
@@ -310,15 +331,18 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Unfocus();
                 RefreshScreen();
                 ShowSuccessToast(feedback.AutoDismissMs);
+                Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), requestId);
             }
             catch (Exception error)
             {
+                Notify(FeedbackReason.ConfirmedCleanupFailed, requestId);
                 await DisplayAlertAsync("提交已成功但本机收尾失败",
                     "服务器已确认保存。请勿重复提交。\n" + error.Message, "OK");
             }
             return;
         }
 
+        Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), _workflow.PendingRequestId);
         if (feedback.Kind == "LocationUpdated")
         {
             ConnectionStateText.Text = "库位已更新";
