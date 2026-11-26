@@ -1,7 +1,7 @@
 ---
 title: "StockCount · 海康 PDA 扫码知识地图"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-26
 status: active
 type: moc
 area: pda
@@ -25,6 +25,10 @@ aliases:
 - [[docs/pda/海康PDA-MAUI实现与示例|BroadcastReceiver + MAUI C#]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-MAUI%E5%AE%9E%E7%8E%B0%E4%B8%8E%E7%A4%BA%E4%BE%8B.md)
 - [[docs/SCANNER_INTEGRATION|StockCount 扫描业务总规范]] · [Markdown](../SCANNER_INTEGRATION.md)
 - [[docs/pda/海康PDA-调试排障与验收|ADB 调试 / 真机验收]] · [Markdown](%E6%B5%B7%E5%BA%B7PDA-%E8%B0%83%E8%AF%95%E6%8E%92%E9%9A%9C%E4%B8%8E%E9%AA%8C%E6%94%B6.md)
+
+## 扫码业务反馈
+
+- [[docs/pda/PDA 扫码业务声音与震动反馈改造方案|扫码成功/失败音效与震动改造方案]] · [Markdown](PDA%20%E6%89%AB%E7%A0%81%E4%B8%9A%E5%8A%A1%E5%A3%B0%E9%9F%B3%E4%B8%8E%E9%9C%87%E5%8A%A8%E5%8F%8D%E9%A6%88%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) — PDA-FB-01～08、F01～F22 触发矩阵、独立合成音效与验收（规划）。
 
 ## APK UI / 交互设计
 

@@ -2,7 +2,7 @@
 aliases: ["PDA UI 开发任务与验收", "StockCount PDA UI QA"]
 title: "StockCount PDA APK UI 交互实施任务与验收清单"
 created: 2026-11-23
-updated: 2026-11-23
+updated: 2026-11-26
 status: implemented-unverified
 type: implementation-backlog
 area: pda
@@ -103,3 +103,8 @@ Core 已新增草稿确认、成功显示后清箱、重启模拟恢复同 UUID 
 | PDA-V2-06 | 实体扫码与IME下数量框/按钮可操作；无模拟扫码入口 |
 
 源码实现后须取得Android构建和真实设备视觉/操作验收，不能以HTML预览替代。
+
+
+## 扫码声音与震动专项（2026-11-26，规划）
+
+- [[docs/pda/PDA 扫码业务声音与震动反馈改造方案|扫码成功/失败音效与震动改造方案]] · [Markdown](PDA%20%E6%89%AB%E7%A0%81%E4%B8%9A%E5%8A%A1%E5%A3%B0%E9%9F%B3%E4%B8%8E%E9%9C%87%E5%8A%A8%E5%8F%8D%E9%A6%88%E6%94%B9%E9%80%A0%E6%96%B9%E6%A1%88.md) — PDA-FB-01～08、F01～F22 触发矩阵、独立合成音效与验收（规划）。
