@@ -15,6 +15,7 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
     private readonly HashSet<int> _ready = new();
     private ScanFeedbackOptions _options = ReadOptions();
     private SoundPool? _pool;
+    private MediaPlayer? _fallbackPlayer;
     private LoadListener? _listener;
     private int _stream;
     private FeedbackKind _streamKind;
@@ -52,21 +53,29 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         try
         {
             using var attributesBuilder = new AudioAttributes.Builder();
-            using var attributes = attributesBuilder.SetUsage(AudioUsageKind.AssistanceSonification)
+            using var attributes = attributesBuilder.SetUsage(AudioUsageKind.Media)
                 .SetContentType(AudioContentType.Sonification).Build();
             using var builder = new SoundPool.Builder();
             _pool = builder.SetMaxStreams(1).SetAudioAttributes(attributes).Build();
             _listener = new LoadListener((sampleId, status) => Dispatch(() =>
             {
                 if (!_foreground || generation != _generation) return;
-                if (status == 0) _ready.Add(sampleId);
-                else Log("sample-load");
+                if (status == 0)
+                {
+                    _ready.Add(sampleId);
+                    Trace($"sample-ready id={sampleId}");
+                }
+                else Log($"sample-load-failed id={sampleId} status={status}");
             }));
             _pool.SetOnLoadCompleteListener(_listener);
             var context = Android.App.Application.Context;
-            _samples[FeedbackKind.Success] = _pool.Load(context, global::StockCount.Pad.Resource.Raw.scan_success, 1);
-            _samples[FeedbackKind.Failure] = _pool.Load(context, global::StockCount.Pad.Resource.Raw.scan_failure, 1);
-            _samples[FeedbackKind.Read] = _pool.Load(context, global::StockCount.Pad.Resource.Raw.scan_read, 1);
+            foreach (var kind in new[] { FeedbackKind.Success, FeedbackKind.Failure, FeedbackKind.Read })
+            {
+                var sample = _pool.Load(context, ResourceId(kind), 1);
+                _samples[kind] = sample;
+                if (sample <= 0) Log($"sample-load-rejected kind={kind}");
+            }
+            TraceMediaVolume("resume");
         }
         catch { Log("initialize"); ReleaseAudio(); }
     });
@@ -118,20 +127,97 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         }
     }
 
+    private static int ResourceId(FeedbackKind kind) => kind switch
+    {
+        FeedbackKind.Success => global::StockCount.Pad.Resource.Raw.scan_success,
+        FeedbackKind.Failure or FeedbackKind.WarningUnknown => global::StockCount.Pad.Resource.Raw.scan_failure,
+        FeedbackKind.Read => global::StockCount.Pad.Resource.Raw.scan_read,
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
     private void Play(FeedbackKind kind)
     {
-        var pool = _pool;
-        if (pool is null) return;
-        var sampleKind = kind == FeedbackKind.WarningUnknown ? FeedbackKind.Failure : kind;
-        if (!_samples.TryGetValue(sampleKind, out var sample) || sample <= 0 || !_ready.Contains(sample))
-            return; // Early load/failure: vibration still works; never replay a stale business result.
         var now = SystemClock.ElapsedRealtime();
-        if (kind == FeedbackKind.Read && _streamKind != FeedbackKind.Read && now < _streamUntil)
-            return; // Never interrupt business feedback with an optional hardware read tone.
+        if (!FeedbackAudioPolicy.MayInterrupt(kind, _streamKind, now, _streamUntil)) return;
         StopAudio();
-        _stream = pool.Play(sample, 1f, 1f, kind == FeedbackKind.Read ? 1 : 2, 0, 1f);
-        _streamKind = kind;
-        _streamUntil = _stream != 0 ? now + FeedbackPolicy.AudioMilliseconds(kind) : 0;
+        var pool = _pool;
+        var sampleKind = FeedbackAudioPolicy.SampleKind(kind);
+        var ready = _samples.TryGetValue(sampleKind, out var sample) && sample > 0 && _ready.Contains(sample);
+        if (pool is not null && ready)
+        {
+            try
+            {
+                _stream = pool.Play(sample, 1f, 1f, kind == FeedbackKind.Read ? 1 : 2, 0, 1f);
+                if (_stream > 0)
+                {
+                    _streamKind = kind;
+                    _streamUntil = now + FeedbackPolicy.AudioMilliseconds(kind);
+                    Trace($"soundpool-start kind={kind} stream={_stream}");
+                    return;
+                }
+                Log($"soundpool-zero-stream kind={kind}");
+            }
+            catch { Log($"soundpool-play-failed kind={kind}"); }
+        }
+        else Log($"soundpool-not-ready kind={kind} pool={pool is not null} sample={sample}");
+
+        if (FeedbackAudioPolicy.CanUseFallback(kind)) PlayFallback(kind);
+    }
+
+    private void PlayFallback(FeedbackKind kind)
+    {
+        // No delayed replay after the next business result. Native resource
+        // preparation may cost time, but never wait for playback completion.
+        try
+        {
+            TraceMediaVolume("fallback");
+            var player = MediaPlayer.Create(Android.App.Application.Context, ResourceId(kind));
+            if (player is null)
+            {
+                Log($"mediaplayer-create-failed kind={kind}");
+                return;
+            }
+            _fallbackPlayer = player;
+            player.Completion += (_, _) => Dispatch(() =>
+            {
+                if (ReferenceEquals(_fallbackPlayer, player)) StopAudio();
+            });
+            player.Error += (_, e) =>
+            {
+                e.Handled = true;
+                Dispatch(() =>
+                {
+                    if (!ReferenceEquals(_fallbackPlayer, player)) return;
+                    Log($"mediaplayer-error kind={kind}");
+                    StopAudio();
+                });
+            };
+            player.Looping = false;
+            player.SetVolume(1f, 1f);
+            player.Start();
+            _streamKind = kind;
+            _streamUntil = SystemClock.ElapsedRealtime() + FeedbackPolicy.AudioMilliseconds(kind);
+            Trace($"mediaplayer-start kind={kind}");
+        }
+        catch
+        {
+            Log($"mediaplayer-start-failed kind={kind}");
+            StopAudio();
+        }
+    }
+
+    private static void TraceMediaVolume(string stage)
+    {
+        try
+        {
+            var manager = Android.App.Application.Context.GetSystemService(Context.AudioService) as AudioManager;
+            if (manager is null) return;
+            var volume = manager.GetStreamVolume(Android.Media.Stream.Music);
+            var max = manager.GetStreamMaxVolume(Android.Media.Stream.Music);
+            Trace($"media-volume stage={stage} value={volume}/{max}");
+            if (volume == 0) Log("media-volume-muted");
+        }
+        catch { Log("media-volume-unavailable"); }
     }
 
     private static Vibrator? GetVibrator()
@@ -155,6 +241,14 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
     {
         try { if (_stream != 0) _pool?.Stop(_stream); }
         catch { Log("stop"); }
+        var player = _fallbackPlayer;
+        _fallbackPlayer = null;
+        if (player is not null)
+        {
+            try { player.Stop(); } catch { }
+            try { player.Release(); } catch { Log("fallback-release"); }
+            try { player.Dispose(); } catch { Log("fallback-dispose"); }
+        }
         _stream = 0;
         _streamUntil = 0;
         _streamKind = FeedbackKind.None;
@@ -190,6 +284,9 @@ public sealed class AndroidScanFeedbackService : IScanFeedbackService, IDisposab
         }
         catch { Log("dispatch"); }
     }
+
+    private static void Trace(string stage) =>
+        Android.Util.Log.Debug("StockCountFeedback", stage);
 
     private static void Log(string stage) =>
         Android.Util.Log.Warn("StockCountFeedback", stage); // No payload, barcode, UUID or secret.

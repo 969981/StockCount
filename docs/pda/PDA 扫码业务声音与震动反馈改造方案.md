@@ -177,3 +177,22 @@ Android min API 26，可使用 VibrationEffect.CreateOneShot(ms, DefaultAmplitud
 ## 2026-11-26 PDA 键盘与成功提示
 
 - [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。
+
+
+## PDA-FB-09～16：统一业务提示与失败音效可靠性（2026-11-26）
+
+现场反馈扫错库位/箱码时只有震动。源码原本已将 Error/Duplicate 分类为 Failure；SoundPool 未就绪、Play 返回0等情况原先静默跳过，尚无真机日志证明根因。本次改用媒体音量流（SoundPool AudioUsageKind.Media，MediaPlayer 默认媒体流），Activity 音量键对应 Music，不强制音量。Sample ID/status、播放返回 stream、媒体音量及备用播放启动/失败通过 StockCountFeedback 标签诊断；成功启动不证明扬声器实际发声。业务成功/失败/未知在 SoundPool 无资源、未加载、异常或0 stream 时走同 WAV 的 MediaPlayer 备用；额外短读码音不备用。备用创建有原生准备开销但不等待播放完成；每次新业务反馈停止释放旧播放器，暂停/销毁/关闭声音同样释放；不重播过时事件，振动独立。
+
+| 触发 | 新 UI | 声音/震动 |
+| --- | --- | --- |
+| F04/F05：库位错、未扫库位、箱码错误、不存在、已盘 | 红色非阻塞 Toast | Failure / 1000ms |
+| F06 扫码读取异常 | 红色 Toast（未发生写入） | Failure / 1000ms |
+| F07 队列满 | 红色 Toast，重扫提示 | 限频 Failure / 1000ms |
+| F13 数量错误 | 红色 Toast；保留输入；未知状态仍确认 | Failure / 1000ms |
+| F14 提交时明确 BOX_ALREADY_RECORDED | 红色 Toast，按既有规则清箱和数量 | Failure / 1000ms |
+| F14 其他提交拒绝（结构、存储、授权等） | 保留人工确认 | Failure / 1000ms |
+| F16/F17 确认提交成功 | 绿色非阻塞 Toast | Success / 200ms |
+| F02/F03 正确库位/箱码 | 清除旧失败 Toast，保留原状态文字 | Success / 200ms |
+| F10/F11/F15/F18/F20、草稿恢复 | 人工确认/原 UUID 保持 | 原规则 |
+
+统一“业务提示显示时长”，保留旧 Preferences key StockCount.Interaction.SuccessToastDurationMs（默认2000，0.5/1/2/3/5秒），无迁移、无新增等待；SuccessToastLifetime 版本机制共用，新提示覆盖旧提示，离页或有效扫码清除失败提示；触摸穿透、自动换行。Core CountScanFeedback 增加可选 ErrorCode 以区分服务端明确重复，不根据中文消息猜测。未更改写入、库位、幂等、扫码队列、历史 API。新增25项纯策略测试。验收需用海康真机开启声音、失败反馈，试听成功/失败，检查媒体音量，扫码错库位/无库位/无标签/重复，快速纠错，退出重入，断网未知仍阻止覆盖；用 `adb logcat -s StockCountFeedback` 查看加载/播放/备用路径，严禁上传业务敏感数据。源码已提交，CI/真机待核验。

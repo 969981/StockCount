@@ -23,6 +23,7 @@ public class MainActivity : MauiAppCompatActivity
     protected override void OnResume()
     {
         base.OnResume();
+        VolumeControlStream = Android.Media.Stream.Music; // Do not modify system volume.
         ScanFeed.ScannerConfigurationChanged -= OnScannerConfigurationChanged;
         ScanFeed.ScannerConfigurationChanged += OnScannerConfigurationChanged;
         RegisterScannerReceiver();

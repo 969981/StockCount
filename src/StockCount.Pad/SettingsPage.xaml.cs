@@ -128,7 +128,7 @@ public partial class SettingsPage : ContentPage
         {
             CountingInteractionPreferences.SuccessToastDurationMs =
                 SuccessToastPolicy.DurationAt(SuccessToastDurationPicker.SelectedIndex);
-            SuccessToastSettingsStatus.Text = "已保存，即时生效；不会延迟下一箱扫码。";
+            SuccessToastSettingsStatus.Text = "已保存，普通业务提示即时生效；不会延迟下一箱扫码。";
         }
         catch
         {

@@ -130,3 +130,6 @@ public interface IScannerService
 ## 2026-11-26 PDA 键盘与成功提示
 
 - [[docs/pda/PDA 键盘避让与提交成功提示配置|键盘避让与提交成功提示配置]] · [Markdown](pda/PDA%20%E9%94%AE%E7%9B%98%E9%81%BF%E8%AE%A9%E4%B8%8E%E6%8F%90%E4%BA%A4%E6%88%90%E5%8A%9F%E6%8F%90%E7%A4%BA%E9%85%8D%E7%BD%AE.md) — IME Resize、固定操作栏、默认2秒及可配置时长；源码待 CI/真机验收。
+
+
+PDA-FB-09～16：普通扫码错误及重复箱码统一自动消失的业务提示，默认2秒，共用原设置。失败音 SoundPool + MediaPlayer 备用，媒体音量；原 UUID 未知、草稿确认仍阻塞。详见上方专项文档。
