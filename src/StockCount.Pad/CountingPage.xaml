@@ -4,9 +4,9 @@
              x:Class="StockCount.Pad.CountingPage"
              NavigationPage.HasNavigationBar="False"
              Title="扫码盘点" BackgroundColor="White" SafeAreaEdges="All">
-  <!-- IME Resize + MAUI 10 safe area: only the star-sized detail area scrolls.
+  <!-- IME Resize + MAUI 10 safe area: only the star-sized detail area scrolls; environment and current location stay visible.
        Quantity and submit are siblings of the ScrollView, never inside it. -->
-  <Grid RowDefinitions="Auto,*,Auto,Auto" RowSpacing="0">
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" RowSpacing="0">
     <Grid Grid.Row="0" RowDefinitions="48,1" ColumnDefinitions="44,*,Auto" BackgroundColor="White">
       <Button Text="‹" FontSize="27" Padding="0" BackgroundColor="Transparent"
               TextColor="#263645" Clicked="Back_Clicked"
@@ -18,10 +18,9 @@
               SemanticProperties.Description="打开当前单的已盘记录"/>
       <BoxView Grid.Row="1" Grid.ColumnSpan="3" Color="#D9DFE5"/>
     </Grid>
-    <ScrollView Grid.Row="1" x:Name="CountDetailsScroll" VerticalScrollBarVisibility="Default" VerticalOptions="Fill" MinimumHeightRequest="0">
-      <VerticalStackLayout Spacing="0">
+    <VerticalStackLayout Grid.Row="1" Spacing="0">
         <Border x:Name="EnvironmentBanner" BackgroundColor="#F0F4F9"
-                Stroke="#DCE3EA" StrokeThickness="0" Padding="12,5" MinimumHeightRequest="30">
+                Stroke="#DCE3EA" StrokeThickness="0" Padding="10,3" MinimumHeightRequest="25">
           <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
             <Label x:Name="EnvironmentLabel" Text="测试 · XTEST" TextColor="#31537C"
                    FontAttributes="Bold" FontSize="12" VerticalOptions="Center"/>
@@ -31,8 +30,25 @@
           </Grid>
         </Border>
         <BoxView Color="#DCE3EA" HeightRequest="1"/>
+        <Border x:Name="LocationCard" BackgroundColor="#F5F8FB" StrokeThickness="0" Padding="10,4">
+          <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="6" RowSpacing="1">
+            <Label Text="盘点库位" FontSize="12" FontAttributes="Bold" TextColor="#44515F" VerticalOptions="Center"/>
+            <Label x:Name="LocationText" Grid.Column="1" Text="—" FontSize="18"
+                   FontAttributes="Bold" TextColor="#154A87" LineBreakMode="CharacterWrap" VerticalOptions="Center"
+                   SemanticProperties.Description="当前盘点库位，只能通过扫描修改"/>
+            <Label x:Name="LocationStatusText" Grid.Column="2" Text="未扫描" FontSize="11"
+                   TextColor="#667687" HorizontalTextAlignment="End" VerticalOptions="Center"/>
+            <Label x:Name="LocationHintText" Grid.Row="1" Grid.ColumnSpan="3" Text="请扫描库位"
+                   TextColor="#667687" FontSize="10" HorizontalTextAlignment="End"/>
+          </Grid>
+        </Border>
+        <BoxView Color="#CDD7E0" HeightRequest="1"/>
+    </VerticalStackLayout>
+    <ScrollView Grid.Row="2" x:Name="CountDetailsScroll" VerticalScrollBarVisibility="Default"
+                VerticalOptions="Fill" MinimumHeightRequest="0" SizeChanged="DetailsViewport_SizeChanged">
+      <VerticalStackLayout Spacing="0" SizeChanged="DetailsViewport_SizeChanged">
         <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="10"
-              RowSpacing="4" Padding="12,10,12,11">
+              RowSpacing="4" Padding="10,5,10,6">
           <Label x:Name="CountNumberText" FontSize="15" FontAttributes="Bold"
                  TextColor="#17232F" LineBreakMode="CharacterWrap"/>
           <Label x:Name="PermissionText" Grid.Column="1" FontSize="11" TextColor="#276C43"
@@ -43,66 +59,50 @@
                  TextColor="#627181" HorizontalTextAlignment="End" VerticalOptions="Center"/>
         </Grid>
         <BoxView Color="#D7DDE3" HeightRequest="1"/>
-        <Border x:Name="LocationCard" BackgroundColor="#F5F8FB" StrokeThickness="0"
-                Padding="12,9,12,10">
-          <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto"
-                RowSpacing="5" ColumnSpacing="8">
-            <Label Text="盘点库位" FontSize="13" FontAttributes="Bold" TextColor="#44515F"/>
-            <Label x:Name="LocationStatusText" Grid.Column="1" Text="未扫描"
-                   FontSize="12" TextColor="#667687" HorizontalTextAlignment="End"/>
-            <Label x:Name="LocationText" Grid.Row="1" Text="—" FontSize="25"
-                   FontAttributes="Bold" TextColor="#154A87" LineBreakMode="CharacterWrap"
-                   SemanticProperties.Description="当前盘点库位，只能通过扫描修改"/>
-            <Label x:Name="LocationHintText" Grid.Row="1" Grid.Column="1"
-                   Text="请扫描库位" TextColor="#667687" FontSize="12"
-                   VerticalOptions="Center" HorizontalTextAlignment="End"/>
-          </Grid>
-        </Border>
-        <BoxView Color="#CDD7E0" HeightRequest="1"/>
-        <Grid ColumnDefinitions="*,Auto" Padding="12,11,12,8">
+        <Grid ColumnDefinitions="*,Auto" Padding="10,6,10,5">
           <Label Text="当前箱信息" FontSize="14" FontAttributes="Bold" TextColor="#17232F"/>
           <Label x:Name="BoxStateText" Grid.Column="1" Text="等待扫码"
                  FontSize="12" TextColor="#627181" VerticalOptions="Center"/>
         </Grid>
         <BoxView Color="#E0E5E9" HeightRequest="1"/>
-        <VerticalStackLayout x:Name="BoxEmptyPanel" Padding="12,25" Spacing="6">
+        <VerticalStackLayout x:Name="BoxEmptyPanel" Padding="10,14" Spacing="6">
           <Label x:Name="BoxEmptyTitleText" Text="请先扫描库位" FontSize="15"
                  FontAttributes="Bold" TextColor="#364655" HorizontalTextAlignment="Center"/>
           <Label x:Name="BoxEmptyHintText" Text="使用 PDA 实体扫码键" FontSize="13"
                  TextColor="#6B7885" HorizontalTextAlignment="Center"/>
         </VerticalStackLayout>
-        <VerticalStackLayout x:Name="BoxFields" IsVisible="False" Padding="12,0" Spacing="0">
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+        <VerticalStackLayout x:Name="BoxFields" IsVisible="False" Padding="10,0" Spacing="0">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="箱码" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="BoxNumberText" FontSize="13" TextColor="#17232F" FontAttributes="Bold"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
             <BoxView Color="#EDF0F2" HeightRequest="1"/>
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="产品编码" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="ItemCodeText" FontSize="13" TextColor="#17232F" FontAttributes="Bold"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
             <BoxView Color="#EDF0F2" HeightRequest="1"/>
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="品名" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="ItemNameText" FontSize="13" TextColor="#17232F"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
             <BoxView Color="#EDF0F2" HeightRequest="1"/>
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="规格" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="SpecificationText" FontSize="13" TextColor="#17232F"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
             <BoxView Color="#EDF0F2" HeightRequest="1"/>
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="批号" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="LotText" FontSize="13" TextColor="#17232F"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
             </Grid>
             <BoxView Color="#EDF0F2" HeightRequest="1"/>
-            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,6" MinimumHeightRequest="31">
+            <Grid ColumnDefinitions="72,*" ColumnSpacing="8" Padding="0,4" MinimumHeightRequest="28">
               <Label Text="存货单位" FontSize="13" TextColor="#687685" VerticalOptions="Start"/>
               <Label Grid.Column="1" x:Name="StockUnitText" FontSize="13" TextColor="#17232F"
                      LineBreakMode="CharacterWrap" VerticalOptions="Start"/>
@@ -115,7 +115,7 @@
         </Border>
       </VerticalStackLayout>
     </ScrollView>
-    <Border x:Name="PendingPanel" Grid.Row="2" IsVisible="False"
+    <Border x:Name="PendingPanel" Grid.Row="3" IsVisible="False"
             BackgroundColor="#FFF5E6" Stroke="#F3DEBA"
             Padding="13,10">
       <VerticalStackLayout Spacing="8">
@@ -133,28 +133,28 @@
     </Border>
 
 
-    <Grid x:Name="QuantityActionBar" Grid.Row="3" RowDefinitions="1,Auto" BackgroundColor="White">
+    <Grid x:Name="QuantityActionBar" Grid.Row="4" RowDefinitions="1,Auto" BackgroundColor="White" SizeChanged="QuantityActionBar_SizeChanged">
       <BoxView Color="#CBD3DB"/>
-      <VerticalStackLayout Grid.Row="1" Padding="12,6,12,8" Spacing="5">
-        <Label FontSize="14" FontAttributes="Bold" TextColor="#17232F">
+      <Grid Grid.Row="1" Padding="10,4,10,5" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="0" RowSpacing="0">
+        <Label Grid.ColumnSpan="2" FontSize="13" Margin="0,0,0,3" FontAttributes="Bold" TextColor="#17232F">
           <Label.FormattedText><FormattedString>
             <Span Text="箱内数量 "/><Span Text="*" TextColor="#B73332"/>
           </FormattedString></Label.FormattedText>
         </Label>
         <!-- Use a single outline; let Android text metrics determine height.
              Clear and unit have independent columns so neither overlays the number. -->
-        <Border x:Name="QuantityFrame" Stroke="#8799AA" StrokeShape="RoundRectangle 4"
-                BackgroundColor="White" Padding="10,2,0,2">
-          <Grid ColumnDefinitions="*,48,Auto" ColumnSpacing="0" MinimumHeightRequest="58">
+        <Border x:Name="QuantityFrame" Grid.Row="1" Grid.ColumnSpan="2" Stroke="#8799AA" StrokeShape="RoundRectangle 4"
+                BackgroundColor="White" Padding="6,0,0,0">
+          <Grid ColumnDefinitions="*,48,Auto" ColumnSpacing="0" MinimumHeightRequest="48">
             <Entry x:Name="QuantityInput" Placeholder="输入数量" PlaceholderColor="#9AA5AF"
-                   Keyboard="Numeric" FontSize="25" FontAttributes="Bold" TextColor="#172F4D"
-                   MinimumHeightRequest="58" VerticalOptions="Fill" VerticalTextAlignment="Center"
+                   Keyboard="Numeric" FontSize="20" FontAttributes="Bold" TextColor="#172F4D"
+                   MinimumHeightRequest="48" VerticalOptions="Fill" VerticalTextAlignment="Center"
                    BackgroundColor="Transparent" ClearButtonVisibility="Never"
                    HandlerChanged="QuantityInput_HandlerChanged"
                    Focused="QuantityInput_FocusChanged" Unfocused="QuantityInput_FocusChanged"
                    TextChanged="QuantityInput_TextChanged"/>
             <Button Grid.Column="1" x:Name="ClearQuantityButton" Text="×"
-                    FontSize="23" TextColor="#536581" BackgroundColor="Transparent"
+                    FontSize="19" TextColor="#536581" BackgroundColor="Transparent"
                     MinimumWidthRequest="48" MinimumHeightRequest="48"
                     Padding="0" CornerRadius="4" VerticalOptions="Center"
                     IsEnabled="False" Clicked="ClearQuantity_Clicked"
@@ -164,15 +164,15 @@
               <BoxView Color="#D7DDE3" VerticalOptions="Fill"/>
               <Label Grid.Column="1" x:Name="QuantityUnitText" Text="—" FontSize="14"
                      TextColor="#617182" VerticalOptions="Center" HorizontalTextAlignment="Center"
-                     MinimumWidthRequest="50" Padding="8,4"/>
+                     MinimumWidthRequest="36" Padding="4,2"/>
             </Grid>
           </Grid>
         </Border>
-        <Label x:Name="QuantityErrorText" IsVisible="False" FontSize="12"
+        <Label x:Name="QuantityErrorText" Grid.Row="2" Grid.ColumnSpan="2" IsVisible="False" FontSize="12"
                Text="箱内数量为必填项！" TextColor="#B33332"/>
-        <Grid>
-          <Button x:Name="SubmitButton" Text="提交盘点" FontSize="16" FontAttributes="Bold"
-                  MinimumHeightRequest="54" CornerRadius="4" Padding="12,10" TextColor="White"
+        <Grid x:Name="SubmitAction" Grid.Row="3" Grid.ColumnSpan="2" Margin="0,4,0,0">
+          <Button x:Name="SubmitButton" Text="提交盘点" FontSize="14" FontAttributes="Bold"
+                  MinimumHeightRequest="48" CornerRadius="4" Padding="8,4" TextColor="White"
                   BackgroundColor="#175AB7" IsEnabled="False" Clicked="Submit_Clicked">
             <VisualStateManager.VisualStateGroups>
               <VisualStateGroup Name="CommonStates">
@@ -187,14 +187,14 @@
             </VisualStateManager.VisualStateGroups>
           </Button>
           <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
-                             InputTransparent="True" Color="#175AB7" WidthRequest="24"
-                             HeightRequest="24" HorizontalOptions="End" Margin="0,0,12,0"
+                             InputTransparent="True" Color="#175AB7" WidthRequest="18"
+                             HeightRequest="18" HorizontalOptions="End" Margin="0,0,12,0"
                              VerticalOptions="Center"/>
         </Grid>
-      </VerticalStackLayout>
+      </Grid>
     </Grid>
     <!-- Compact, touch-through feedback. Never blocks the scanner or page. -->
-    <Border x:Name="BusinessToast" Grid.RowSpan="4" ZIndex="100"
+    <Border x:Name="BusinessToast" Grid.RowSpan="5" ZIndex="100"
             IsVisible="False" InputTransparent="True"
             BackgroundColor="#287348" StrokeThickness="0"
             StrokeShape="RoundRectangle 9"

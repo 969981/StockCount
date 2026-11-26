@@ -28,6 +28,9 @@ public partial class CountingPage : ContentPage
     private bool _navigating;
     private readonly SuccessToastLifetime _toastLifetime = new();
     private bool _pageVisible;
+    private readonly CountingScrollIntent _detailsScroll = new();
+    private long _scrollSchedule;
+    private bool? _inlineActions;
 
     public CountingPage(StockCountApiClient api, InventoryCountDto selected,
         IPendingSubmissionStore pendingStore, IScanFeedbackService feedback)
@@ -85,6 +88,7 @@ public partial class CountingPage : ContentPage
     protected override void OnDisappearing()
     {
         _pageVisible = false;
+        CancelDetailsScroll();
         DismissBusinessToast();
         _scanQueue.Clear();
         ScanFeed.ScanReceived -= OnScannerReceived;
@@ -177,6 +181,7 @@ public partial class CountingPage : ContentPage
             QuantityInput.Text = "";
         }
 
+        CancelDetailsScroll();
         _busy = true;
         ConnectionStateText.Text = "正在识别…";
         BusyIndicator.IsVisible = true;
@@ -210,7 +215,10 @@ public partial class CountingPage : ContentPage
             {
                 using var timing = ClientPerformance.Shared.Measure(ClientPerfStage.QuantityFocus);
                 QuantityInput.Focus();
+                RequestDetailsScroll(CountingScrollTarget.Bottom);
             }
+            else if (_pageVisible && _workflow.Box is null && !_workflow.HasUnresolvedSubmission)
+                QuantityInput.Unfocus();
         }
     }
 
@@ -244,6 +252,7 @@ public partial class CountingPage : ContentPage
     private async Task SubmitCurrentAsync(bool recovery = false)
     {
         if (_busy || _draining) return;
+        CancelDetailsScroll();
         using var total = ClientPerformance.Shared.Measure(ClientPerfStage.SubmitTotal);
         _busy = true;
         _submitting = true;
@@ -286,6 +295,7 @@ public partial class CountingPage : ContentPage
     private async void Check_Clicked(object sender, EventArgs e)
     {
         if (_busy || _draining) return;
+        CancelDetailsScroll();
         using var total = ClientPerformance.Shared.Measure(ClientPerfStage.CheckTotal);
         _busy = true;
         _submitting = true;
@@ -338,6 +348,7 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Text = "";
                 QuantityInput.Unfocus();
                 RefreshScreen();
+                RequestDetailsScroll(CountingScrollTarget.Top);
                 ShowBusinessToast("提交成功！", true);
                 Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), requestId);
             }
@@ -356,6 +367,8 @@ public partial class CountingPage : ContentPage
         {
             ClearFailureToast();
             ConnectionStateText.Text = "库位已更新";
+            QuantityInput.Unfocus();
+            RequestDetailsScroll(CountingScrollTarget.Top);
             return;
         }
         if (feedback.Kind == "BoxResolved")
@@ -436,7 +449,7 @@ public partial class CountingPage : ContentPage
                 global::Android.Graphics.Color.Transparent);
             native.SetIncludeFontPadding(true);
             var density = native.Resources?.DisplayMetrics?.Density ?? 1f;
-            var vertical = (int)Math.Round(8 * density);
+            var vertical = (int)Math.Round(4 * density);
             native.SetPadding(0, vertical, 0, vertical);
         }
 #endif
@@ -445,6 +458,57 @@ public partial class CountingPage : ContentPage
     private void QuantityInput_FocusChanged(object sender, FocusEventArgs e)
     {
         QuantityFrame.Stroke = new SolidColorBrush(Color.FromArgb(e.IsFocused ? "#175AB7" : "#8799AA"));
+        if (!e.IsFocused && _detailsScroll.Target == CountingScrollTarget.Bottom)
+            CancelDetailsScroll();
+    }
+
+    // UI only: coalesce content/IME resize events, never hold the scan queue.
+    private void RequestDetailsScroll(CountingScrollTarget target)
+    {
+        if (!_pageVisible) return;
+        _detailsScroll.Begin(target, Environment.TickCount64);
+        ScheduleDetailsScroll();
+    }
+
+    private void CancelDetailsScroll()
+    {
+        _detailsScroll.Cancel();
+        ++_scrollSchedule;
+    }
+
+    private void DetailsViewport_SizeChanged(object sender, EventArgs e) => ScheduleDetailsScroll();
+
+    private void ScheduleDetailsScroll()
+    {
+        if (!_pageVisible || !_detailsScroll.CanApply(_detailsScroll.Version, Environment.TickCount64)) return;
+        var version = _detailsScroll.Version;
+        var scheduled = ++_scrollSchedule;
+        Dispatcher.DispatchDelayed(TimeSpan.FromMilliseconds(60), async () =>
+        {
+            if (!_pageVisible || scheduled != _scrollSchedule ||
+                !_detailsScroll.CanApply(version, Environment.TickCount64)) return;
+            var bottom = _detailsScroll.Target == CountingScrollTarget.Bottom;
+            if (bottom && (_workflow.Box is null || _workflow.HasUnresolvedSubmission || _submitting)) return;
+            if (CountDetailsScroll.Height <= 0) return;
+            var y = bottom ? Math.Max(0, CountDetailsScroll.ContentSize.Height - CountDetailsScroll.Height) : 0;
+            try { await CountDetailsScroll.ScrollToAsync(0, y, false); }
+            catch (Exception) { /* Layout/lifecycle change must not become a business failure. */ }
+        });
+    }
+
+    private void QuantityActionBar_SizeChanged(object sender, EventArgs e)
+    {
+        if (QuantityActionBar is null || QuantityFrame is null || SubmitAction is null ||
+            QuantityActionBar.Width <= 0) return;
+        var inline = CountingLayoutPolicy.UseInlineActions(QuantityActionBar.Width);
+        if (_inlineActions == inline) return;
+        _inlineActions = inline;
+        Grid.SetColumnSpan(QuantityFrame, inline ? 1 : 2);
+        Grid.SetRow(SubmitAction, inline ? 1 : 3);
+        Grid.SetColumn(SubmitAction, inline ? 1 : 0);
+        Grid.SetColumnSpan(SubmitAction, inline ? 1 : 2);
+        SubmitAction.Margin = inline ? new Thickness(6, 0, 0, 0) : new Thickness(0, 4, 0, 0);
+        SubmitAction.MinimumWidthRequest = inline ? 94 : 0;
     }
 
     private void ClearQuantity_Clicked(object sender, EventArgs e)
