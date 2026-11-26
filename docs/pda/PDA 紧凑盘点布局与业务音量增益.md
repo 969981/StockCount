@@ -10,6 +10,8 @@ tags: [StockCount, PDA, audio, UX]
 
 # PDA 紧凑盘点布局与业务音量增益
 
+> 当前有效方案：预制19个音频资源随项目提交，普通 APK 构建不需要 FFmpeg。下文早期自动生成流程仅为历史记录，最新方案见末节。
+
 ## PDA-UI-01～05
 
 - 环境与当前库位固定在顶部紧凑区；盘点单与箱详情仍在 ScrollView 中，字段完整可滚动。
@@ -46,4 +48,4 @@ tags: [StockCount, PDA, audio, UX]
 
 ## 最新构建方式：直接打包预制音频（取代上文自动生成构建方式）
 
-从已通过 Debug/Release 验收的 CI 工件 15091979515 提取原封不动的16个增益 WAV，纳入 Git 的 Android raw 资源目录。19个文件的字节数与 SHA-256 固定于 `tools/feedback-audio.lock.json`。移除 MSBuild 自动生成 Target 与 CI FFmpeg 恢复步骤；普通编译直接打包，无 FFmpeg 依赖、无额外下载。锁定 FFmpeg 与生成脚本保留为手动维护工具，重新生成后须独立审核音频并更新清单，不可静默覆盖已验收资源。旧构建说明仅作历史记录。
+从已通过 Debug/Release 验收的 CI 工件 15091979515 提取原封不动的16个增益 WAV，纳入 Git 的 Android raw 资源目录。19个文件的字节数与 SHA-256 固定于 `tools/feedback-audio.lock.json`。移除 MSBuild 自动生成 Target 与 CI FFmpeg 恢复步骤；普通编译直接打包，无 FFmpeg 依赖、无额外下载。锁定 FFmpeg 与生成脚本保留为手动维护工具，需显式使用 `pwsh -File scripts/generate-android-feedback-gain.ps1 -Force` 才可重新生成，之后须独立审核音频并更新清单，不可静默覆盖已验收资源。旧构建说明仅作历史记录。

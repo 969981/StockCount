@@ -10,6 +10,8 @@ tags: [StockCount, audio, PDA]
 
 # StockCount PDA 独立合成音效
 
+> 本页早期生成流程为历史记录。最新 APK 使用已提交的19个预制资源，不依赖 FFmpeg 编译，见文末。
+
 本目录为可试听的原始合成资源；同 SHA 的三文件已纳入 Android native raw 目录，当前 APK 是否成功打包由 CI 验证。采用独立正弦波及轻微二次谐波合成，12ms 起音/25ms 释放包络；未读取或复制原版 APK 音频波形或采样。参数依据功能区分与旧版反馈持续时间设计，音色不同。PCM 16-bit mono / 16000 Hz，峰值低于满幅。可在支持 WAV 的 Obsidian 或本地播放器试听。
 
 | 文件 | 时长 | 大小 B | 音符起点 ms / 长度 ms / Hz | Git blob SHA |
