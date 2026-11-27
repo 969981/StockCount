@@ -195,15 +195,28 @@ public sealed class StockCountApiClient : ICountScanGateway
         }
     }
 
-    public async Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct)
+    public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,CancellationToken ct) =>
+        ResolveLabelCoreAsync(countNumber,qr,null,ct);
+
+    public Task<BoxScanData?> ResolveLabelAsync(string countNumber,string qr,string location,CancellationToken ct) =>
+        ResolveLabelCoreAsync(countNumber,qr,location,ct);
+
+    private async Task<BoxScanData?> ResolveLabelCoreAsync(string countNumber,string qr,string? location,CancellationToken ct)
     {
         try
         {
             var result=await ReadJsonAsync<ResolvedLabel>(HttpMethod.Post,
-                "/api/v1/labels/resolve",new ResolveLabelRequest(countNumber,qr),ct);
+                "/api/v1/labels/resolve",new ResolveLabelRequest(countNumber,qr) { LocationCode=location },ct);
+            if (result.Environment != EnvironmentName) throw new InvalidOperationException("帐套响应不一致。");
+            var d = result.Decision;
+            var e = d?.Existing;
             return new BoxScanData(result.BoxNumber,result.ItemCode,result.ItemName,
                 result.Specification,result.LotNumber,result.StockUnit,
-                result.AlreadyRecordedInCount);
+                result.AlreadyRecordedInCount)
+            {
+                Correction = d is null ? null : new BoxCorrection(d.Mode,e?.DetailId,e?.CountNumber,e?.BoxNumber,
+                    e?.LocationCode,e?.QuantityStu,e?.StockUnit,e?.UpdatedAt,e?.Version,d.Message)
+            };
         }
         catch (ScanApiException e) when (e.Code=="LABEL_NOT_FOUND")
         {
@@ -240,6 +253,35 @@ public sealed class StockCountApiClient : ICountScanGateway
 
     }
 
+    public async Task<bool> UpdateAsync(string countNumber,Guid requestId,string qr,string boxNumber,
+        string location,decimal qty,BoxCorrection correction,CancellationToken ct)
+    {
+        if (!CorrectionPolicy.Matches(correction,countNumber,location,boxNumber))
+            throw new ScanCommitRejectedException("UPDATE_RECORD_CONFLICT","更新快照无效，请重新扫码。");
+        using var request=await Message(HttpMethod.Patch,
+            $"/api/v1/inventory-counts/{Uri.EscapeDataString(countNumber)}/items/{Uri.EscapeDataString(correction.DetailId!)}",
+            JsonContent.Create(new UpdateCountItemRequest(qr,boxNumber,location,qty,correction.Version!),options:Json)).ConfigureAwait(false);
+        request.Headers.TryAddWithoutValidation("Idempotency-Key",requestId.ToString("D"));
+        HttpResponseMessage response;
+        try { response=await SendAsync(request,ct).ConfigureAwait(false); }
+        catch (ScanApiException error) when (error.Code is "UPDATE_DISABLED" or "UPDATE_LEDGER_MISSING" or
+            "UPDATE_REQUEST_INVALID" or "UPDATE_VERSION_CONFLICT" or "UPDATE_RECORD_CONFLICT" or
+            "UPDATE_POSTCHECK_FAILED" or "AUDIT_USER_NOT_CONFIGURED" or "COUNT_NOT_FOUND" or
+            "LOCATION_INVALID" or "LOCATION_NOT_FOUND" or "LOCATION_AMBIGUOUS" or "LOCATION_OUTSIDE_WAREHOUSE" or
+            "COUNT_QUANTITY_INVALID")
+        {
+            throw new ScanCommitRejectedException(error.Code,error.Message);
+        }
+        using (response)
+        {
+            var result=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct).ConfigureAwait(false);
+            return result is not null && result.Status=="Committed" && result.Operation=="Update" &&
+                result.Environment==EnvironmentName && result.CountNumber==countNumber && result.BoxNumber==boxNumber &&
+                result.DetailId==correction.DetailId && result.RequestId==requestId &&
+                result.SavedQtyStu==qty && result.SavedQtyPcu==qty;
+        }
+    }
+
     public async Task<bool?> GetSubmissionAsync(string countNumber,Guid requestId,CancellationToken ct)
     {
         try
@@ -248,7 +290,25 @@ public sealed class StockCountApiClient : ICountScanGateway
                 HttpMethod.Get,
                 $"/api/v1/submissions/{requestId:D}?countNumber={Uri.EscapeDataString(countNumber)}",
                 null,ct);
-            return saved.Status=="Committed";
+            return saved.Status=="Committed" && saved.Environment==EnvironmentName && saved.CountNumber==countNumber && saved.RequestId==requestId;
+        }
+        catch (ScanApiException e) when (e.Code=="SUBMISSION_NOT_FOUND") { return false; }
+        catch (ScanApiException e) when (e.Code=="SUBMISSION_LOOKUP_UNAVAILABLE") { return null; }
+    }
+
+    public async Task<bool?> GetSubmissionAsync(string countNumber,Guid requestId,BoxScanData box,decimal quantity,CancellationToken ct)
+    {
+        try
+        {
+            var saved=await ReadJsonAsync<SaveCountItemResult>(HttpMethod.Get,
+                $"/api/v1/submissions/{requestId:D}?countNumber={Uri.EscapeDataString(countNumber)}",null,ct);
+            var correction=box.Correction;
+            var update=correction?.Mode=="Update";
+            return saved.Status=="Committed" && saved.Environment==EnvironmentName &&
+                saved.CountNumber==countNumber && saved.BoxNumber==box.BoxNumber && saved.RequestId==requestId &&
+                saved.SavedQtyStu==quantity && saved.SavedQtyPcu==quantity &&
+                saved.Operation==(update ? "Update" : "Insert") &&
+                (!update || saved.DetailId==correction!.DetailId) ? true : null;
         }
         catch (ScanApiException e) when (e.Code=="SUBMISSION_NOT_FOUND") { return false; }
         catch (ScanApiException e) when (e.Code=="SUBMISSION_LOOKUP_UNAVAILABLE") { return null; }
