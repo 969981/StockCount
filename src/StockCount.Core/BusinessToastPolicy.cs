@@ -7,7 +7,7 @@ public static class BusinessToastPolicy
     {
         if (pending) return false;
         if (!submission) return feedback.Kind is "Error" or "Duplicate";
-        return feedback.Kind == "Error" && feedback.ErrorCode == "BOX_ALREADY_RECORDED";
+        return feedback.Kind == "Error" && feedback.ErrorCode is ("BOX_ALREADY_RECORDED" or "UPDATE_VERSION_CONFLICT" or "UPDATE_RECORD_CONFLICT");
     }
 }
 

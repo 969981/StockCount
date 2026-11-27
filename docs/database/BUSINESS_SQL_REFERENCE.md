@@ -277,3 +277,19 @@ VALUES
 - 原始实现：[SqlInventoryReadRepository.cs](../../src/StockCount.Infrastructure/SqlInventoryReadRepository.cs)、[BoxDuplicateQuery.cs](../../src/StockCount.Infrastructure/BoxDuplicateQuery.cs)、[LocationLookupQuery.cs](../../src/StockCount.Infrastructure/LocationLookupQuery.cs)、[HistoryReadQuery.cs](../../src/StockCount.Infrastructure/HistoryReadQuery.cs)。
 
 现场 SQL Server 未连接，本文未执行任何业务查询或 DDL/DML；索引和性能以现场只读执行计划为准。部署、扫码和恢复操作见 [软件使用手册](../USER_GUIDE.md)。
+
+
+## 2026-11-27 W07 数量修正（新增路径，前文只 INSERT 为旧版）
+
+以下为 SqlInventoryWriteRepository 中新路径的参数化核心 SQL，非可独立执行的生产脚本。先同帐套 BOXNUM_0 TOP(2) WITH (UPDLOCK,HOLDLOCK) 取完整原记录；按事务校验版本、单号、库位、标签、单位及权限，再执行：
+
+```sql
+UPDATE {schema}.[XCOUTD]
+SET QTYSTU_0=@Qty,QTYPCU_0=@Qty,UPDDATTIM_0=GETDATE(),UPDUSR_0=@Audit,
+    UPDTICK_0=UPDTICK_0+1
+WHERE ROWID=CONVERT(numeric(38,0),@DetailId) AND CUNNUM_0=@Count
+  AND BOXNUM_0=@BoxNumber AND LOC_0=@LocationCode AND UPDTICK_0=@Tick
+  AND QTYSTU_0=@QuantityStu AND QTYPCU_0=@QuantityPcu AND PCUSTUCOE_0=1;
+```
+
+同事务核验修改行及不可变字段，INSERT StockCountOperationReceipt（原请求/更新回执）；GET 恢复优先该表。迁移仅提供 XTEST 审批脚本，未执行；UPDTICK_0+1 必须由 DBA 独立确认。旧只读诊断脚本不执行 UPDATE。详见 [[docs/pda/PDA 同库位数量更新与库位冲突]]。

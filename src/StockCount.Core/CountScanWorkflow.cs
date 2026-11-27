@@ -4,7 +4,10 @@ namespace StockCount.Core;
 public sealed record BoxScanData(
     string BoxNumber, string ItemCode, string? ItemName,
     string? Specification, string LotNumber, string StockUnit,
-    bool AlreadyRecordedInCount);
+    bool AlreadyRecordedInCount)
+{
+    public BoxCorrection? Correction { get; init; }
+}
 
 public sealed class ScanCommitRejectedException(string code, string message) : Exception(message)
 {
@@ -36,9 +39,16 @@ public interface ICountScanGateway
 {
     Task<LocationScanResult> ResolveLocationAsync(string countNumber, string rawCode, CancellationToken ct);
     Task<BoxScanData?> ResolveLabelAsync(string countNumber, string qr, CancellationToken ct);
+    Task<BoxScanData?> ResolveLabelAsync(string countNumber, string qr, string location, CancellationToken ct) =>
+        ResolveLabelAsync(countNumber, qr, ct);
+    Task<bool> UpdateAsync(string countNumber, Guid requestId, string qr, string boxNumber,
+        string location, decimal qty, BoxCorrection correction, CancellationToken ct) =>
+        throw new NotSupportedException("Quantity updates require a compatible API.");
     Task<bool> SubmitAsync(string countNumber, Guid requestId, string qr,
         string boxNumber, string location, decimal qty, CancellationToken ct);
     Task<bool?> GetSubmissionAsync(string countNumber, Guid requestId, CancellationToken ct);
+    Task<bool?> GetSubmissionAsync(string countNumber, Guid requestId, BoxScanData box, string location, decimal quantity, CancellationToken ct) =>
+        GetSubmissionAsync(countNumber,requestId,ct);
 }
 
 /// <summary>
@@ -62,6 +72,8 @@ public sealed class CountScanWorkflow(
     public string EnvironmentName { get; } = environment;
     public string? Location { get; private set; }
     public BoxScanData? Box { get; private set; }
+    public BoxCorrection? Conflict { get; private set; }
+    public bool IsUpdate => Box?.Correction?.Mode == "Update";
     public string? OriginalQr { get; private set; }
     public decimal? ManualQuantity { get; private set; }
     public Guid? PendingRequestId { get; private set; }
@@ -133,6 +145,7 @@ public sealed class CountScanWorkflow(
                 var location = result.Location;
                 if (!string.IsNullOrWhiteSpace(location))
                 {
+                    Conflict = null;
                     if (!string.Equals(Location, location, StringComparison.Ordinal))
                     {
                         Location = location;
@@ -153,11 +166,21 @@ public sealed class CountScanWorkflow(
                 return new CountScanFeedback("Error", "请先扫描盘点库位！");
 
             ClearBox();
-            var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, ct);
+            var resolved = await gateway.ResolveLabelAsync(CountNumber, raw, Location!, ct);
             if (resolved is null)
                 return new CountScanFeedback("Error", "未找到该箱标签！请检查二维码及箱号。");
-            if (resolved.AlreadyRecordedInCount)
+
+            if (resolved.Correction is { } decision && decision.Mode != "New")
+            {
+                if (decision.Mode != "Update" || !CorrectionPolicy.Matches(decision, CountNumber, Location!, resolved.BoxNumber))
+                {
+                    Conflict = decision with { BoxNumber = decision.BoxNumber ?? resolved.BoxNumber };
+                    return new CountScanFeedback("Duplicate", decision.Message ?? "原盘点记录不可更新，请重新扫码。");
+                }
+            }
+            else if (resolved.AlreadyRecordedInCount)
                 return new CountScanFeedback("Duplicate", "该箱号已扫描！");
+
 
             Box = resolved;
             OriginalQr = raw;
@@ -220,16 +243,18 @@ public sealed class CountScanWorkflow(
 
             try
             {
-                var committed = await gateway.SubmitAsync(
-                    CountNumber, PendingRequestId.Value, OriginalQr, Box.BoxNumber,
-                    Location, ManualQuantity.Value, ct);
+                var committed = IsUpdate
+                    ? await gateway.UpdateAsync(CountNumber, PendingRequestId.Value, OriginalQr, Box.BoxNumber,
+                        Location, ManualQuantity.Value, Box.Correction!, ct)
+                    : await gateway.SubmitAsync(CountNumber, PendingRequestId.Value, OriginalQr, Box.BoxNumber,
+                        Location, ManualQuantity.Value, ct);
                 if (!committed)
                     return new CountScanFeedback("Unknown", "提交结果待确认，请查询原请求ID。");
             }
             catch (ScanCommitRejectedException rejected)
             {
                 // A definitive rejection is different from an unknown network outcome.
-                if (rejected.Code == "BOX_ALREADY_RECORDED")
+                if (rejected.Code is "BOX_ALREADY_RECORDED" or "UPDATE_VERSION_CONFLICT" or "UPDATE_RECORD_CONFLICT")
                     ClearBox();
                 PendingRequestId = null;
                 if (pendingStore is not null)
@@ -246,7 +271,7 @@ public sealed class CountScanWorkflow(
             }
 
             _committedAwaitingUi = true;
-            return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
+            return new CountScanFeedback("Submitted", IsUpdate ? "更新成功！" : "提交成功！", SuccessToastDurationMs);
         }
         finally { _gate.Release(); }
     }
@@ -258,17 +283,17 @@ public sealed class CountScanWorkflow(
         try
         {
             if (_committedAwaitingUi)
-                return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
+                return new CountScanFeedback("Submitted", IsUpdate ? "更新成功！" : "提交成功！", SuccessToastDurationMs);
             if (!PendingRequestId.HasValue)
                 return new CountScanFeedback("Ready");
             try
             {
-                var confirmed = await gateway.GetSubmissionAsync(
-                    CountNumber, PendingRequestId.Value, ct);
+                var confirmed = Box is null || Location is null || !ManualQuantity.HasValue ? null : await gateway.GetSubmissionAsync(
+                    CountNumber, PendingRequestId.Value, Box, Location, ManualQuantity.Value, ct);
                 if (confirmed is true)
                 {
                     _committedAwaitingUi = true;
-                    return new CountScanFeedback("Submitted", "提交成功！", SuccessToastDurationMs);
+                    return new CountScanFeedback("Submitted", IsUpdate ? "更新成功！" : "提交成功！", SuccessToastDurationMs);
                 }
                 if (confirmed is false)
                     return new CountScanFeedback("Unknown",
@@ -302,6 +327,7 @@ public sealed class CountScanWorkflow(
     private void ClearBox()
     {
         Box = null;
+        Conflict = null;
         OriginalQr = null;
         ManualQuantity = null;
     }

@@ -206,3 +206,6 @@ SELECT N'Test', COUNT_BIG(*) FROM [sagex3].[XTEST].[XCOUTH];
 - 数据流：[[docs/DATABASE_MAPPING|字段映射]] · [Markdown](DATABASE_MAPPING.md) · [[docs/API_CONTRACT|API 契约]] · [Markdown](API_CONTRACT.md)
 
 最新单位映射决议及证据见 [2026-11-25 盘点单位映射研究](database/COUNT_UNIT_MAPPING_RESEARCH_2026-11-25.md)。
+
+
+2026-11-27：托盘码业务指 LOC_0；PALNUM_0 不参与更新且保持不变。数量更新仅两数量列、修改审计及已审批 UPDTICK_0+1；单独流水表保留原请求回执，禁止跨单跨库位更新。详见 [[docs/pda/PDA 同库位数量更新与库位冲突]]。

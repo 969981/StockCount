@@ -53,10 +53,14 @@ public static class ApiApplication
                 config["StockCount:Write:AuditUser"] ?? "",
                 config.GetValue<bool>("StockCount:Write:TestSchemaReviewed"),
                 config.GetValue<bool>("StockCount:Write:ProductionSchemaReviewed"),
-                 services.GetRequiredService<LocationValidationOptions>());
+                 services.GetRequiredService<LocationValidationOptions>(),
+                config.GetValue<bool>("StockCount:Write:TestQuantityUpdatesReviewed"),
+                config.GetValue<bool>("StockCount:Write:ProductionQuantityUpdatesReviewed"));
             return new SqlInventoryWriteRepository(config.GetConnectionString("SageX3") ?? "", options);
         });
         
+        builder.Services.TryAddScoped<IInventoryCorrectionRepository>(services =>
+            (IInventoryCorrectionRepository)services.GetRequiredService<IInventoryWriteRepository>());
         var app = builder.Build();
         var locationRules = app.Services.GetRequiredService<LocationValidationOptions>();
         app.Logger.LogInformation("盘点库位校验规则：XTEST 站点 {TestSite} / 仓库 {TestWarehouse}，COB 站点 {ProductionSite} / 仓库 {ProductionWarehouse}",
@@ -310,10 +314,21 @@ public static class ApiApplication
             if (label is null)
                 return Error(404, "LABEL_NOT_FOUND", "完整二维码及箱号均未查询到标签。", environment.Name);
         
-            return Results.Ok(new ResolvedLabel(
+            var resolved = new ResolvedLabel(
                 environment.Name, label.BoxNumber, label.ItemCode, label.ItemName,
                 label.Specification, label.LotNumber, label.StockUnit,
-                label.LabelQty, label.LabelStatusCode, label.AlreadyRecordedInCount));
+                label.LabelQty, label.LabelStatusCode, label.AlreadyRecordedInCount);
+            if (request.LocationCode is not null)
+            {
+                if (string.IsNullOrWhiteSpace(request.LocationCode) || request.LocationCode.Length > 10 ||
+                    request.LocationCode.Any(char.IsControl))
+                    return Error(400,"LOCATION_REQUEST_INVALID","盘点库位无效。",environment.Name);
+                var correction = context.RequestServices.GetRequiredService<IInventoryCorrectionRepository>();
+                var decision = await correction.InspectCorrectionAsync(environment,request.CountNumber,
+                    request.LocationCode,label.BoxNumber,label.ItemCode,label.LotNumber,label.StockUnit,cancellationToken);
+                resolved = resolved with { Decision=decision, AlreadyRecordedInCount=decision.Mode != "New" };
+            }
+            return Results.Ok(resolved);
         });
         
         app.MapGet("/api/v1/inventory-counts/{countNumber}/items",
@@ -387,6 +402,32 @@ public static class ApiApplication
                     environment.Name, requestId);
                 return Error(503, "SUBMISSION_OUTCOME_UNKNOWN",
                     "提交状态未知，请使用原请求ID查询结果，切勿生成新请求重试。", environment.Name);
+            }
+        });
+
+        app.MapPatch("/api/v1/inventory-counts/{countNumber}/items/{detailId}",
+            async (HttpContext context, string countNumber, string detailId, UpdateCountItemRequest request,
+                IInventoryCorrectionRepository repository, ILogger<SqlInventoryWriteRepository> logger,
+                CancellationToken cancellationToken) =>
+        {
+            if (!TryEnvironment(context,out var environment)) return BadEnvironment();
+            if (!Guid.TryParse(context.Request.Headers["Idempotency-Key"].ToString(),out var requestId) ||
+                requestId == Guid.Empty)
+                return Error(400,"IDEMPOTENCY_KEY_REQUIRED","更新必须保留非空请求 UUID。",environment.Name);
+            try
+            {
+                return Results.Ok(await repository.UpdateQuantityAsync(environment,countNumber,detailId,
+                    requestId,request,cancellationToken));
+            }
+            catch (CountWriteException error)
+            {
+                logger.LogWarning("Count correction rejected: {Code}, {Environment}, {RequestId}",error.Code,environment.Name,requestId);
+                return Error(error.StatusCode,error.Code,error.Message,environment.Name);
+            }
+            catch (Exception error)
+            {
+                logger.LogWarning(error,"Count correction uncertain: {Environment}, {RequestId}",environment.Name,requestId);
+                return Error(503,"SUBMISSION_OUTCOME_UNKNOWN","更新结果待确认，请使用原 UUID 查询。",environment.Name);
             }
         });
 

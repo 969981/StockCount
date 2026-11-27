@@ -221,3 +221,8 @@ up: "[[docs/development/00-研发规范地图]]"
 ## 已盘记录新版只读分页（2026-11-26）
 
 `GET /api/v1/inventory-counts/{countNumber}/history?pageSize=50&boxSearch=DEMO&location=LOC-DEMO01`。boxSearch 为包含匹配（最多20字符），location 精确匹配（最多10字符），均可省略或组合；pageSize 1–100 默认50。首页响应 CountHistoryPage 包含 environment、items、nextCursor、totalCount（本单全部明细行）、filteredCount（本单匹配行）；续页使用同一查询及 nextCursor，统计字段为 null，不重复 COUNT_BIG。400 HISTORY_QUERY_INVALID 表示筛选/游标无效，404 COUNT_NOT_FOUND 表示无单据。旧 GET /items 和 POST /items 不变。参见 [[docs/pda/PDA 已盘记录分页与搜索优化|专项文档]] · [Markdown](pda/PDA%20%E5%B7%B2%E7%9B%98%E8%AE%B0%E5%BD%95%E5%88%86%E9%A1%B5%E4%B8%8E%E6%90%9C%E7%B4%A2%E4%BC%98%E5%8C%96.md)。
+
+
+## 2026-11-27 数量更新扩展（取代旧的全局重复拒绝 UI 规则）
+
+POST /labels/resolve 可选 locationCode，返回 decision.mode / existing / message；无此字段保持旧行为。旧 POST /inventory-counts/{countNumber}/items 仍只新增。PATCH /api/v1/inventory-counts/{countNumber}/items/{detailId}，同环境头、Idempotency-Key UUID，请求 rawQrCode、boxNumber、countedLocation、countedQtyStu、expectedVersion（64位十六进制快照）。成功200，原回执重放200；Operation=Update，LocationCode=原库位。409 UPDATE_RECORD_CONFLICT / UPDATE_VERSION_CONFLICT、403 UPDATE_DISABLED、503 UPDATE_LEDGER_MISSING 或 SUBMISSION_OUTCOME_UNKNOWN。后者不能更换 UUID。GET /submissions 优先持久回执；history 可返回 updatedAt、lastCorrectionOldQuantity、lastCorrectionNewQuantity、lastCorrectionAtUtc。详见 [[docs/pda/PDA 同库位数量更新与库位冲突]]。

@@ -307,6 +307,91 @@ public sealed class CountScanWorkflowTests
         Assert.NotNull(store.Draft?.RequestId);
     }
 
+
+    private static BoxCorrection Correction(string mode = "Update", string location = "LOC-DEMO01") =>
+        new(mode,"123","COUNT-DEMO-001","BOX-DEMO-001",location,100m,"PCS",null,new string('A',64),
+            mode=="Update" ? null : "原箱已在其他库位盘点");
+
+    [Fact]
+    public async Task SameLocationCorrectionUsesUpdateAndRequiresManualQuantity()
+    {
+        var fake = new FakeGateway { Duplicate=true, Decision=Correction() };
+        var workflow = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        Assert.Equal("BoxResolved",(await workflow.HandleScanAsync(Qr)).Kind);
+        Assert.True(workflow.IsUpdate);
+        Assert.Equal(100m,workflow.Box!.Correction!.OldQuantity);
+        Assert.Null(workflow.ManualQuantity);
+        Assert.Equal("Error",(await workflow.SubmitAsync()).Kind);
+        workflow.EnterManualQuantity(120m);
+        var result=await workflow.SubmitAsync();
+        Assert.Equal("Submitted",result.Kind);
+        Assert.Equal("更新成功！",result.Message);
+        Assert.Equal(1,fake.Updates);
+        Assert.Equal(0,fake.Inserts);
+        Assert.Equal(120m,fake.LastSubmittedQuantity);
+        await workflow.AcknowledgeSuccessAsync();
+        Assert.Null(workflow.Box);
+        Assert.Equal("LOC-DEMO01",workflow.Location);
+    }
+
+    [Theory]
+    [InlineData("LocationConflict")]
+    [InlineData("CountConflict")]
+    [InlineData("Ambiguous")]
+    [InlineData("UpdateDisabled")]
+    [InlineData("Unsupported")]
+    public async Task ConflictKeepsOriginalLocationButCannotSubmit(string mode)
+    {
+        var fake = new FakeGateway { Duplicate=true, Decision=Correction(mode,"LOC-DEMO02") };
+        var workflow = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        Assert.Equal("Duplicate",(await workflow.HandleScanAsync(Qr)).Kind);
+        Assert.Equal("LOC-DEMO02",workflow.Conflict!.LocationCode);
+        Assert.Null(workflow.Box);
+        Assert.Equal("Error",(await workflow.SubmitAsync()).Kind);
+        Assert.Equal(0,fake.Updates+fake.Inserts);
+        await workflow.HandleScanAsync("LOC-DEMO02");
+        Assert.Null(workflow.Conflict);
+    }
+
+    [Fact]
+    public async Task UnknownUpdateRestoresOriginalSnapshotAndUuid()
+    {
+        var store = new MemoryStore();
+        var fake = new FakeGateway { Duplicate=true,Decision=Correction(),ThrowDuringSubmit=true };
+        var workflow = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试","Test",store);
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        workflow.EnterManualQuantity(120m);
+        Assert.Equal("Unknown",(await workflow.SubmitAsync()).Kind);
+        var id=workflow.PendingRequestId;
+        var restored = new CountScanWorkflow(fake,"COUNT-DEMO-001","测试","Test",store);
+        Assert.True(await restored.RestorePendingAsync());
+        Assert.True(restored.IsUpdate);
+        Assert.Equal(id,restored.PendingRequestId);
+        Assert.Equal(new string('A',64),restored.Box!.Correction!.Version);
+        Assert.Equal("更新成功！",(await restored.CheckPendingAsync()).Message);
+        Assert.Equal(1,fake.Updates);
+        Assert.Equal(0,fake.Inserts);
+    }
+
+    [Fact]
+    public async Task StaleUpdateClearsDraftAndRequiresRescan()
+    {
+        var fake=new FakeGateway { Duplicate=true,Decision=Correction(),RejectUpdateVersion=true };
+        var workflow=new CountScanWorkflow(fake,"COUNT-DEMO-001","测试");
+        await workflow.HandleScanAsync("LOC-DEMO01");
+        await workflow.HandleScanAsync(Qr);
+        workflow.EnterManualQuantity(120m);
+        var result=await workflow.SubmitAsync();
+        Assert.Equal("UPDATE_VERSION_CONFLICT",result.ErrorCode);
+        Assert.Null(workflow.Box);
+        Assert.Null(workflow.PendingRequestId);
+        Assert.Equal("LOC-DEMO01",workflow.Location);
+        Assert.Equal(0,fake.Inserts);
+    }
+
     private sealed class MemoryStore : IPendingSubmissionStore
     {
         public PendingSubmissionDraft? Draft { get; private set; }
@@ -327,6 +412,10 @@ public sealed class CountScanWorkflowTests
     private sealed class FakeGateway : ICountScanGateway
     {
         public bool Duplicate { get; set; }
+        public BoxCorrection? Decision { get; set; }
+        public bool RejectUpdateVersion { get; set; }
+        public int Inserts { get; private set; }
+        public int Updates { get; private set; }
         public bool LabelMissing { get; set; }
         public string? ExpectedLabelQr { get; set; }
         public string? LastSubmittedQr { get; private set; }
@@ -356,12 +445,13 @@ public sealed class CountScanWorkflowTests
             if (LabelMissing || (ExpectedLabelQr is not null && qr != ExpectedLabelQr))
                 return Task.FromResult<BoxScanData?>(null);
             return Task.FromResult<BoxScanData?>(new BoxScanData("BOX-DEMO-001",
-                "ITM-DEMO-01","示例物料","DEMO-SPEC","LOT-01","PCS",Duplicate));
+                "ITM-DEMO-01","示例物料","DEMO-SPEC","LOT-01","PCS",Duplicate) { Correction=Decision });
         }
 
         public Task<bool> SubmitAsync(string countNumber,Guid requestId,string qr,
             string boxNumber,string location,decimal qty,CancellationToken ct)
         {
+            Inserts++;
             LastRequestId=requestId;
             LastSubmittedQr=qr;
             LastSubmittedLocation=location;
@@ -370,6 +460,16 @@ public sealed class CountScanWorkflowTests
             if (RejectDuplicateAtCommit)
                 throw new ScanCommitRejectedException("BOX_ALREADY_RECORDED","该箱号已扫描！");
             if (ThrowDuringSubmit) throw new IOException("Simulated dropped connection");
+            LastSubmittedQuantity=qty;
+            return Task.FromResult(true);
+        }
+        public Task<bool> UpdateAsync(string countNumber,Guid requestId,string qr,string boxNumber,
+            string location,decimal qty,BoxCorrection correction,CancellationToken ct)
+        {
+            Updates++;
+            LastRequestId=requestId;
+            if (RejectUpdateVersion) throw new ScanCommitRejectedException("UPDATE_VERSION_CONFLICT","请重新扫码");
+            if (ThrowDuringSubmit) throw new IOException("Simulated dropped update response");
             LastSubmittedQuantity=qty;
             return Task.FromResult(true);
         }

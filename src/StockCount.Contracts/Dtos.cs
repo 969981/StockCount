@@ -25,7 +25,20 @@ public sealed record ResolvedLocation(
     string? Message
 );
 
-public sealed record ResolveLabelRequest(string CountNumber, string RawQrCode);
+public sealed record ResolveLabelRequest(string CountNumber, string RawQrCode)
+{
+    // Absent for legacy clients: preserve duplicate-rejection contract.
+    public string? LocationCode { get; init; }
+}
+
+public sealed record RecordedCountItem(string DetailId, string CountNumber, string BoxNumber,
+    string LocationCode, decimal QuantityStu, decimal QuantityPcu, string StockUnit,
+    DateTime UpdatedAt, string Version);
+
+public sealed record CountBoxDecision(string Mode, RecordedCountItem? Existing, string? Message);
+
+public sealed record UpdateCountItemRequest(string RawQrCode, string BoxNumber,
+    string CountedLocation, decimal? CountedQtyStu, string ExpectedVersion);
 public sealed record ResolvedLabel(
     string Environment,
     string BoxNumber,
@@ -37,7 +50,10 @@ public sealed record ResolvedLabel(
     decimal LabelQty,
     int LabelStatusCode,
     bool AlreadyRecordedInCount
-);
+)
+{
+    public CountBoxDecision? Decision { get; init; }
+}
 
 public sealed record CountItemDto(
     string DetailId,
@@ -50,7 +66,13 @@ public sealed record CountItemDto(
     decimal QuantityPcu,
     decimal QuantityStu,
     DateTime CreatedAt
-);
+)
+{
+    public DateTime? UpdatedAt { get; init; }
+    public decimal? LastCorrectionOldQuantity { get; init; }
+    public decimal? LastCorrectionNewQuantity { get; init; }
+    public DateTime? LastCorrectionAtUtc { get; init; }
+}
 public sealed record CountItemPage(string Environment, IReadOnlyList<CountItemDto> Items, string? NextCursor);
 
 /// <summary>Counts are returned on the first page only; continuation uses the same upper ROWID.</summary>
@@ -77,4 +99,8 @@ public sealed record SaveCountItemResult(
     Guid RequestId,
     string Status,
     bool Replayed
-);
+)
+{
+    public string Operation { get; init; } = "Insert";
+    public string? LocationCode { get; init; }
+}

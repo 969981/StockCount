@@ -349,7 +349,7 @@ public partial class CountingPage : ContentPage
                 QuantityInput.Unfocus();
                 RefreshScreen();
                 RequestDetailsScroll(CountingScrollTarget.Top);
-                ShowBusinessToast("提交成功！", true);
+                ShowBusinessToast(feedback.Message ?? "提交成功！", true);
                 Notify(FeedbackPolicy.FromWorkflow(feedback.Kind, submission, recovery), requestId);
             }
             catch (Exception error)
@@ -374,11 +374,11 @@ public partial class CountingPage : ContentPage
         if (feedback.Kind == "BoxResolved")
         {
             ClearFailureToast();
-            ConnectionStateText.Text = "箱码读取完成";
+            ConnectionStateText.Text = _workflow.IsUpdate ? "等待更新数量" : "箱码读取完成";
             return;
         }
 
-        if (feedback.Kind == "Duplicate" || feedback.ErrorCode == "BOX_ALREADY_RECORDED")
+        if (feedback.Kind == "Duplicate" || feedback.ErrorCode is ("BOX_ALREADY_RECORDED" or "UPDATE_VERSION_CONFLICT" or "UPDATE_RECORD_CONFLICT"))
         {
             QuantityInput.Text = "";
             RefreshScreen();
@@ -387,6 +387,7 @@ public partial class CountingPage : ContentPage
         if (BusinessToastPolicy.IsAutomaticFailure(feedback, submission, _workflow.HasUnresolvedSubmission))
         {
             ShowBusinessToast(feedback.Message, false);
+            if (_workflow.Conflict is not null) RequestDetailsScroll(CountingScrollTarget.Top);
             return;
         }
         DismissBusinessToast();
@@ -457,7 +458,7 @@ public partial class CountingPage : ContentPage
 
     private void QuantityInput_FocusChanged(object sender, FocusEventArgs e)
     {
-        QuantityFrame.Stroke = new SolidColorBrush(Color.FromArgb(e.IsFocused ? "#175AB7" : "#8799AA"));
+        QuantityFrame.Stroke = new SolidColorBrush(Color.FromArgb(e.IsFocused ? (_workflow.IsUpdate ? "#B77920" : "#175AB7") : "#8799AA"));
         if (!e.IsFocused && _detailsScroll.Target == CountingScrollTarget.Bottom)
             CancelDetailsScroll();
     }
@@ -532,6 +533,9 @@ public partial class CountingPage : ContentPage
             _workflow.Box is not null && _workflow.Location is not null &&
             TryGetQuantity(out _);
         if (SubmitButton.IsEnabled != enabled) SubmitButton.IsEnabled = enabled;
+        SubmitButton.Text = _workflow.Conflict is not null ? "禁止提交" : _workflow.IsUpdate ? "更新盘点" : "提交盘点";
+        SubmitButton.BackgroundColor = Color.FromArgb(enabled ? (_workflow.IsUpdate ? "#B77920" : "#175AB7") : "#DCE3EC");
+        SubmitButton.TextColor = Color.FromArgb(enabled ? "#FFFFFF" : "#8290A1");
         var canClear = QuantityInput.IsEnabled && !string.IsNullOrEmpty(QuantityInput.Text);
         if (ClearQuantityButton.IsEnabled != canClear) ClearQuantityButton.IsEnabled = canClear;
     }
@@ -569,6 +573,25 @@ public partial class CountingPage : ContentPage
             QuantityUnitText.Text = box?.StockUnit ?? "—";
             _renderedBox = box;
         }
+        var conflict = _workflow.Conflict;
+        var update = _workflow.IsUpdate;
+        ConflictCard.IsVisible = conflict is not null;
+        BoxEmptyPanel.IsVisible = box is null && conflict is null;
+        BoxStateText.Text = conflict is not null ? "禁止提交" : update ? "已盘点 · 更新模式" : box is null ? "等待扫码" : "未盘点 · 新增模式";
+        BoxStateText.TextColor = conflict is not null ? Color.FromArgb("#A93232") :
+            update ? Color.FromArgb("#A46A15") : box is null ? BoxGray : ConfirmedGreen;
+        if (conflict is not null)
+        {
+            ConflictTitle.Text = conflict.Message ?? "原记录不可更新";
+            ConflictDetails.Text = $"箱码：{conflict.BoxNumber ?? "—"}\n原盘点单：{conflict.CountNumber ?? "—"}\n原库位：{conflict.LocationCode ?? "—"}\n当前库位：{location ?? "—"}" +
+                (conflict.OldQuantity is decimal old ? $"\n原数量：{CountQuantityDisplay.Format(old,conflict.StockUnit ?? "")}" : "");
+            if (conflict.UpdatedAt is DateTime time) ConflictDetails.Text += $"\n原修改时间：{time:yyyy-MM-dd HH:mm}";
+        }
+        QuantityCaption.Text = update ? "更新后数量 *" : "箱内数量 *";
+        QuantityInput.Placeholder = update ? "新数量" : "输入数量";
+        OriginalQuantityText.IsVisible = update;
+        if (update && box?.Correction?.OldQuantity is decimal previous)
+            OriginalQuantityText.Text = "原数量：" + CountQuantityDisplay.Format(previous,box.StockUnit);
         _rendered = true;
         if (box is null && !_workflow.IsSuccessAwaitingDismiss &&
             !string.IsNullOrEmpty(QuantityInput.Text))
@@ -581,7 +604,7 @@ public partial class CountingPage : ContentPage
         if (QuantityInput.IsEnabled != enabled) QuantityInput.IsEnabled = enabled;
         string? status = pending ? "提交结果待确认" :
             !_busy && !_workflow.IsSuccessAwaitingDismiss
-                ? (box is null ? (located ? "等待扫描箱码" : "等待扫描库位") : "等待人工数量")
+                ? (conflict is not null ? "原记录冲突" : box is null ? (located ? "等待扫描箱码" : "等待扫描库位") : update ? "等待更新数量" : "等待人工数量")
                 : null;
         if (status is not null && ConnectionStateText.Text != status)
             ConnectionStateText.Text = status;
