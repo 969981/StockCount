@@ -102,4 +102,5 @@ public sealed record SaveCountItemResult(
 )
 {
     public string Operation { get; init; } = "Insert";
+    public string? LocationCode { get; init; }
 }

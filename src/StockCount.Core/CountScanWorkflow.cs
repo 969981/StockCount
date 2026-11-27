@@ -47,7 +47,7 @@ public interface ICountScanGateway
     Task<bool> SubmitAsync(string countNumber, Guid requestId, string qr,
         string boxNumber, string location, decimal qty, CancellationToken ct);
     Task<bool?> GetSubmissionAsync(string countNumber, Guid requestId, CancellationToken ct);
-    Task<bool?> GetSubmissionAsync(string countNumber, Guid requestId, BoxScanData box, decimal quantity, CancellationToken ct) =>
+    Task<bool?> GetSubmissionAsync(string countNumber, Guid requestId, BoxScanData box, string location, decimal quantity, CancellationToken ct) =>
         GetSubmissionAsync(countNumber,requestId,ct);
 }
 
@@ -288,8 +288,8 @@ public sealed class CountScanWorkflow(
                 return new CountScanFeedback("Ready");
             try
             {
-                var confirmed = Box is null || !ManualQuantity.HasValue ? null : await gateway.GetSubmissionAsync(
-                    CountNumber, PendingRequestId.Value, Box, ManualQuantity.Value, ct);
+                var confirmed = Box is null || Location is null || !ManualQuantity.HasValue ? null : await gateway.GetSubmissionAsync(
+                    CountNumber, PendingRequestId.Value, Box, Location, ManualQuantity.Value, ct);
                 if (confirmed is true)
                 {
                     _committedAwaitingUi = true;

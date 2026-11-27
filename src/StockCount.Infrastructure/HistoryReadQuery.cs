@@ -23,7 +23,7 @@ public static class HistoryReadQuery
                D.CREDATTIM_0 AS CreatedAt,D.UPDDATTIM_0 AS UpdatedAt
                {(withReceipts ? ", R.OldQtyStu AS LastCorrectionOldQuantity,R.SavedQtyStu AS LastCorrectionNewQuantity,R.CommittedAt AS LastCorrectionAtUtc" : "")}
         FROM {EnvironmentSelector.TablePrefix(environment)}.[XCOUTD] D
-        {(withReceipts ? $"OUTER APPLY (SELECT TOP (1) OldQtyStu,SavedQtyStu,CommittedAt FROM {EnvironmentSelector.TablePrefix(environment)}.[StockCountOperationReceipt] WHERE CountNumber=D.CUNNUM_0 AND DetailId=CONVERT(nvarchar(40),D.ROWID) AND Operation=N'Update' ORDER BY CommittedAt DESC,RequestId DESC) R" : "")}
+        {(withReceipts ? $"OUTER APPLY (SELECT TOP (1) OldQtyStu,SavedQtyStu,CommittedAt FROM {EnvironmentSelector.TablePrefix(environment)}.[StockCountOperationReceipt] WHERE CountNumber=D.CUNNUM_0 AND DetailId=CONVERT(nvarchar(40),D.ROWID) AND Operation=N'Update' ORDER BY ReceiptSequence DESC) R" : "")}
         WHERE D.CUNNUM_0=@CountNumber
           AND D.ROWID<=CONVERT(numeric(38,0),@UpperRowId)
           {(hasBefore ? "AND D.ROWID<CONVERT(numeric(38,0),@BeforeRowId)" : "")}

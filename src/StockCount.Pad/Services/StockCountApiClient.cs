@@ -234,7 +234,7 @@ public sealed class StockCountApiClient : ICountScanGateway
         HttpResponseMessage response;
         try { response=await SendAsync(request,ct).ConfigureAwait(false); }
         catch(ScanApiException error) when (error.Code is
-            "BOX_ALREADY_RECORDED" or "PRODUCTION_WRITE_DISABLED" or
+            "BOX_ALREADY_RECORDED" or "UPDATE_LEDGER_MISSING" or "PRODUCTION_WRITE_DISABLED" or
             "ERP_WRITE_UNAVAILABLE" or "SCHEMA_NOT_APPROVED" or
             "COUNT_QUANTITY_INVALID" or "COUNT_NOT_WRITABLE" or
             "UNIT_MAPPING_UNSUPPORTED" or "LOCATION_INVALID" or
@@ -277,7 +277,7 @@ public sealed class StockCountApiClient : ICountScanGateway
             var result=await response.Content.ReadFromJsonAsync<SaveCountItemResult>(Json,ct).ConfigureAwait(false);
             return result is not null && result.Status=="Committed" && result.Operation=="Update" &&
                 result.Environment==EnvironmentName && result.CountNumber==countNumber && result.BoxNumber==boxNumber &&
-                result.DetailId==correction.DetailId && result.RequestId==requestId &&
+                result.DetailId==correction.DetailId && result.LocationCode==location && result.RequestId==requestId &&
                 result.SavedQtyStu==qty && result.SavedQtyPcu==qty;
         }
     }
@@ -296,7 +296,7 @@ public sealed class StockCountApiClient : ICountScanGateway
         catch (ScanApiException e) when (e.Code=="SUBMISSION_LOOKUP_UNAVAILABLE") { return null; }
     }
 
-    public async Task<bool?> GetSubmissionAsync(string countNumber,Guid requestId,BoxScanData box,decimal quantity,CancellationToken ct)
+    public async Task<bool?> GetSubmissionAsync(string countNumber,Guid requestId,BoxScanData box,string location,decimal quantity,CancellationToken ct)
     {
         try
         {
@@ -308,6 +308,7 @@ public sealed class StockCountApiClient : ICountScanGateway
                 saved.CountNumber==countNumber && saved.BoxNumber==box.BoxNumber && saved.RequestId==requestId &&
                 saved.SavedQtyStu==quantity && saved.SavedQtyPcu==quantity &&
                 saved.Operation==(update ? "Update" : "Insert") &&
+                (saved.LocationCode is null ? !update : saved.LocationCode==location) &&
                 (!update || saved.DetailId==correction!.DetailId) ? true : null;
         }
         catch (ScanApiException e) when (e.Code=="SUBMISSION_NOT_FOUND") { return false; }

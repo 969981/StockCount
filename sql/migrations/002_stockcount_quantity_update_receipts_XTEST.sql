@@ -7,6 +7,7 @@ BEGIN TRANSACTION;
 IF OBJECT_ID(N'XTEST.StockCountOperationReceipt',N'U') IS NULL
 BEGIN
     CREATE TABLE [XTEST].[StockCountOperationReceipt] (
+        ReceiptSequence bigint IDENTITY(1,1) NOT NULL,
         CountNumber nvarchar(30) NOT NULL,
         RequestId uniqueidentifier NOT NULL,
         Operation nvarchar(6) NOT NULL,
@@ -27,6 +28,9 @@ BEGIN
             OR (Operation=N'Update' AND PayloadHash IS NOT NULL AND OldQtyStu IS NOT NULL AND OldQtyPcu IS NOT NULL)),
         CONSTRAINT CK_StockCountOperationReceipt_Quantity CHECK (SavedQtyStu=SavedQtyPcu AND SavedQtyStu>=0)
     );
+    CREATE INDEX IX_StockCountOperationReceipt_Detail
+        ON [XTEST].[StockCountOperationReceipt](CountNumber,DetailId,Operation,ReceiptSequence DESC)
+        INCLUDE(OldQtyStu,SavedQtyStu,CommittedAt);
 END;
 COMMIT TRANSACTION;
 -- Grant only SELECT/INSERT on receipt and reviewed column-level UPDATE on XCOUTD

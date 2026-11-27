@@ -72,7 +72,13 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
         var schema = EnvironmentSelector.TablePrefix(environment);
         await using var connection = await OpenAsync(ct);
-        var row = await FindRequestAsync(connection, null, schema, countNumber, requestId, ct);
+        // Read ledger and native UUID under one isolation boundary; a concurrent
+        // correction cannot move the receipt between the two queries.
+        await using var tx = (SqlTransaction)await connection.BeginTransactionAsync(IsolationLevel.Serializable,ct);
+        if (options.IsCorrectionEnabled(environment) && !await HasLedgerAsync(connection,tx,schema,ct))
+            throw new CountWriteException(503,"SUBMISSION_LOOKUP_UNAVAILABLE","更新流水不可用，无法确认原请求。");
+        var row = await FindRequestAsync(connection, tx, schema, countNumber, requestId, ct);
+        await tx.CommitAsync(ct);
         return row is null ? null : ToResult(row, environment.Name, countNumber, requestId, false);
     }
 
@@ -138,6 +144,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
             // Recover only rows created by this app with the same native UUID.
             stage = "查询 XCOUTD 原请求记录";
+            if (options.IsCorrectionEnabled(environment) && !await HasLedgerAsync(connection,transaction,schema,ct))
+                throw new CountWriteException(503,"UPDATE_LEDGER_MISSING","已启用更新但流水表不可用，暂停写入。");
             var existing = await FindRequestAsync(connection, transaction, schema, countNumber, requestId, ct);
             if (existing is not null)
             {
@@ -286,7 +294,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             stage = "提交 SQL 事务";
             await transaction.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
-                detailId,units.QuantityStu,units.QuantityPcu,units.PackageUnit,requestId,"Committed",false);
+                detailId,units.QuantityStu,units.QuantityPcu,units.PackageUnit,requestId,"Committed",false) { LocationCode=request.CountedLocation };
         }
         catch (CountWriteException error)
         {
@@ -348,7 +356,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
     private static SaveCountItemResult ToResult(SubmissionRow row, string environment,
         string countNumber, Guid requestId, bool replayed) =>
         new(environment,countNumber,row.BoxNumber,row.DetailId,
-            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,requestId,"Committed",replayed) { Operation = row.Operation };
+            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,requestId,"Committed",replayed) { Operation = row.Operation, LocationCode=row.LocationCode };
 
     private static async Task<bool> SafeRollbackAsync(SqlTransaction tx)
     {
@@ -578,7 +586,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                         VALUES (@Count,@Id,N'Insert',NULL,@DetailId,@BoxNumber,@LocationCode,@StockUnit,
                              NULL,NULL,@QuantityStu,@QuantityPcu,@Audit);
                         """,new { Count=countNumber,Id=row.NativeUuid,row.DetailId,row.BoxNumber,row.LocationCode,
-                            row.StockUnit,row.QuantityStu,row.QuantityPcu,Audit=options.AuditUser },tx,cancellationToken:ct));
+                            row.StockUnit,row.QuantityStu,row.QuantityPcu,Audit=row.CreatedBy },tx,cancellationToken:ct));
             }
             // Explicitly approved X3 tick increment. Original ROWID/AUUID, location, pallet and creation fields untouched.
             var updated = await db.ExecuteAsync(new CommandDefinition($"""
@@ -611,7 +619,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                 tx,cancellationToken:ct));
             await tx.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,row.BoxNumber,row.DetailId,qty,qty,
-                row.StockUnit,requestId,"Committed",false) { Operation="Update" };
+                row.StockUnit,requestId,"Committed",false) { Operation="Update", LocationCode=row.LocationCode };
         }
         catch (CountWriteException error)
         {
