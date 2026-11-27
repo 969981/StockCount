@@ -40,7 +40,7 @@ jobs:
             fi
             if [ -n "$(git ls-remote --heads origin "$ref")" ]; then failed=1; fi
           done <<'BRANCHES'
-          fix/pda-keyboard-submit-toast cae57c720b5d7bfe9e583a9e1db17b7367fd8069
+          feature/pda-count-quantity-update 85c4aaf6d76c775b277e26c0de2421a309fdcc98
           BRANCHES
           git ls-remote --heads origin
           exit "$failed"
