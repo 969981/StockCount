@@ -65,6 +65,14 @@
                  FontSize="12" TextColor="#627181" VerticalOptions="Center"/>
         </Grid>
         <BoxView Color="#E0E5E9" HeightRequest="1"/>
+        <Border x:Name="ConflictCard" IsVisible="False" BackgroundColor="#FCEAEA"
+                Stroke="#EAC5C5" StrokeShape="RoundRectangle 6" Margin="10,4" Padding="10,8">
+          <VerticalStackLayout Spacing="4">
+            <Label x:Name="ConflictTitle" Text="原盘点记录冲突" TextColor="#A93232" FontSize="14" FontAttributes="Bold"/>
+            <Label x:Name="ConflictDetails" TextColor="#805555" FontSize="13" LineBreakMode="WordWrap"/>
+            <Label Text="禁止提交。核对原记录后重新扫码。" TextColor="#A93232" FontSize="12"/>
+          </VerticalStackLayout>
+        </Border>
         <VerticalStackLayout x:Name="BoxEmptyPanel" Padding="10,14" Spacing="6">
           <Label x:Name="BoxEmptyTitleText" Text="请先扫描库位" FontSize="15"
                  FontAttributes="Bold" TextColor="#364655" HorizontalTextAlignment="Center"/>
@@ -136,11 +144,11 @@
     <Grid x:Name="QuantityActionBar" Grid.Row="4" RowDefinitions="1,Auto" BackgroundColor="White" SizeChanged="QuantityActionBar_SizeChanged">
       <BoxView Color="#CBD3DB"/>
       <Grid Grid.Row="1" Padding="10,4,10,5" RowDefinitions="Auto,Auto,Auto,Auto" ColumnDefinitions="*,Auto" ColumnSpacing="0" RowSpacing="0">
-        <Label Grid.ColumnSpan="2" FontSize="13" Margin="0,0,0,3" FontAttributes="Bold" TextColor="#17232F">
-          <Label.FormattedText><FormattedString>
-            <Span Text="箱内数量 "/><Span Text="*" TextColor="#B73332"/>
-          </FormattedString></Label.FormattedText>
-        </Label>
+        <Grid Grid.ColumnSpan="2" ColumnDefinitions="Auto,*" Margin="0,0,0,3" ColumnSpacing="6">
+          <Label x:Name="QuantityCaption" Text="箱内数量 *" FontSize="13" FontAttributes="Bold" TextColor="#17232F"/>
+          <Label Grid.Column="1" x:Name="OriginalQuantityText" IsVisible="False" TextColor="#A46A15"
+                 FontSize="12" HorizontalTextAlignment="End" LineBreakMode="CharacterWrap"/>
+        </Grid>
         <!-- Use a single outline; let Android text metrics determine height.
              Clear and unit have independent columns so neither overlays the number. -->
         <Border x:Name="QuantityFrame" Grid.Row="1" Grid.ColumnSpan="2" Stroke="#8799AA" StrokeShape="RoundRectangle 4"
@@ -174,17 +182,6 @@
           <Button x:Name="SubmitButton" Text="提交盘点" FontSize="14" FontAttributes="Bold"
                   MinimumHeightRequest="48" CornerRadius="4" Padding="8,4" TextColor="White"
                   BackgroundColor="#175AB7" IsEnabled="False" Clicked="Submit_Clicked">
-            <VisualStateManager.VisualStateGroups>
-              <VisualStateGroup Name="CommonStates">
-                <VisualState Name="Normal"/>
-                <VisualState Name="Disabled">
-                  <VisualState.Setters>
-                    <Setter Property="BackgroundColor" Value="#DCE3EC"/>
-                    <Setter Property="TextColor" Value="#8290A1"/>
-                  </VisualState.Setters>
-                </VisualState>
-              </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
           </Button>
           <ActivityIndicator x:Name="BusyIndicator" IsVisible="False" IsRunning="False"
                              InputTransparent="True" Color="#175AB7" WidthRequest="18"

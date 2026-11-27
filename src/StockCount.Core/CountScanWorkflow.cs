@@ -174,7 +174,7 @@ public sealed class CountScanWorkflow(
             {
                 if (decision.Mode != "Update" || !CorrectionPolicy.Matches(decision, CountNumber, Location!, resolved.BoxNumber))
                 {
-                    Conflict = decision;
+                    Conflict = decision with { BoxNumber = decision.BoxNumber ?? resolved.BoxNumber };
                     return new CountScanFeedback("Duplicate", decision.Message ?? "原盘点记录不可更新，请重新扫码。");
                 }
             }

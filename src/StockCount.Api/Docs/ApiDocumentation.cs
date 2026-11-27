@@ -83,8 +83,9 @@ public sealed class ChineseOperationFilter : IOperationFilter
             "GET api/v1/inventory-counts/{countNumber}/history" => ("盘点单查询", "查询已盘记录", "ROWID 游标分页；首次返回真实总数和筛选数量。只读，旧分页接口保持不变。", typeof(CountHistoryPage), "200"),
             "GET api/v1/inventory-counts/{countNumber}/items" => ("盘点单查询", "查询盘点明细", "分页读取 XCOUTD 明细，不修改数据。", typeof(CountItemPage), "200"),
             "POST api/v1/locations/resolve" => ("扫码解析", "解析盘点库位", "支持 LC. 前缀，提取库位后核验对应帐套 STOLOC；站点及仓库一致性由各帐套后台设置独立控制（默认关闭）。只读。", typeof(ResolvedLocation), "200"),
-            "POST api/v1/labels/resolve" => ("扫码解析", "解析箱码二维码", "优先按完整 QR 查询 XLABELDTL；零匹配时提取 ID. 查询箱号 PID_0，多条匹配拒绝。返回物料信息及本单重复状态。只读。", typeof(ResolvedLabel), "200"),
+            "POST api/v1/labels/resolve" => ("扫码解析", "解析箱码二维码", "优先按完整 QR 查询 XLABELDTL；零匹配时提取 ID. 查询箱号 PID_0，多条匹配拒绝。返回物料及当前帐套重复状态；携带 locationCode 时额外返回新增、更新、冲突决定。只读。", typeof(ResolvedLabel), "200"),
             "POST api/v1/inventory-counts/{countNumber}/items" => ("盘点提交", "提交实盘明细（实际写入）", "危险操作：实际写入 ERP。数量须人工录入；必须提供非空 UUID 幂等键，重试复用原键。服务器仍校验帐套授权、库位、标签、单位和重复箱码。", typeof(SaveCountItemResult), "201"),
+            "PATCH api/v1/inventory-counts/{countNumber}/items/{detailId}" => ("盘点提交", "更新同单同库位原明细数量", "实际写入 ERP。仅在数量更新独立授权及流水表可用时启用；必须携带原扫描版本和独立 UUID。不可跨库位更新。", typeof(SaveCountItemResult), "200"),
             "GET api/v1/submissions/{requestId}" => ("盘点提交", "查询提交结果", "按盘点单号及原 UUID 查询已提交记录；未找到不代表可以更换 UUID 重试。", typeof(SaveCountItemResult), "200"),
             _ => ("其他", "接口", "", null, "200")
         };
