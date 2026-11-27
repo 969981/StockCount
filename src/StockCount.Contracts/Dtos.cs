@@ -66,7 +66,13 @@ public sealed record CountItemDto(
     decimal QuantityPcu,
     decimal QuantityStu,
     DateTime CreatedAt
-);
+)
+{
+    public DateTime? UpdatedAt { get; init; }
+    public decimal? LastCorrectionOldQuantity { get; init; }
+    public decimal? LastCorrectionNewQuantity { get; init; }
+    public DateTime? LastCorrectionAtUtc { get; init; }
+}
 public sealed record CountItemPage(string Environment, IReadOnlyList<CountItemDto> Items, string? NextCursor);
 
 /// <summary>Counts are returned on the first page only; continuation uses the same upper ROWID.</summary>

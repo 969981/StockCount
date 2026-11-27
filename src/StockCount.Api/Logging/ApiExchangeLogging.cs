@@ -25,7 +25,8 @@ public sealed class ApiExchangeLogging(RequestDelegate next, ILogger<ApiExchange
         "labelStatusCode", "alreadyRecordedInCount", "detailId", "packageUnit", "quantityPcu",
         "quantityStu", "createdAt", "countedLocation", "countedQtyStu", "savedQtyStu",
         "savedQtyPcu", "requestId", "status", "replayed", "service", "version", "utc",
-        "database", "code", "title", "type", "pageSize", "cursor", "search"
+        "database", "code", "title", "type", "pageSize", "cursor", "search", "operation", "mode", "decision",
+        "existing", "updatedAt", "lastCorrectionOldQuantity", "lastCorrectionNewQuantity", "lastCorrectionAtUtc"
     };
 
     public async Task InvokeAsync(HttpContext context)

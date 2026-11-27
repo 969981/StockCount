@@ -13,7 +13,11 @@ public partial class HistoryPage : ContentPage
     private readonly ObservableCollection<HistoryItemDisplay> _items = new();
     private readonly HashSet<string> _ids = new(StringComparer.Ordinal);
     public sealed record HistoryItemDisplay(string BoxNumber, string LocationCode,
-        string QuantityText, DateTime CreatedAt);
+        string QuantityText, DateTime CreatedAt, string? CorrectionText = null)
+    {
+        public bool HasCorrection => CorrectionText is not null;
+        public string StatusText => HasCorrection ? "已更新" : "已盘";
+    }
     private HistoryQuery? _query;
     private string? _cursor;
     private long? _total, _filtered;
@@ -128,7 +132,11 @@ public partial class HistoryPage : ContentPage
             foreach (var item in page.Items)
                 if (_ids.Add(item.DetailId))
                     _items.Add(new HistoryItemDisplay(item.BoxNumber, item.LocationCode,
-                        CountQuantityDisplay.Format(item.QuantityStu, item.PackageUnit), item.CreatedAt));
+                        CountQuantityDisplay.Format(item.QuantityStu, item.PackageUnit), item.CreatedAt,
+                        item.LastCorrectionOldQuantity is decimal oldQty && item.LastCorrectionNewQuantity is decimal newQty &&
+                        item.LastCorrectionAtUtc is DateTime utc
+                            ? $"最近更新：{CountQuantityDisplay.Format(oldQty,item.PackageUnit)} → {CountQuantityDisplay.Format(newQty,item.PackageUnit)} · {utc:MM-dd HH:mm} UTC"
+                            : null));
             _cursor = page.NextCursor;
             _loaded = true;
             if (nextWindow && _items.Count > 0) ItemsList.ScrollTo(0, position: ScrollToPosition.Start, animate: false);

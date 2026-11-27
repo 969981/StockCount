@@ -165,14 +165,22 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         if (upper is null)
             return new CountHistoryPage(environment.Name, Array.Empty<CountItemDto>(), null,
                 summary?.TotalCount, summary?.FilteredCount);
+        var withReceipts = await connection.ExecuteScalarAsync<int>(new CommandDefinition(
+            "SELECT CASE WHEN OBJECT_ID(@Name,N'U') IS NULL THEN 0 ELSE 1 END;",
+            new { Name=EnvironmentSelector.TablePrefix(environment)+".[StockCountOperationReceipt]" },
+            cancellationToken:cancellationToken)) == 1;
         var rows = (await connection.QueryAsync<CountItemRow>(new CommandDefinition(
-            HistoryReadQuery.Page(environment, cursor is not null),
+            HistoryReadQuery.Page(environment, cursor is not null, withReceipts),
             new { query.CountNumber, query.BoxSearch, query.Location, UpperRowId = upper,
                 BeforeRowId = cursor?.BeforeRowId, Take = size + 1 },
             cancellationToken: cancellationToken))).ToArray();
         var items = rows.Take(size).Select(x => new CountItemDto(
             x.DetailId,x.CountNumber,x.BoxNumber,x.LocationCode,x.ItemCode,x.LotNumber,
-            x.PackageUnit,x.QuantityPcu,x.QuantityStu,x.CreatedAt)).ToArray();
+            x.PackageUnit,x.QuantityPcu,x.QuantityStu,x.CreatedAt)
+        {
+            UpdatedAt=x.UpdatedAt, LastCorrectionOldQuantity=x.LastCorrectionOldQuantity,
+            LastCorrectionNewQuantity=x.LastCorrectionNewQuantity, LastCorrectionAtUtc=x.LastCorrectionAtUtc
+        }).ToArray();
         var next = rows.Length > size
             ? new HistoryCursor(upper, items[^1].DetailId).Encode(query) : null;
         return new CountHistoryPage(environment.Name, items, next, summary?.TotalCount, summary?.FilteredCount);
@@ -219,5 +227,9 @@ public sealed class SqlInventoryReadRepository(string connectionString,
         public decimal QuantityPcu { get; set; }
         public decimal QuantityStu { get; set; }
         public DateTime CreatedAt { get; set; }
+        public DateTime? UpdatedAt { get; set; }
+        public decimal? LastCorrectionOldQuantity { get; set; }
+        public decimal? LastCorrectionNewQuantity { get; set; }
+        public DateTime? LastCorrectionAtUtc { get; set; }
     }
 }

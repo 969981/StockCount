@@ -111,7 +111,7 @@ public sealed class ChineseOperationFilter : IOperationFilter
             });
         }
 
-        if (success == "201")
+        if (success == "201" || method == "PATCH")
             operation.Parameters.Add(new OpenApiParameter
             {
                 Name = "Idempotency-Key", In = ParameterLocation.Header, Required = true,

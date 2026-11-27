@@ -271,6 +271,18 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (string.IsNullOrWhiteSpace(detailId))
                 throw new CountWriteException(503, "ERP_WRITE_FAILED", "XCOUTD 未返回新建 ROWID。");
 
+            // New inserts also receive an immutable receipt when the migration is deployed.
+            // Legacy deployments without the ledger retain the native UUID behavior.
+            if (await HasLedgerAsync(connection,transaction,schema,ct))
+                await connection.ExecuteAsync(new CommandDefinition($"""
+                    INSERT INTO {schema}.[StockCountOperationReceipt]
+                        (CountNumber,RequestId,Operation,PayloadHash,DetailId,BoxNumber,LocationCode,StockUnit,
+                         OldQtyStu,OldQtyPcu,SavedQtyStu,SavedQtyPcu,AuditUser)
+                    VALUES (@Count,@RequestId,N'Insert',NULL,@DetailId,@BoxNumber,@Location,@StockUnit,
+                        NULL,NULL,@Qty,@Qty,@Audit);
+                    """,new { Count=countNumber,RequestId=requestId,DetailId=detailId,label.BoxNumber,
+                        Location=request.CountedLocation,StockUnit=units.PackageUnit,Qty=qty,Audit=options.AuditUser },
+                    transaction,cancellationToken:ct));
             stage = "提交 SQL 事务";
             await transaction.CommitAsync(ct);
             return new SaveCountItemResult(environment.Name,countNumber,label.BoxNumber,
@@ -407,6 +419,10 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         public DateTime UpdatedAt { get; set; }
         public string PdaId { get; set; } = "";
         public Guid NativeUuid { get; set; }
+        public string PalletNumber { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+        public string CreatedBy { get; set; } = "";
+        public string EccMajor { get; set; } = "";
 
         public bool Compatible(string item, string lot, string unit) =>
             string.Equals(ItemCode,item,StringComparison.Ordinal) &&
@@ -418,7 +434,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         public string Version => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
             System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new {
                 DetailId,CountNumber,BoxNumber,LocationCode,ItemCode,LotNumber,StockUnit,
-                QuantityStu,QuantityPcu,UnitFactor,Tick,UpdatedAt,PdaId,NativeUuid
+                QuantityStu,QuantityPcu,UnitFactor,Tick,UpdatedAt,PdaId,NativeUuid,PalletNumber,CreatedAt,CreatedBy,EccMajor
             })));
         public RecordedCountItem Snapshot => new(DetailId,CountNumber,BoxNumber,LocationCode,
             QuantityStu,QuantityPcu,StockUnit,UpdatedAt,Version);
@@ -434,7 +450,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
                    D.ITMREF_0 AS ItemCode,D.LOT_0 AS LotNumber,D.PCU_0 AS StockUnit,
                    D.QTYSTU_0 AS QuantityStu,D.QTYPCU_0 AS QuantityPcu,D.PCUSTUCOE_0 AS UnitFactor,
                    D.UPDTICK_0 AS Tick,D.UPDDATTIM_0 AS UpdatedAt,D.PDAID_0 AS PdaId,
-                   CONVERT(uniqueidentifier,D.AUUID_0) AS NativeUuid
+                   CONVERT(uniqueidentifier,D.AUUID_0) AS NativeUuid,D.PALNUM_0 AS PalletNumber,
+                   D.CREDATTIM_0 AS CreatedAt,D.CREUSR_0 AS CreatedBy,D.ECCVALMAJ_0 AS EccMajor
             FROM {schema}.[XCOUTD] D{hint}
             WHERE D.BOXNUM_0=@Box;
             """, new { Box=box }, tx, cancellationToken:ct))).ToArray();
@@ -578,6 +595,9 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             if (after.Length != 1 || after[0].DetailId != row.DetailId || after[0].QuantityStu != qty ||
                 after[0].QuantityPcu != qty || after[0].NativeUuid != row.NativeUuid ||
                 after[0].CountNumber != row.CountNumber || after[0].LocationCode != row.LocationCode ||
+                after[0].PalletNumber != row.PalletNumber || after[0].CreatedAt != row.CreatedAt ||
+                after[0].CreatedBy != row.CreatedBy || after[0].EccMajor != row.EccMajor ||
+                after[0].PdaId != row.PdaId || after[0].BoxNumber != row.BoxNumber ||
                 after[0].Tick != row.Tick + 1 || !after[0].Compatible(label.ItemCode,label.LotNumber,label.StockUnit))
                 throw new CountWriteException(503,"UPDATE_POSTCHECK_FAILED","更新后核验失败，已拒绝事务，请管理员核查。");
             await db.ExecuteAsync(new CommandDefinition($"""
