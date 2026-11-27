@@ -15,11 +15,15 @@ public sealed class CountWriteException(int statusCode, string code, string mess
 
 public sealed record CountWriteOptions(bool EnableTestWrites, bool EnableProductionWrites,
     string AuditUser, bool TestSchemaReviewed, bool ProductionSchemaReviewed,
-    LocationValidationOptions? LocationValidation = null)
+    LocationValidationOptions? LocationValidation = null,
+    bool TestQuantityUpdatesReviewed = false, bool ProductionQuantityUpdatesReviewed = false)
 {
     public bool IsEnabled(SelectedEnvironment environment) =>
         environment.Name == "Test" ? EnableTestWrites :
         environment.Name == "Production" && EnableProductionWrites;
+
+    public bool IsCorrectionEnabled(SelectedEnvironment environment) => IsEnabled(environment) && IsReviewed(environment) &&
+        (environment.Name == "Test" ? TestQuantityUpdatesReviewed : environment.Name == "Production" && ProductionQuantityUpdatesReviewed);
 
     public bool IsReviewed(SelectedEnvironment environment) =>
         environment.Name == "Test" ? TestSchemaReviewed :
@@ -35,13 +39,21 @@ public interface IInventoryWriteRepository
         string countNumber, Guid requestId, CancellationToken cancellationToken);
 }
 
+public interface IInventoryCorrectionRepository
+{
+    Task<CountBoxDecision> InspectCorrectionAsync(SelectedEnvironment environment, string countNumber,
+        string location, string box, string item, string lot, string unit, CancellationToken ct);
+    Task<SaveCountItemResult> UpdateQuantityAsync(SelectedEnvironment environment, string countNumber,
+        string detailId, Guid requestId, UpdateCountItemRequest request, CancellationToken ct);
+}
+
 /// <summary>
 /// Insert exactly one XCOUTD row in a serializable transaction.
 /// New StockCount rows use their request UUID as AUUID_0; no auxiliary ERP table.
 /// Mutations are explicitly gated; no production writes by default.
 /// </summary>
 public sealed class SqlInventoryWriteRepository(string connectionString, CountWriteOptions options)
-    : IInventoryWriteRepository
+    : IInventoryWriteRepository, IInventoryCorrectionRepository
 {
     private async Task<SqlConnection> OpenAsync(CancellationToken ct)
     {
@@ -129,7 +141,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
             var existing = await FindRequestAsync(connection, transaction, schema, countNumber, requestId, ct);
             if (existing is not null)
             {
-                if (!string.Equals(existing.BoxNumber, request.BoxNumber, StringComparison.Ordinal) ||
+                if (existing.Operation != "Insert" || !string.Equals(existing.BoxNumber, request.BoxNumber, StringComparison.Ordinal) ||
                     !string.Equals(existing.LocationCode, request.CountedLocation, StringComparison.Ordinal) ||
                     existing.SavedQtyStu != request.CountedQtyStu.Value ||
                     existing.SavedQtyPcu != request.CountedQtyStu.Value)
@@ -300,6 +312,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
     private static async Task<SubmissionRow?> FindRequestAsync(SqlConnection connection,
         SqlTransaction? transaction, string schema, string countNumber, Guid requestId, CancellationToken ct)
     {
+        var receipt = await FindReceiptAsync(connection, transaction, schema, countNumber, requestId, ct);
+        if (receipt is not null) return receipt;
         var hint = transaction is null ? "" : " WITH (UPDLOCK,HOLDLOCK)";
         var sql = $"""
             SELECT TOP (2) D.BOXNUM_0 AS BoxNumber,D.LOC_0 AS LocationCode,
@@ -322,7 +336,7 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
     private static SaveCountItemResult ToResult(SubmissionRow row, string environment,
         string countNumber, Guid requestId, bool replayed) =>
         new(environment,countNumber,row.BoxNumber,row.DetailId,
-            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,requestId,"Committed",replayed);
+            row.SavedQtyStu,row.SavedQtyPcu,row.StockUnit,requestId,"Committed",replayed) { Operation = row.Operation };
 
     private static async Task<bool> SafeRollbackAsync(SqlTransaction tx)
     {
@@ -347,6 +361,8 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
 
     private sealed class SubmissionRow
     {
+        public string Operation { get; set; } = "Insert";
+        public string? PayloadHash { get; set; }
         public string BoxNumber { get; set; } = "";
         public string LocationCode { get; set; } = "";
         public string DetailId { get; set; } = "";
@@ -354,4 +370,241 @@ public sealed class SqlInventoryWriteRepository(string connectionString, CountWr
         public decimal SavedQtyStu { get; set; }
         public decimal SavedQtyPcu { get; set; }
     }
+
+    // The ledger is optional for legacy inserts, mandatory for corrections.
+    // Its immutable receipts survive subsequent changes to XCOUTD quantities.
+    private static async Task<bool> HasLedgerAsync(SqlConnection db, SqlTransaction? tx, string schema, CancellationToken ct) =>
+        await db.ExecuteScalarAsync<int>(new CommandDefinition(
+            "SELECT CASE WHEN OBJECT_ID(@Name,N'U') IS NULL THEN 0 ELSE 1 END;",
+            new { Name = schema + ".[StockCountOperationReceipt]" }, tx, cancellationToken:ct)) == 1;
+
+    private static async Task<SubmissionRow?> FindReceiptAsync(SqlConnection db, SqlTransaction? tx,
+        string schema, string count, Guid requestId, CancellationToken ct)
+    {
+        if (!await HasLedgerAsync(db, tx, schema, ct)) return null;
+        var hint = tx is null ? "" : " WITH (UPDLOCK,HOLDLOCK)";
+        return await db.QuerySingleOrDefaultAsync<SubmissionRow>(new CommandDefinition($"""
+            SELECT BoxNumber, LocationCode, DetailId, StockUnit,
+                   SavedQtyStu, SavedQtyPcu, Operation, PayloadHash
+            FROM {schema}.[StockCountOperationReceipt]{hint}
+            WHERE CountNumber=@Count AND RequestId=@RequestId;
+            """, new { Count=count, RequestId=requestId }, tx, cancellationToken:ct));
+    }
+
+    private sealed class CorrectionRow
+    {
+        public string DetailId { get; set; } = "";
+        public string CountNumber { get; set; } = "";
+        public string BoxNumber { get; set; } = "";
+        public string LocationCode { get; set; } = "";
+        public string ItemCode { get; set; } = "";
+        public string LotNumber { get; set; } = "";
+        public string StockUnit { get; set; } = "";
+        public decimal QuantityStu { get; set; }
+        public decimal QuantityPcu { get; set; }
+        public decimal UnitFactor { get; set; }
+        public int Tick { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public string PdaId { get; set; } = "";
+        public Guid NativeUuid { get; set; }
+
+        public bool Compatible(string item, string lot, string unit) =>
+            string.Equals(ItemCode,item,StringComparison.Ordinal) &&
+            string.Equals(LotNumber,lot,StringComparison.Ordinal) &&
+            string.Equals(StockUnit,unit,StringComparison.Ordinal) &&
+            CountWritePolicy.IsValidStockUnit(unit) && UnitFactor == 1m &&
+            QuantityStu == QuantityPcu && QuantityStu >= 0 && Tick >= 0 && Tick < int.MaxValue;
+
+        public string Version => Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new {
+                DetailId,CountNumber,BoxNumber,LocationCode,ItemCode,LotNumber,StockUnit,
+                QuantityStu,QuantityPcu,UnitFactor,Tick,UpdatedAt,PdaId,NativeUuid
+            })));
+        public RecordedCountItem Snapshot => new(DetailId,CountNumber,BoxNumber,LocationCode,
+            QuantityStu,QuantityPcu,StockUnit,UpdatedAt,Version);
+    }
+
+    private static async Task<CorrectionRow[]> FindBoxRowsAsync(SqlConnection db, SqlTransaction? tx,
+        string schema, string box, CancellationToken ct)
+    {
+        var hint = tx is null ? "" : " WITH (UPDLOCK,HOLDLOCK)";
+        return (await db.QueryAsync<CorrectionRow>(new CommandDefinition($"""
+            SELECT TOP (2) CONVERT(nvarchar(40),D.ROWID) AS DetailId,
+                   D.CUNNUM_0 AS CountNumber,D.BOXNUM_0 AS BoxNumber,D.LOC_0 AS LocationCode,
+                   D.ITMREF_0 AS ItemCode,D.LOT_0 AS LotNumber,D.PCU_0 AS StockUnit,
+                   D.QTYSTU_0 AS QuantityStu,D.QTYPCU_0 AS QuantityPcu,D.PCUSTUCOE_0 AS UnitFactor,
+                   D.UPDTICK_0 AS Tick,D.UPDDATTIM_0 AS UpdatedAt,D.PDAID_0 AS PdaId,
+                   CONVERT(uniqueidentifier,D.AUUID_0) AS NativeUuid
+            FROM {schema}.[XCOUTD] D{hint}
+            WHERE D.BOXNUM_0=@Box;
+            """, new { Box=box }, tx, cancellationToken:ct))).ToArray();
+    }
+
+    private static CountBoxDecision Decide(CorrectionRow[] rows, string count, string location,
+        string box, string item, string lot, string unit, bool enabled)
+    {
+        var row = rows.Length == 1 ? rows[0] : null;
+        var mode = CorrectionPolicy.Classify(rows.Length,
+            row is not null && string.Equals(row.CountNumber,count,StringComparison.Ordinal),
+            row is not null && string.Equals(row.LocationCode,location,StringComparison.Ordinal),
+            row is not null && string.Equals(row.BoxNumber,box,StringComparison.Ordinal) && row.Compatible(item,lot,unit),
+            enabled);
+        var message = mode switch
+        {
+            "LocationConflict" => $"该箱码已在 {row!.LocationCode} 库位盘点！",
+            "CountConflict" => $"该箱码已在盘点单 {row!.CountNumber}、库位 {row.LocationCode} 提交！",
+            "Ambiguous" => "该箱码存在多条历史明细，请联系管理员核查。",
+            "Unsupported" => "原记录的物料、批次、单位或版本不兼容，禁止直接更新。",
+            "UpdateDisabled" => "原箱已盘点，但当前帐套数量更新尚未获准。",
+            _ => null
+        };
+        return new CountBoxDecision(mode,row?.Snapshot,message);
+    }
+
+    public async Task<CountBoxDecision> InspectCorrectionAsync(SelectedEnvironment environment,
+        string countNumber, string location, string box, string item, string lot, string unit, CancellationToken ct)
+    {
+        var schema = EnvironmentSelector.TablePrefix(environment);
+        await using var db = await OpenAsync(ct);
+        var rows = await FindBoxRowsAsync(db,null,schema,box,ct);
+        return Decide(rows,countNumber,location,box,item,lot,unit,
+            options.IsCorrectionEnabled(environment) && await HasLedgerAsync(db,null,schema,ct));
+    }
+
+    public async Task<SaveCountItemResult> UpdateQuantityAsync(SelectedEnvironment environment,
+        string countNumber, string detailId, Guid requestId, UpdateCountItemRequest request, CancellationToken ct)
+    {
+        if (requestId == Guid.Empty || !HistoryCursor.IsRowId(detailId) ||
+            !CorrectionPolicy.ValidVersion(request.ExpectedVersion) || !request.CountedQtyStu.HasValue)
+            throw new CountWriteException(400,"UPDATE_REQUEST_INVALID","更新请求、数量或版本无效，请重新扫码。");
+        var qty = request.CountedQtyStu.Value;
+        var validation = CountWritePolicy.Validate(countNumber,request.RawQrCode,request.BoxNumber,request.CountedLocation,qty);
+        if (validation is not null) throw new CountWriteException(400,validation,"更新请求数据无效。");
+        if (!options.IsCorrectionEnabled(environment))
+            throw new CountWriteException(403,"UPDATE_DISABLED","当前帐套数量更新未经过独立授权及结构审核。");
+        if (string.IsNullOrWhiteSpace(options.AuditUser) || options.AuditUser.Length > 5 || options.AuditUser.Any(char.IsControl))
+            throw new CountWriteException(503,"AUDIT_USER_NOT_CONFIGURED","请配置专用 X3 审计用户编码。");
+
+        var schema = EnvironmentSelector.TablePrefix(environment);
+        var fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
+            System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(new {
+                environment.Name,countNumber,detailId,request.RawQrCode,request.BoxNumber,
+                request.CountedLocation, Quantity = qty.ToString("0.############################",CultureInfo.InvariantCulture),
+                request.ExpectedVersion
+            })));
+        await using var db = await OpenAsync(ct);
+        await using var tx = (SqlTransaction)await db.BeginTransactionAsync(IsolationLevel.Serializable,ct);
+        try
+        {
+            var locked = await db.ExecuteScalarAsync<int>(new CommandDefinition("""
+                DECLARE @r int;
+                EXEC @r=sys.sp_getapplock @Resource=@Resource,@LockMode=N'Exclusive',
+                    @LockOwner=N'Transaction',@LockTimeout=10000;
+                SELECT @r;
+                """, new { Resource=BoxDuplicateQuery.LockResource(environment,request.BoxNumber) },tx,cancellationToken:ct));
+            if (locked < 0) throw new CountWriteException(409,"COUNT_BUSY","箱码正在被其他设备处理，请保留原请求重试。");
+            if (!await HasLedgerAsync(db,tx,schema,ct))
+                throw new CountWriteException(503,"UPDATE_LEDGER_MISSING","尚未部署并核验数量更新操作流水表。");
+            var previous = await FindRequestAsync(db,tx,schema,countNumber,requestId,ct);
+            if (previous is not null)
+            {
+                if (previous.Operation != "Update" || previous.PayloadHash != fingerprint)
+                    throw new CountWriteException(409,"IDEMPOTENCY_PAYLOAD_MISMATCH","原请求标识对应不同操作或数据。");
+                await tx.CommitAsync(ct);
+                return ToResult(previous,environment.Name,countNumber,requestId,true);
+            }
+
+            var header = await db.QuerySingleOrDefaultAsync<HeaderRow>(new CommandDefinition($"""
+                SELECT STOFCY_0 AS SiteCode,WRH_0 AS WarehouseCode
+                FROM {schema}.[XCOUTH] WITH (UPDLOCK,HOLDLOCK) WHERE CUNNUM_0=@Count;
+                """,new { Count=countNumber },tx,cancellationToken:ct));
+            if (header is null) throw new CountWriteException(404,"COUNT_NOT_FOUND","盘点单不存在。");
+            var scope = (options.LocationValidation ?? new LocationValidationOptions()).For(environment.Name);
+            var matches = await db.QuerySingleAsync<LocationLookup>(new CommandDefinition(LocationLookupQuery.Sql(schema),
+                LocationLookupQuery.Parameters(scope,header.SiteCode,header.WarehouseCode,request.CountedLocation),
+                tx,cancellationToken:ct));
+            if (scope.Classify(matches.TotalMatches,matches.ScopedMatches) is { } locationError)
+                throw new CountWriteException(422,locationError,scope.Describe(locationError));
+
+            var labelSql = $"""
+                SELECT TOP (2) L.PID_0 AS BoxNumber,L.ITMREF_0 AS ItemCode,L.LOT_0 AS LotNumber,L.STU_0 AS StockUnit
+                FROM {schema}.[XLABELDTL] L
+                """;
+            async Task<LabelForWrite[]> ReadLabel(string predicate,string value) =>
+                (await db.QueryAsync<LabelForWrite>(new CommandDefinition(labelSql+predicate,new { Value=value },tx,cancellationToken:ct))).ToArray();
+            var labels = await LabelLookupPolicy.FindAsync(request.RawQrCode,
+                value=>ReadLabel(" WHERE L.QRCOD_0=@Value;",value),
+                value=>ReadLabel(" WHERE L.PID_0=@Value;",value));
+            if (labels.Length != 1 || !string.Equals(labels[0].BoxNumber,request.BoxNumber,StringComparison.Ordinal))
+                throw new CountWriteException(409,"UPDATE_RECORD_CONFLICT","箱标签已变化或存在歧义，请重新扫码。");
+            var label = labels[0];
+            var rows = await FindBoxRowsAsync(db,tx,schema,label.BoxNumber,ct);
+            var decision = Decide(rows,countNumber,request.CountedLocation,label.BoxNumber,label.ItemCode,label.LotNumber,label.StockUnit,true);
+            if (decision.Mode != "Update" || rows[0].DetailId != detailId)
+                throw new CountWriteException(409,"UPDATE_RECORD_CONFLICT",decision.Message ?? "原明细已变化，请重新扫码。");
+            var row = rows[0];
+            if (row.Version != request.ExpectedVersion)
+                throw new CountWriteException(409,"UPDATE_VERSION_CONFLICT","其他设备已修改该箱，请重新扫码后输入数量。");
+
+            // Archive the native StockCount insertion receipt before the first mutation.
+            // Legacy UUIDs not created by StockCount are not adopted as request IDs.
+            if (row.PdaId == "StockCount" && row.NativeUuid != Guid.Empty)
+            {
+                var original = await FindRequestAsync(db,tx,schema,countNumber,row.NativeUuid,ct);
+                if (original is null || original.Operation != "Insert" || original.DetailId != row.DetailId)
+                    throw new CountWriteException(409,"UPDATE_RECORD_CONFLICT","原提交标识有歧义，禁止更新。");
+                if (await FindReceiptAsync(db,tx,schema,countNumber,row.NativeUuid,ct) is null)
+                    await db.ExecuteAsync(new CommandDefinition($"""
+                        INSERT INTO {schema}.[StockCountOperationReceipt]
+                            (CountNumber,RequestId,Operation,PayloadHash,DetailId,BoxNumber,LocationCode,StockUnit,
+                             OldQtyStu,OldQtyPcu,SavedQtyStu,SavedQtyPcu,AuditUser)
+                        VALUES (@Count,@Id,N'Insert',NULL,@DetailId,@BoxNumber,@LocationCode,@StockUnit,
+                             NULL,NULL,@QuantityStu,@QuantityPcu,@Audit);
+                        """,new { Count=countNumber,Id=row.NativeUuid,row.DetailId,row.BoxNumber,row.LocationCode,
+                            row.StockUnit,row.QuantityStu,row.QuantityPcu,Audit=options.AuditUser },tx,cancellationToken:ct));
+            }
+            // Explicitly approved X3 tick increment. Original ROWID/AUUID, location, pallet and creation fields untouched.
+            var updated = await db.ExecuteAsync(new CommandDefinition($"""
+                UPDATE {schema}.[XCOUTD]
+                SET QTYSTU_0=@Qty,QTYPCU_0=@Qty,UPDDATTIM_0=GETDATE(),UPDUSR_0=@Audit,
+                    UPDTICK_0=UPDTICK_0+1
+                WHERE ROWID=CONVERT(numeric(38,0),@DetailId) AND CUNNUM_0=@Count
+                    AND BOXNUM_0=@BoxNumber AND LOC_0=@LocationCode AND UPDTICK_0=@Tick
+                    AND QTYSTU_0=@QuantityStu AND QTYPCU_0=@QuantityPcu AND PCUSTUCOE_0=1;
+                """,new { Qty=qty,Audit=options.AuditUser,row.DetailId,Count=countNumber,row.BoxNumber,row.LocationCode,
+                    row.Tick,row.QuantityStu,row.QuantityPcu },tx,cancellationToken:ct));
+            if (updated != 1) throw new CountWriteException(409,"UPDATE_VERSION_CONFLICT","原明细已变化，请重新扫码。");
+            var after = await FindBoxRowsAsync(db,tx,schema,label.BoxNumber,ct);
+            if (after.Length != 1 || after[0].DetailId != row.DetailId || after[0].QuantityStu != qty ||
+                after[0].QuantityPcu != qty || after[0].NativeUuid != row.NativeUuid ||
+                after[0].CountNumber != row.CountNumber || after[0].LocationCode != row.LocationCode ||
+                after[0].Tick != row.Tick + 1 || !after[0].Compatible(label.ItemCode,label.LotNumber,label.StockUnit))
+                throw new CountWriteException(503,"UPDATE_POSTCHECK_FAILED","更新后核验失败，已拒绝事务，请管理员核查。");
+            await db.ExecuteAsync(new CommandDefinition($"""
+                INSERT INTO {schema}.[StockCountOperationReceipt]
+                    (CountNumber,RequestId,Operation,PayloadHash,DetailId,BoxNumber,LocationCode,StockUnit,
+                     OldQtyStu,OldQtyPcu,SavedQtyStu,SavedQtyPcu,AuditUser)
+                VALUES (@Count,@RequestId,N'Update',@Fingerprint,@DetailId,@BoxNumber,@LocationCode,@StockUnit,
+                     @QuantityStu,@QuantityPcu,@Qty,@Qty,@Audit);
+                """,new { Count=countNumber,RequestId=requestId,Fingerprint=fingerprint,row.DetailId,row.BoxNumber,
+                    row.LocationCode,row.StockUnit,row.QuantityStu,row.QuantityPcu,Qty=qty,Audit=options.AuditUser },
+                tx,cancellationToken:ct));
+            await tx.CommitAsync(ct);
+            return new SaveCountItemResult(environment.Name,countNumber,row.BoxNumber,row.DetailId,qty,qty,
+                row.StockUnit,requestId,"Committed",false) { Operation="Update" };
+        }
+        catch (CountWriteException error)
+        {
+            if (!await SafeRollbackAsync(tx))
+                throw new CountWriteException(503,"SUBMISSION_OUTCOME_UNKNOWN","回滚未确认，请查询原请求 UUID。",error);
+            throw;
+        }
+        catch (Exception error)
+        {
+            await SafeRollbackAsync(tx);
+            // Even a failed commit/connection may have committed; keep original request.
+            throw new CountWriteException(503,"SUBMISSION_OUTCOME_UNKNOWN","更新结果待确认，请查询原请求 UUID。",error);
+        }
+    }
+
 }
