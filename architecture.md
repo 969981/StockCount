@@ -183,3 +183,8 @@ POST CountItem
 - 主题索引：[[docs/development/00-研发规范地图|研发规范地图]] · [Markdown](docs/development/00-%E7%A0%94%E5%8F%91%E8%A7%84%E8%8C%83%E5%9C%B0%E5%9B%BE.md)
 - Obsidian 主页：[[00-StockCount-知识库主页|知识库主页]] · [Markdown](00-StockCount-%E7%9F%A5%E8%AF%86%E5%BA%93%E4%B8%BB%E9%A1%B5.md)
 - 全部文档：[[docs/00-文档导航|文档目录]] · [Markdown](docs/00-%E6%96%87%E6%A1%A3%E5%AF%BC%E8%88%AA.md)
+
+
+## 2026-11-27 数量修正架构
+
+旧新增全帐套防重不变；新增 PATCH 数量更新，同单同库位唯一行、Serializable + 箱锁 + 版本快照。独立审批及同事务 StockCountOperationReceipt，不覆盖原 AUUID。早期同单防重建议由此取代。详见 [[docs/pda/PDA 同库位数量更新与库位冲突]]。
