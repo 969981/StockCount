@@ -9,7 +9,7 @@ namespace StockCount.Core.Tests;
 public sealed class ApiDocumentationTests
 {
     [Fact]
-    public async Task ServesChineseSwaggerAndTenBusinessOperationsWithoutDatabase()
+    public async Task ServesChineseSwaggerAndElevenOperationsWithoutDatabase()
     {
         await using var app = ApiApplication.Build(Array.Empty<string>(),
             builder => builder.WebHost.UseUrls("http://127.0.0.1:0"));
@@ -40,7 +40,7 @@ public sealed class ApiDocumentationTests
             var root = doc.RootElement;
             Assert.Contains("库存盘点", root.GetProperty("info").GetProperty("title").GetString());
             var paths = root.GetProperty("paths");
-            Assert.Equal(10, paths.EnumerateObject().Sum(p => p.Value.EnumerateObject().Count()));
+            Assert.Equal(11, paths.EnumerateObject().Sum(p => p.Value.EnumerateObject().Count()));
             Assert.False(paths.TryGetProperty("/internal/shutdown", out _));
             Assert.False(paths.TryGetProperty("/docs/zh-cn.js", out _));
             var counts = paths.GetProperty("/api/v1/inventory-counts").GetProperty("get");
@@ -58,7 +58,15 @@ public sealed class ApiDocumentationTests
                 p => p.GetProperty("name").GetString() == "Idempotency-Key");
             Assert.True(submit.GetProperty("responses").TryGetProperty("201", out _));
             Assert.True(submit.GetProperty("responses").TryGetProperty("200", out _));
+            var update = paths.GetProperty("/api/v1/inventory-counts/{countNumber}/items/{detailId}").GetProperty("patch");
+            Assert.Equal("更新同单同库位原明细数量", update.GetProperty("summary").GetString());
+            Assert.Contains(update.GetProperty("parameters").EnumerateArray(),
+                p => p.GetProperty("name").GetString() == "Idempotency-Key" &&
+                     p.GetProperty("required").GetBoolean());
+            Assert.True(update.GetProperty("responses").TryGetProperty("200", out _));
+            Assert.False(update.GetProperty("responses").TryGetProperty("201", out _));
             var schemas = root.GetProperty("components").GetProperty("schemas");
+            Assert.True(schemas.GetProperty("UpdateCountItemRequest").GetProperty("properties").TryGetProperty("expectedVersion", out _));
             Assert.Equal("人工录入实盘数量，必填", schemas.GetProperty("SaveCountItemRequest")
                 .GetProperty("properties").GetProperty("countedQtyStu").GetProperty("description").GetString());
             using var health = await client.GetAsync("/health");
